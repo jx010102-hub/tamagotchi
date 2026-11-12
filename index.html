@@ -133,6 +133,44 @@
   .timer-pill img { width: 46px; height: 46px; object-fit: contain; }
   .timer-pill .clock { font-family: var(--hand); font-size: 24px; font-weight: 700; line-height: 1; }
 
+
+  /* 주간 시간표 */
+  .tt-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-top: 4px; margin: 0 -4px; }
+  .tt-paper { position: relative; min-width: 660px; padding: 90px 6px 10px; }
+  .tt-doodle { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 360px; height: 95px; object-fit: contain; object-position: bottom; pointer-events: none; z-index: 1; }
+  .tt { position: relative; display: grid; grid-template-columns: 42px repeat(7, 1fr); background: #fff; border: 3px solid #2E2620; border-radius: 6px 8px 6px 7px; box-shadow: 0 6px 0 var(--shadow); }
+  .tt > * { border-right: 2px solid #2E2620; border-bottom: 2px solid #2E2620; }
+  .tt > *:nth-child(8n) { border-right: 0; }
+  .tt-corner { background: #fff; }
+  .tt-corner, .tt-side { position: sticky !important; left: 0; z-index: 3; }
+  .tt-dh { text-align: center; padding: 6px 2px 4px; font-family: var(--hand); line-height: 1.05; background: #fff; }
+  .tt-dh b { display: block; font-size: 21px; letter-spacing: 1.5px; }
+  .tt-dh span { font-size: 13px; color: var(--ink-soft); }
+  .tt-dh.today { background: var(--sage-pale); }
+  .tt-dh.wk b { color: #B06A5E; }
+  .tt-side { position: relative; font-family: var(--hand); font-size: 18px; font-weight: 700; text-align: center; background: #fff; }
+  .tt-side.small { font-size: 14px; display: flex; align-items: center; justify-content: center; padding: 4px 0; }
+  .tt-hours { position: relative; }
+  .tt-hours span { position: absolute; left: 0; right: 0; padding-top: 2px; }
+  .tt-allday { min-height: 44px; padding: 3px; display: flex; flex-direction: column; gap: 3px; cursor: copy; background: #FFFDF7; }
+  .tt-col { position: relative; cursor: copy; background-image: linear-gradient(to bottom, transparent calc(100% - 1.5px), #E6DCCB calc(100% - 1.5px)); }
+  .tt-col.today { background-color: #F8FBF3; }
+  .tt-now { position: absolute; left: 0; right: 0; height: 0; border-top: 2.5px solid #E2685A; z-index: 2; pointer-events: none; }
+  .tt-now::before { content: ""; position: absolute; left: -5px; top: -6px; width: 9px; height: 9px; border-radius: 50%; background: #E2685A; }
+  .tt-block { position: absolute; display: flex; flex-direction: column; align-items: flex-start; text-align: left; overflow: hidden; padding: 3px 5px; border-radius: 8px; border: 2px dashed #6B5547; box-shadow: none; font-size: 12px; line-height: 1.2; z-index: 1; }
+  .tt-block:active { transform: none; box-shadow: none; filter: brightness(.96); }
+  .tt-block.chip-b { position: relative; width: 100%; padding: 3px 5px; }
+  .tt-block.done { border-style: solid; border-color: #2E2620; }
+  .tt-block.review { border-color: #E09A4E; border-style: dashed; }
+  .tt-block.done .tt-name { text-decoration: line-through; text-decoration-color: rgba(46,38,32,.45); }
+  .tt-name { font-weight: 700; word-break: keep-all; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .tt-time { font-size: 10.5px; color: var(--ink-soft); margin-top: 1px; }
+  .tt-stamp { position: absolute; right: 3px; bottom: 2px; font-family: var(--hand); font-weight: 700; font-size: 18px; color: #4F7A35; }
+  .tt-rv { position: absolute; right: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: #F2B46A; color: #fff; font-weight: 700; font-size: 11px; display: flex; align-items: center; justify-content: center; }
+  .tt-actual { padding: 3px; display: flex; flex-direction: column; gap: 2px; min-height: 30px; background: #FFFDF7; border-bottom: 0 !important; }
+  .tt > .tt-side:nth-last-child(8) { border-bottom: 0; }
+  .tt-act { font-size: 10.5px; padding: 1px 4px; border-radius: 6px; border: 1.5px solid #2E2620; }
+
   /* 탭바 */
   .tabbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: max(14px, env(safe-area-inset-bottom)); display: flex; gap: 4px; background: var(--paper); border: 2px solid var(--ink); border-radius: 999px; padding: 6px; box-shadow: 0 5px 0 var(--shadow); z-index: 5; }
   .tabbar button { border: 0; box-shadow: none; background: transparent; padding: 8px 18px; font-family: var(--hand); font-size: 19px; font-weight: 700; color: var(--ink-soft); white-space: nowrap; }
@@ -207,7 +245,8 @@
   .dur .u { font-family: var(--hand); font-size: 22px; margin-right: 6px; }
 
   @media (max-width: 560px) {
-    .tabbar { left: 12px; transform: none; }
+    .tabbar { left: 10px; transform: none; gap: 0; padding: 5px; }
+    .tabbar button { padding: 8px 9px; font-size: 16px; }
     .fab { width: 56px; height: 56px; font-size: 26px; }
     .friends { gap: 8px; }
     .friend { padding: 10px 4px 12px; border-radius: 20px; }
@@ -221,7 +260,7 @@
     .day .dn { font-size: 17px; width: 26px; height: 26px; line-height: 26px; }
     .day.today .dn { line-height: 23px; }
     .cal { gap: 3px; }
-    .tabbar button { padding: 8px 14px; font-size: 18px; }
+
   }
 </style>
 </head>
@@ -450,13 +489,13 @@ const ui = { tab: "home", weekOffset: 0, selectedDate: todayStr(), scroll: null 
 function render(){
   if (ensureSeed()) Store.save();
   const app = document.getElementById("app");
-  app.innerHTML = ui.tab === "home" ? viewHome() : ui.tab === "cal" ? viewCalendar() : viewSettings();
+  app.innerHTML = ui.tab === "home" ? viewHome() : ui.tab === "tt" ? viewTimetable() : ui.tab === "cal" ? viewCalendar() : viewSettings();
   document.getElementById("nav-root").innerHTML = `<nav class="tabbar">
-    ${[["home","🏡 마을"],["cal","📅 달력"],["set","⚙️ 설정"]].map(([k,l]) => `<button data-tab="${k}" class="${ui.tab===k?"on":""}">${l}</button>`).join("")}
+    ${[["home","🏡 마을"],["tt","🗓 시간표"],["cal","📅 달력"],["set","⚙️ 설정"]].map(([k,l]) => `<button data-tab="${k}" class="${ui.tab===k?"on":""}">${l}</button>`).join("")}
   </nav><button class="fab" id="fab" aria-label="시간 기록하기">＋</button>`;
   document.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => { ui.tab = b.dataset.tab; window.scrollTo(0,0); render(); });
   document.getElementById("fab").onclick = () => openManualSheet();
-  if (ui.tab === "home") bindHome(); else if (ui.tab === "cal") bindCalendar(); else bindSettings();
+  if (ui.tab === "home") bindHome(); else if (ui.tab === "tt") bindTimetable(); else if (ui.tab === "cal") bindCalendar(); else bindSettings();
   tick();
 }
 
@@ -684,6 +723,111 @@ function addRecord(id, minutes, date, memo, source, extra = {}){
   if (dailyNew || weeklyNew || after > before) floaties(document.querySelector("#modal-root .hero"), weeklyNew ? "💕" : "✨");
 }
 
+/* --- 주간 시간표 (요일 × 시간) --- */
+const DOW_EN = ["MON","TUE","WED","THU","FRI","SAT","SUN"];
+const TT_ROW = 46;
+function ttWeek(){ const m = mondayOf(new Date()); m.setDate(m.getDate() + ui.weekOffset * 7); return weekDays(m); }
+function ttRange(plans){
+  let lo = 9, hi = 22;
+  plans.forEach(p => { const a = toMin(p.start), b = toMin(p.end) ?? (a != null && p.durationMin ? a + p.durationMin : null);
+    if (a != null) lo = Math.min(lo, Math.floor(a / 60)); if (b != null) hi = Math.max(hi, Math.ceil(b / 60)); });
+  return [Math.max(0, lo), Math.min(24, hi)];
+}
+function ttSpan(p){ const a = toMin(p.start); if (a == null) return null; const b = toMin(p.end) ?? (p.durationMin ? a + p.durationMin : a + 60); return [a, Math.max(b, a + 20)]; }
+// 겹치는 일정은 나란히
+function ttLanes(items){
+  const lanes = []; items.sort((x, y) => x.span[0] - y.span[0]);
+  items.forEach(it => { let i = lanes.findIndex(end => end <= it.span[0]); if (i < 0) { i = lanes.length; lanes.push(0); } lanes[i] = it.span[1]; it.lane = i; });
+  items.forEach(it => { it.lanes = Math.max(1, ...items.filter(o => o.span[0] < it.span[1] && o.span[1] > it.span[0]).map(o => o.lane + 1)); });
+  return items;
+}
+function viewTimetable(){
+  const days = ttWeek(), today = todayStr();
+  const plans = state.plans.filter(p => days.includes(p.date));
+  const [lo, hi] = ttRange(plans), H = (hi - lo) * TT_ROW;
+  const reviewN = plans.filter(p => p.needsReview).length;
+  const now = new Date(), nowMin = now.getHours() * 60 + now.getMinutes();
+  const block = (p, it) => {
+    const c = p.charId ? ch(p.charId) : null, done = p.status === "done";
+    const style = it ? `top:${(it.span[0] - lo*60) / 60 * TT_ROW}px;height:${(it.span[1] - it.span[0]) / 60 * TT_ROW - 3}px;left:calc(${it.lane / it.lanes * 100}% + 2px);width:calc(${100 / it.lanes}% - 4px);` : "";
+    return `<button class="tt-block ${it ? "" : "chip-b"} ${done ? "done" : ""} ${p.needsReview ? "review" : ""}" data-plan="${p.id}" style="${style}background:${c ? c.bg : catColor(p.category)}">
+      ${done ? `<span class="tt-stamp">✓</span>` : ""}${p.needsReview ? `<span class="tt-rv">!</span>` : ""}
+      <span class="tt-name">${esc(p.name)}</span>
+      ${it && (it.span[1] - it.span[0]) >= 50 ? `<span class="tt-time">${esc(planTime(p))}</span>` : (!it && p.durationMin ? `<span class="tt-time">${fmtDur(p.durationMin)}</span>` : "")}
+    </button>`;
+  };
+  return `
+  <h1>주간 시간표</h1>
+  <p class="muted" style="margin-bottom:10px">칸을 누르면 일정 추가, 일정을 누르면 완료 체크·수정을 할 수 있어요</p>
+  <div class="week-nav" style="margin-bottom:6px">
+    <button class="btn-sm" id="tt-prev" aria-label="이전 주">◀</button>
+    <strong>${fmtMD(days[0])} ~ ${fmtMD(days[6])}</strong>
+    <button class="btn-sm" id="tt-next" aria-label="다음 주" ${ui.weekOffset>=8?"disabled":""}>▶</button>
+  </div>
+  ${reviewN ? `<p class="review-note" style="margin:0 0 8px">⚠️ 확인이 필요한 일정이 ${reviewN}개 있어요. <span class="tt-rv" style="position:static;display:inline-flex">!</span> 표시를 눌러 고쳐주세요.</p>` : ""}
+  <div class="tt-scroll"><div class="tt-paper">
+    <img class="tt-doodle" src="doodle.webp" alt="">
+    <div class="tt">
+      <div class="tt-corner"></div>
+      ${days.map((d, i) => `<div class="tt-dh ${d===today?"today":""} ${i>=5?"wk":""}"><b>${DOW_EN[i]}</b><span>${parseYmd(d).getDate()}일</span></div>`).join("")}
+      <div class="tt-side small">종일</div>
+      ${days.map(d => { const ps = plansOn(d).filter(p => !p.start); return `<div class="tt-allday" data-add-day="${d}">${ps.map(p => block(p, null)).join("")}</div>`; }).join("")}
+      <div class="tt-side"><div class="tt-hours" style="height:${H}px">${Array.from({length: hi - lo}, (_, k) => `<span style="top:${k*TT_ROW}px">${lo + k}</span>`).join("")}</div></div>
+      ${days.map(d => {
+        const items = ttLanes(plansOn(d).filter(p => p.start).map(p => ({ p, span: ttSpan(p) })));
+        return `<div class="tt-col ${d===today?"today":""}" data-col="${d}" style="height:${H}px;background-size:100% ${TT_ROW}px">
+          ${d === today && nowMin >= lo*60 && nowMin <= hi*60 ? `<div class="tt-now" style="top:${(nowMin - lo*60) / 60 * TT_ROW}px"></div>` : ""}
+          ${items.map(it => block(it.p, it)).join("")}
+        </div>`; }).join("")}
+      <div class="tt-side small">실제</div>
+      ${days.map(d => { const ents = allChars().map(c => ({ c, n: minOn(c.id, d) })).filter(x => x.n > 0);
+        return `<div class="tt-actual">${ents.map(x => `<span class="tt-act" style="background:${x.c.bg}">${esc(x.c.skill)} ${fmtShort(x.n)}</span>`).join("")}</div>`; }).join("")}
+    </div>
+  </div></div>
+  <div class="row" style="margin-top:10px;gap:6px">
+    ${Object.keys(CATS).map(k => `<span class="cat" style="background:${catColor(k)}">${k}</span>`).join("")}
+    <span class="muted">· 점선 = 계획 · <b>✓</b> = 완료 · <span class="tt-rv" style="position:static;display:inline-flex">!</span> = 확인 필요 · 실제 = 실제 기록 시간</span>
+  </div>`;
+}
+function bindTimetable(){
+  document.getElementById("tt-prev").onclick = () => { ui.weekOffset--; render(); };
+  document.getElementById("tt-next").onclick = () => { if (ui.weekOffset < 8) { ui.weekOffset++; render(); } };
+  document.querySelectorAll("[data-plan]").forEach(b => b.onclick = e => { e.stopPropagation(); openPlanActions(b.dataset.plan); });
+  document.querySelectorAll("[data-col]").forEach(col => col.onclick = e => {
+    if (e.target !== col) return;
+    const plans = state.plans.filter(p => ttWeek().includes(p.date)), [lo] = ttRange(plans);
+    const h = Math.min(23, lo + Math.floor(e.offsetY / TT_ROW));
+    openPlanForm(null, { date: col.dataset.col, start: `${pad(h)}:00`, end: `${pad(Math.min(23, h + 1))}:${h + 1 > 23 ? "59" : "00"}` });
+  });
+  document.querySelectorAll("[data-add-day]").forEach(c => c.onclick = e => { if (e.target === c) openPlanForm(null, { date: c.dataset.addDay }); });
+  const sc = document.querySelector(".tt-scroll"), td = document.querySelector(".tt-dh.today");
+  if (sc && td && sc.scrollWidth > sc.clientWidth) sc.scrollLeft = Math.max(0, td.offsetLeft - 60);
+}
+function openPlanActions(id){
+  const p = state.plans.find(x => x.id === id); if (!p) return;
+  const c = p.charId ? ch(p.charId) : null, done = p.status === "done";
+  const rec = p.recordId && state.records.find(r => r.id === p.recordId);
+  const d = parseYmd(p.date);
+  const close = openModal(`<div class="pop-c" style="${c ? charStyle(c) : ""}">
+    <button class="close-x" data-close aria-label="닫기">✕</button>
+    <div class="hero"><img src="${SP(c ? c.id : "toon", done ? "done1" : p.needsReview ? "think" : "idle")}" alt="" style="width:100px;height:100px"></div>
+    <div class="big" style="font-size:23px;margin-bottom:6px">${esc(p.name)}</div>
+    <p class="muted">${fmtMD(p.date)} (${DOW[(d.getDay()+6)%7]}) · ${esc(planTime(p))} · ${esc(p.category)}${c ? ` · ${esc(c.skill)}` : ""}</p>
+    <p style="margin-top:8px">${done ? (rec ? `✅ 완료 · ${esc(ch(rec.charId).skill)} ${fmtDur(rec.minutes)} 기록됨` : "✅ 완료 (스킬 기록 없음)") : "📋 아직 계획이에요 (경험치 없음)"}</p>
+    ${p.needsReview ? `<p class="review-note">⚠️ 확인이 필요한 일정이에요. 수정에서 내용을 고쳐주세요.</p>` : ""}
+    ${p.memo ? `<p class="muted" style="margin-top:6px">${esc(p.memo)}</p>` : ""}
+    <div class="actions" style="grid-template-columns:1fr 1fr 1fr">
+      <button class="btn-primary" id="pa-done" style="font-size:17px">${done ? "완료 취소" : "○ 완료"}</button>
+      <button id="pa-edit">✎ 수정</button>
+      <button class="btn-danger" id="pa-del" style="border:2px solid #E5B3AA">✕ 삭제</button>
+    </div>
+  </div>`, { bare: true });
+  document.getElementById("pa-done").onclick = () => { close(); togglePlan(id); };
+  document.getElementById("pa-edit").onclick = () => { close(); openPlanForm(id); };
+  document.getElementById("pa-del").onclick = () => { close();
+    confirmModal(`'${p.name}' 일정을 지울까요?${rec ? " 이미 남긴 실제 기록은 그대로 둬요." : ""}`, "지우기", () => { state.plans = state.plans.filter(x => x.id !== id); Store.save(); render(); }, "toon", "think"); };
+}
+
 /* --- 달력 --- */
 function viewCalendar(){
   const monday = mondayOf(new Date()); monday.setDate(monday.getDate() + ui.weekOffset * 7);
@@ -833,13 +977,13 @@ function bindCalendar(){
 }
 
 /* --- 일정 추가·수정 --- */
-function openPlanForm(id){
+function openPlanForm(id, preset = {}){
   const p = id ? state.plans.find(x => x.id === id) : null;
   let cat = p ? p.category : "기타", charId = p ? p.charId : null;
   const close = openModal("", { sheet: true });
   const box = document.querySelector("#modal-root .modal");
   const draw = keep => {
-    const v = keep || { name: p?.name || "", date: p?.date || ui.selectedDate, start: p?.start || "", end: p?.end || "", dur: p?.durationMin || "", memo: p?.memo || "", reviewed: false };
+    const v = keep || { name: p?.name || "", date: p?.date || preset.date || ui.selectedDate, start: p?.start || preset.start || "", end: p?.end || preset.end || "", dur: p?.durationMin || "", memo: p?.memo || "", reviewed: false };
     box.innerHTML = `<button class="close-x" data-close aria-label="닫기">✕</button>
       <h2>${p ? "일정 수정" : "일정 추가"}</h2>
       ${p?.needsReview ? `<p class="review-note" style="margin-top:0">⚠️ 확인이 필요한 일정이에요. 이름, 시간, 분류가 맞는지 확인해 주세요.</p>` : ""}
