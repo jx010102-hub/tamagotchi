@@ -179,6 +179,38 @@
   .tt.is-tpl { box-shadow: 0 6px 0 #F2DFA6; }
   .tt-block.tpl { border-style: solid; border-color: #6B5547; }
 
+
+  /* 월간 달력 */
+  .mcal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .mdow { text-align: center; font-family: var(--hand); font-weight: 700; font-size: 17px; color: var(--ink-soft); padding-bottom: 2px; }
+  .mdow.wk { color: #B06A5E; }
+  .mday { display: flex; flex-direction: column; align-items: stretch; gap: 2px; min-height: 92px; padding: 4px 3px 5px; background: #fff; border: 2px solid var(--line); border-radius: 12px; box-shadow: none; text-align: left; font-size: 11px; overflow: hidden; }
+  .mday:active { transform: none; box-shadow: none; border-color: var(--ink); }
+  .mday.out { opacity: .38; }
+  .mday.today { border-color: var(--ink); background: var(--butter-pale); }
+  .mdn { font-family: var(--hand); font-weight: 700; font-size: 17px; line-height: 1; padding: 0 2px 2px; }
+  .mday.today .mdn { color: #4F7A35; }
+  .mchip { display: flex; align-items: center; gap: 3px; border-radius: 7px; padding: 1px 4px; font-size: 10.5px; line-height: 1.35; white-space: nowrap; overflow: hidden; }
+  .mchip i { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; border: 1px solid var(--ink); }
+  .dchip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px 3px 4px; border-radius: 999px; border: 1.5px solid var(--ink); font-size: 13px; }
+  .dchip img { width: 24px; height: 24px; object-fit: contain; }
+  .dtl { position: relative; margin-top: 12px; display: grid; grid-template-columns: 34px 1fr; }
+  .dtl-hours { position: relative; font-family: var(--hand); font-weight: 700; font-size: 16px; text-align: center; }
+  .dtl-hours span { position: absolute; left: 0; right: 0; top: 0; transform: translateY(-2px); }
+  .dtl-col { position: relative; border: 2px solid var(--ink); border-radius: 10px; background-color: #fff; background-image: linear-gradient(to bottom, transparent calc(100% - 1.5px), #E6DCCB calc(100% - 1.5px)); }
+  .dtl-b { position: absolute; display: flex; gap: 6px; align-items: flex-start; overflow: hidden; border: 2px solid; border-radius: 10px; padding: 3px 7px; font-size: 13px; line-height: 1.3; }
+  .dtl-b img { width: 28px; height: 28px; object-fit: contain; flex-shrink: 0; }
+  .dtl-list { margin-top: 12px; font-size: 14px; }
+  .dtl-list summary { cursor: pointer; color: var(--ink-soft); font-size: 13px; padding: 4px 0; }
+  @media (max-width: 560px) {
+    .mcal { gap: 3px; }
+    .mday { min-height: 70px; padding: 3px 2px; border-radius: 9px; }
+    .mlbl { display: none; }
+    .mchip { padding: 1px 1px; font-size: 8.5px; gap: 2px; letter-spacing: -0.3px; }
+    .mchip i { width: 6px; height: 6px; }
+    .mdn { font-size: 15px; }
+  }
+
   /* 탭바 */
   .tabbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: max(14px, env(safe-area-inset-bottom)); display: flex; gap: 4px; background: var(--paper); border: 2px solid var(--ink); border-radius: 999px; padding: 6px; box-shadow: 0 5px 0 var(--shadow); z-index: 5; }
   .tabbar button { border: 0; box-shadow: none; background: transparent; padding: 8px 18px; font-family: var(--hand); font-size: 19px; font-weight: 700; color: var(--ink-soft); white-space: nowrap; }
@@ -549,7 +581,7 @@ function moodOf(id){
 }
 
 /* ============ 화면 상태 ============ */
-const ui = { tab: "home", weekOffset: 0, selectedDate: todayStr(), scroll: null, ttMode: "week" };
+const ui = { tab: "home", weekOffset: 0, monthOffset: 0, selectedDate: todayStr(), scroll: null, ttMode: "week" };
 
 /* ============ 렌더 ============ */
 function render(){
@@ -708,7 +740,8 @@ function stopTimer(){
     const m = readDur(); if (!(m > 0)) { document.getElementById("st-err").textContent = "1분 이상이어야 기록돼요."; return; }
     const memo = document.getElementById("st-memo").value.trim();
     state.timer = null; close();
-    addRecord(c.id, m, date, memo, "timer");
+    const st0 = new Date(t.startedAt);
+    addRecord(c.id, m, date, memo, "timer", { start: `${pad(st0.getHours())}:${pad(st0.getMinutes())}` });
   };
 }
 
@@ -725,7 +758,7 @@ function setDur(m){ m = Math.max(0, Math.min(24*60, m)); document.getElementById
 function bindDurInput(){ document.querySelectorAll("[data-d]").forEach(b => b.onclick = () => setDur(readDur() + Number(b.dataset.d))); }
 
 function openManualSheet(id, date){
-  let sel = id || CHARS[0].id, keep = { mins: 0, date: date || todayStr(), memo: "" };
+  let sel = id || CHARS[0].id, keep = { mins: 0, date: date || todayStr(), memo: "", start: "" };
   const close = openModal("", { sheet: true });
   const box = document.querySelector("#modal-root .modal");
   const draw = () => {
@@ -738,13 +771,16 @@ function openManualSheet(id, date){
       <p class="muted" style="text-align:center;margin-top:8px">오늘 ${fmtDur(minOn(sel, todayStr()))} / 목표 ${fmtDur(c.dailyGoal)}</p>
       <div class="row">
         <div class="grow"><label for="ms-date">날짜</label><input type="date" id="ms-date" value="${keep.date}" max="${todayStr()}"></div>
+        <div class="grow"><label for="ms-start">시작한 시간 (선택)</label><input type="time" id="ms-start" value="${keep.start}"></div>
+      </div>
+      <div class="row">
         <div class="grow"><label for="ms-memo">메모 (선택)</label><input type="text" id="ms-memo" maxlength="60" placeholder="예: N3 단어장 3과" value="${esc(keep.memo)}"></div>
       </div>
       <div class="err" id="ms-err"></div>
       <button class="btn-primary btn-block" id="ms-save" style="background:${c.main}">기록 남기기 🌱</button>`;
     bindDurInput();
     box.querySelector("[data-close]").onclick = close;
-    const remember = () => { keep = { mins: readDur(), date: box.querySelector("#ms-date").value, memo: box.querySelector("#ms-memo").value }; };
+    const remember = () => { keep = { mins: readDur(), date: box.querySelector("#ms-date").value, memo: box.querySelector("#ms-memo").value, start: box.querySelector("#ms-start").value }; };
     box.querySelectorAll("[data-s]").forEach(x => x.onclick = () => { remember(); sel = x.dataset.s; draw(); });
     box.querySelector("#ms-save").onclick = () => {
       const m = readDur(), d = box.querySelector("#ms-date").value, err = box.querySelector("#ms-err");
@@ -752,7 +788,8 @@ function openManualSheet(id, date){
       if (!d) { err.textContent = "날짜를 골라주세요."; return; }
       if (d > todayStr()) { err.textContent = "미래 날짜에는 기록할 수 없어요."; return; }
       const memo = box.querySelector("#ms-memo").value.trim();
-      close(); addRecord(sel, m, d, memo, "manual");
+      const start = box.querySelector("#ms-start").value;
+      close(); addRecord(sel, m, d, memo, "manual", start ? { start } : {});
     };
   };
   draw();
@@ -1004,152 +1041,109 @@ function openPlanActions(id){
     confirmModal(`'${p.name}' 일정을 지울까요?${rec ? " 이미 남긴 실제 기록은 그대로 둬요." : ""}`, "지우기", () => { state.plans = state.plans.filter(x => x.id !== id); Store.save(); render(); }, "toon", "think"); };
 }
 
-/* --- 달력 --- */
+/* --- 달력: 한 달 기록만 간단하게 --- */
+// 기록이 언제였는지: 직접 적은 시작 시간 > 완료한 일정의 시간 > 타이머 끝난 시각
+function recSpan(r){
+  let a = toMin(r.start);
+  if (a == null && r.planId) { const p = state.plans.find(x => x.id === r.planId); if (p) a = toMin(p.start); }
+  if (a == null && r.source === "timer" && r.ts && ymd(new Date(r.ts)) === r.date) { const e = new Date(r.ts); a = e.getHours() * 60 + e.getMinutes() - r.minutes; }
+  if (a == null) return null;
+  a = Math.max(0, a);
+  return [a, Math.min(24 * 60, a + Math.max(r.minutes, 15))];
+}
+const hm = m => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
+function monthDays(offset){
+  const n = new Date(), first = new Date(n.getFullYear(), n.getMonth() + offset, 1);
+  const start = mondayOf(first), last = new Date(first.getFullYear(), first.getMonth() + 1, 0);
+  const days = []; const d = new Date(start);
+  while (d <= last || days.length % 7) { days.push(ymd(d)); d.setDate(d.getDate() + 1); }
+  return { first, days };
+}
 function viewCalendar(){
-  const monday = mondayOf(new Date()); monday.setDate(monday.getDate() + ui.weekOffset * 7);
-  const days = weekDays(monday), today = todayStr(), sel = ui.selectedDate;
-  const recs = state.records.filter(r => r.date === sel).sort((a,b) => b.ts - a.ts);
-  const plans = plansOn(sel);
-  const selDow = DOW[(parseYmd(sel).getDay()+6)%7];
-  const reviewN = state.plans.filter(p => p.needsReview && days.includes(p.date)).length;
+  const { first, days } = monthDays(ui.monthOffset || 0), today = todayStr(), mo = first.getMonth();
+  const inMonth = d => parseYmd(d).getMonth() === mo;
+  const monthRecs = state.records.filter(r => inMonth(r.date) && days.includes(r.date));
+  const total = monthRecs.reduce((a, r) => a + r.minutes, 0), activeDays = new Set(monthRecs.map(r => r.date)).size;
   return `
-  <h1>일주일 기록</h1>
-  <p class="muted" style="margin-bottom:14px">날짜를 누르면 그날 일정과 기록을 볼 수 있어요</p>
-  <div class="card">
+  <h1>달력</h1>
+  <div class="card mcal-card">
     <div class="week-nav">
-      <button class="btn-sm" id="wk-prev" aria-label="이전 주">◀</button>
-      <strong>${fmtMD(days[0])} ~ ${fmtMD(days[6])}</strong>
-      <button class="btn-sm" id="wk-next" aria-label="다음 주" ${ui.weekOffset>=8?"disabled":""}>▶</button>
+      <button class="btn-sm" id="m-prev" aria-label="이전 달">◀</button>
+      <strong>${first.getFullYear()}년 ${mo + 1}월</strong>
+      <button class="btn-sm" id="m-next" aria-label="다음 달">▶</button>
     </div>
-    <div class="cal">
-      ${days.map((d,i) => {
+    <p class="muted" style="text-align:center;margin:-4px 0 10px">이번 달 ${fmtDur(total)} · 기록한 날 ${activeDays}일</p>
+    <div class="mcal">
+      ${DOW.map((d, i) => `<div class="mdow ${i >= 5 ? "wk" : ""}">${d}</div>`).join("")}
+      ${days.map(d => {
         const ents = allChars().map(c => ({ c, n: minOn(c.id, d) })).filter(x => x.n > 0);
-        const ps = plansOn(d), done = ps.filter(p => p.status === "done").length, rv = ps.some(p => p.needsReview);
-        return `<div class="day ${d===today?"today":""} ${d===sel?"selected":""} ${d>today?"future":""}" data-day="${d}">
-          <div class="dow">${DOW[i]}</div><div class="dn">${parseYmd(d).getDate()}</div>
-          ${ps.length ? `<div class="plan-count ${done===ps.length?"all":""}">📋 ${done}/${ps.length}${rv?` <span class="rv-dot" title="확인 필요">!</span>`:""}</div>` : ""}
-          ${ents.map(x => `<div class="ent" style="background:${x.c.bg}">${esc(x.c.skill)}<br><b>${fmtShort(x.n)}</b>${x.n>=x.c.dailyGoal?" ✓":""}</div>`).join("")}
-          ${allDone(d) ? `<img class="stamp" src="${SP("toon","done1")}" alt="모두 달성">` : ""}
-        </div>`;
+        return `<button class="mday ${inMonth(d) ? "" : "out"} ${d === today ? "today" : ""}" data-mday="${d}" aria-label="${fmtMD(d)} 기록 보기">
+          <span class="mdn">${parseYmd(d).getDate()}</span>
+          ${ents.map(x => `<span class="mchip" style="background:${x.c.bg}"><i style="background:${x.c.main}"></i><span class="mlbl">${esc(x.c.skill)} </span>${fmtShort(x.n)}</span>`).join("")}
+        </button>`;
       }).join("")}
     </div>
-    <p class="muted" style="margin-top:10px">📋 완료/계획 일정 · <span class="rv-dot">!</span> 확인 필요 · ✓ 하루 목표 달성 · <img src="${SP("toon","done1")}" alt="" style="width:18px;vertical-align:middle"> 모든 친구가 달성한 날</p>
-    ${reviewN ? `<p class="review-note">⚠️ 이번 주에 확인이 필요한 일정이 ${reviewN}개 있어요. 날짜를 눌러 내용을 고쳐주세요.</p>` : ""}
-  </div>
-
-  <div class="card">
-    <div class="row between"><h2 style="margin:0">${fmtMD(sel)} (${selDow})</h2></div>
-
-    <div class="sec-head"><h3>📋 계획한 일정</h3><button class="btn-sm" id="add-plan" style="background:var(--butter-pale)">＋ 일정 추가</button></div>
-    <p class="muted" style="margin:-2px 0 4px">계획은 경험치에 들어가지 않아요. 실제로 한 일만 ○를 눌러 완료해 주세요.</p>
-    ${plans.length ? plans.map(p => {
-      const c = p.charId ? ch(p.charId) : null, done = p.status === "done";
-      return `<div class="plan ${done?"done":""} ${p.needsReview?"review":""}">
-        <button class="chk" data-toggle="${p.id}" aria-label="${done?"완료 취소":"완료하기"}">${done?"✓":""}</button>
-        <div class="grow" style="min-width:0">
-          <div class="pname">${esc(p.name)}</div>
-          <div class="row" style="gap:5px;margin-top:3px">
-            <span class="muted">${esc(planTime(p))}</span>
-            <span class="cat" style="background:${catColor(p.category)}">${esc(p.category)}</span>
-            ${c ? `<span class="cat" style="background:${c.bg}">${esc(c.skill)}</span>` : ""}
-            ${p.needsReview ? `<button class="rv-badge" data-edit-plan="${p.id}">⚠️ 확인 필요</button>` : ""}
-            ${done ? `<span class="muted">${p.recordId && state.records.some(r => r.id === p.recordId) ? `완료 · ${fmtDur((state.records.find(r => r.id === p.recordId)||{}).minutes||0)} 기록` : "완료 · 스킬 기록 없음"}</span>` : ""}
-          </div>
-          ${p.memo ? `<div class="muted" style="margin-top:2px">${esc(p.memo)}</div>` : ""}
-        </div>
-        <button class="btn-sm" data-edit-plan="${p.id}" aria-label="수정">✎</button>
-        <button class="btn-sm btn-danger" data-del-plan="${p.id}" aria-label="삭제">✕</button>
-      </div>`; }).join("")
-      : `<p class="muted" style="padding:8px 0">계획한 일정이 없어요</p>`}
-
-    <div class="sec-head" style="margin-top:14px"><h3>✅ 실제 기록</h3>
-      ${sel <= today ? `<button class="btn-sm" id="add-day" style="background:var(--sage-pale)">＋ 이 날 기록</button>` : ""}</div>
-    <div>${recs.length ? recs.map(r => { const c = ch(r.charId); const fromPlan = r.planId && state.plans.find(p => p.id === r.planId); return `<div class="list-item">
-      <img src="${SP(c.id, "idle")}" alt="" style="width:36px;height:36px;object-fit:contain">
-      <div class="grow"><strong>${esc(c.skill)}</strong> <span class="muted">${esc(c.name)}${r.source==="timer"?" · ⏱ 타이머":""}${fromPlan?` · 📋 ${esc(fromPlan.name)}`:""}</span>${r.memo?`<br><span class="muted">${esc(r.memo)}</span>`:""}</div>
-      <span class="amt">${fmtDur(r.minutes)}</span>
-      <button class="btn-sm btn-danger" data-delrec="${r.id}" aria-label="삭제">✕</button></div>`; }).join("")
-      : `<div class="empty"><img src="${SP("toon","empty")}" alt=""><p class="muted">${sel > today ? "아직 오지 않은 날이에요" : "이 날은 아직 실제 기록이 없어요"}</p></div>`}</div>
-  </div>
-
-  <div class="card">
-    <h2>이번 주 목표</h2>
-    ${allChars().map(c => {
-      const w = minWeek(c.id, monday), hit = days.filter(d => minOn(c.id, d) >= c.dailyGoal).length;
-      return `<div class="list-item" style="display:block">
-        <div class="row between"><span class="row" style="gap:6px"><img src="${SP(c.id, w >= c.weeklyGoal ? "weekly" : "idle")}" alt="" style="width:34px;height:34px;object-fit:contain"><strong>${esc(c.skill)}</strong><span class="muted">${esc(c.name)}</span></span>
-        <span class="hand" style="font-size:19px">${fmtDur(w)} / ${fmtDur(c.weeklyGoal)} ${w>=c.weeklyGoal?"🎉":""}</span></div>
-        <div class="bar" style="margin-top:6px"><i style="width:${Math.min(100, w/c.weeklyGoal*100)}%;background:${c.main}"></i></div>
-        <p class="muted" style="margin-top:4px">하루 목표(${fmtDur(c.dailyGoal)}) 달성 ${hit} / 7일</p>
-      </div>`;
-    }).join("")}
-  </div>
-
-  <div class="card">
-    <div class="row between"><h2 style="margin:0">📌 업로드 목표</h2><button class="btn-sm" id="add-goal" style="background:var(--butter-pale)">＋ 목표 추가</button></div>
-    <p class="muted" style="margin:4px 0 6px">올린 날 ＋1을 눌러 체크해요 (경험치와는 별개)</p>
-    ${state.goals.length ? state.goals.map(g => {
-      const per = goalPeriod(g, days[0]), n = goalCount(g, per), ok = n >= g.target;
-      return `<div class="list-item" style="display:block">
-        <div class="row between">
-          <span><strong>${esc(g.name)}</strong> <span class="muted">${g.periodWeeks > 1 ? `${g.periodWeeks}주에 ${g.target}개` : `주 ${g.target}개`} · ${fmtMD(per.start)}~${fmtMD(per.end)}</span></span>
-          <span class="hand" style="font-size:19px">${n} / ${g.target} ${ok?"🎉":""}</span>
-        </div>
-        <div class="bar thin" style="margin-top:6px"><i style="width:${Math.min(100, n/g.target*100)}%;background:var(--butter)"></i></div>
-        <div class="row" style="margin-top:8px">
-          <button class="btn-sm" data-goal-plus="${g.id}" style="background:var(--sage-pale)">＋1 올렸어요</button>
-          <button class="btn-sm btn-ghost" data-goal-minus="${g.id}" ${n?"":"disabled"}>−1</button>
-          <span class="grow"></span>
-          <button class="btn-sm" data-goal-edit="${g.id}" aria-label="수정">✎</button>
-          <button class="btn-sm btn-danger" data-goal-del="${g.id}" aria-label="삭제">✕</button>
-        </div>
-      </div>`; }).join("") : `<p class="muted">목표가 없어요</p>`}
   </div>`;
 }
 function bindCalendar(){
-  const $ = id => document.getElementById(id);
-  $("wk-prev").onclick = () => { ui.weekOffset--; render(); };
-  $("wk-next").onclick = () => { if (ui.weekOffset < 8) { ui.weekOffset++; render(); } };
-  document.querySelectorAll("[data-day]").forEach(c => c.onclick = () => { ui.selectedDate = c.dataset.day; render(); });
-  const add = $("add-day"); if (add) add.onclick = () => openManualSheet(null, ui.selectedDate);
-  $("add-plan").onclick = () => openPlanForm(null);
-  document.querySelectorAll("[data-edit-plan]").forEach(b => b.onclick = () => openPlanForm(b.dataset.editPlan));
-  document.querySelectorAll("[data-toggle]").forEach(b => b.onclick = () => togglePlan(b.dataset.toggle));
-  document.querySelectorAll("[data-del-plan]").forEach(b => b.onclick = () => {
-    const p = state.plans.find(x => x.id === b.dataset.delPlan);
-    const linked = p.recordId && state.records.some(r => r.id === p.recordId);
-    confirmModal(`'${p.name}' 일정을 지울까요?${linked ? " 이미 남긴 실제 기록은 그대로 둬요." : ""}`, "지우기", () => {
-      state.plans = state.plans.filter(x => x.id !== p.id); Store.save(); render();
-    }, "toon", "think");
-  });
-  document.querySelectorAll("[data-delrec]").forEach(b => b.onclick = () => {
-    const r = state.records.find(x => x.id === b.dataset.delrec);
-    confirmModal("이 기록을 지울까요? 경험치에서도 빠져요.", "지우기", () => {
-      state.records = state.records.filter(x => x.id !== r.id);
-      state.plans.forEach(p => { if (p.recordId === r.id) { p.recordId = null; p.status = "planned"; } });
-      Store.save(); render();
-    }, r.charId, "cry");
-  });
-  // 업로드 목표
-  const days0 = weekDays((() => { const m = mondayOf(new Date()); m.setDate(m.getDate() + ui.weekOffset * 7); return m; })())[0];
-  document.querySelectorAll("[data-goal-plus]").forEach(b => b.onclick = () => {
-    const g = state.goals.find(x => x.id === b.dataset.goalPlus), per = goalPeriod(g, days0);
-    const t = todayStr(), date = (t >= per.start && t <= per.end) ? t : per.start;
-    state.goalLogs.push({ id: uid(), goalId: g.id, date, ts: Date.now() }); Store.save(); render();
-  });
-  document.querySelectorAll("[data-goal-minus]").forEach(b => b.onclick = () => {
-    const g = state.goals.find(x => x.id === b.dataset.goalMinus), per = goalPeriod(g, days0);
-    const logs = state.goalLogs.filter(l => l.goalId === g.id && l.date >= per.start && l.date <= per.end).sort((a,b) => b.ts - a.ts);
-    if (logs[0]) { state.goalLogs = state.goalLogs.filter(l => l.id !== logs[0].id); Store.save(); render(); }
-  });
-  $("add-goal").onclick = () => openGoalForm(null);
-  document.querySelectorAll("[data-goal-edit]").forEach(b => b.onclick = () => openGoalForm(b.dataset.goalEdit));
-  document.querySelectorAll("[data-goal-del]").forEach(b => b.onclick = () => {
-    const g = state.goals.find(x => x.id === b.dataset.goalDel);
-    confirmModal(`'${g.name}' 목표를 지울까요?`, "지우기", () => {
-      state.goals = state.goals.filter(x => x.id !== g.id); state.goalLogs = state.goalLogs.filter(l => l.goalId !== g.id); Store.save(); render();
-    }, "toon", "think");
-  });
+  document.getElementById("m-prev").onclick = () => { ui.monthOffset = (ui.monthOffset || 0) - 1; render(); };
+  document.getElementById("m-next").onclick = () => { ui.monthOffset = (ui.monthOffset || 0) + 1; render(); };
+  document.querySelectorAll("[data-mday]").forEach(b => b.onclick = () => openDayDetail(b.dataset.mday));
+}
+// 날짜를 누르면: 그날 기록한 스킬을 시간표처럼
+function openDayDetail(date){
+  const close = openModal("", { sheet: true });
+  const box = document.querySelector("#modal-root .modal");
+  const draw = () => {
+    const recs = state.records.filter(r => r.date === date).sort((a, b) => (recSpan(a)?.[0] ?? 9999) - (recSpan(b)?.[0] ?? 9999) || a.ts - b.ts);
+    const total = recs.reduce((a, r) => a + r.minutes, 0);
+    const timed = recs.map(r => ({ r, span: recSpan(r) })).filter(x => x.span), untimed = recs.filter(r => !recSpan(r));
+    let lo = 24, hi = 0; timed.forEach(x => { lo = Math.min(lo, Math.floor(x.span[0] / 60)); hi = Math.max(hi, Math.ceil(x.span[1] / 60)); });
+    if (timed.length) { lo = Math.min(lo, Math.max(0, hi - 4)); hi = Math.max(hi, lo + 4); }
+    const ROW = 44, lanes = ttLanes(timed.map(x => ({ ...x })));
+    const dd = parseYmd(date);
+    const sum = allChars().map(c => ({ c, n: minOn(c.id, date) })).filter(x => x.n > 0);
+    box.innerHTML = `<button class="close-x" data-close aria-label="닫기">✕</button>
+      <h2 style="margin-bottom:2px">${fmtMD(date)} (${DOW[(dd.getDay() + 6) % 7]})</h2>
+      <p class="muted">${recs.length ? `총 ${fmtDur(total)} 기록했어요` : ""}</p>
+      ${recs.length ? `
+      <div class="row" style="margin:10px 0 4px">${sum.map(x => `<span class="dchip" style="background:${x.c.bg}"><img src="${SP(x.c.id, "idle")}" alt="">${esc(x.c.skill)} <b>${fmtDur(x.n)}</b></span>`).join("")}</div>
+      ${timed.length ? `<div class="dtl" style="height:${(hi - lo) * ROW}px">
+        <div class="dtl-hours">${Array.from({ length: hi - lo }, (_, k) => `<span style="top:${k * ROW}px">${lo + k}</span>`).join("")}</div>
+        <div class="dtl-col" style="background-size:100% ${ROW}px">
+          ${lanes.map(it => { const c = ch(it.r.charId), h = (it.span[1] - it.span[0]) / 60 * ROW - 3;
+            return `<div class="dtl-b" style="top:${(it.span[0] - lo * 60) / 60 * ROW}px;height:${h}px;left:calc(${it.lane / it.lanes * 100}% + 3px);width:calc(${100 / it.lanes}% - 6px);background:${c.bg};border-color:${c.main}">
+              ${h >= 30 ? `<img src="${SP(c.id, "base")}" alt="">` : ""}
+              <div><b>${esc(c.skill)}</b> <span class="muted">${hm(it.span[0])}~${hm(it.span[0] + it.r.minutes)} · ${fmtDur(it.r.minutes)}</span>${h >= 44 && it.r.memo ? `<br><span class="muted">${esc(it.r.memo)}</span>` : ""}</div>
+            </div>`; }).join("")}
+        </div>
+      </div>` : ""}
+      ${untimed.length ? `<p class="muted" style="margin:12px 0 2px">시간이 기록되지 않은 활동</p>` : ""}
+      <div>${untimed.map(r => recRow(r)).join("")}</div>
+      <details class="dtl-list"><summary>기록 목록 · 지우기</summary>${recs.map(r => recRow(r, true)).join("")}</details>`
+      : `<div class="empty"><img src="${SP("toon", date > todayStr() ? "think" : "empty")}" alt=""><p class="muted">${date > todayStr() ? "아직 오지 않은 날이에요" : "이 날은 기록한 스킬이 없어요"}</p></div>`}
+      ${date <= todayStr() ? `<button class="btn-block" id="dd-add" style="margin-top:14px;background:var(--sage-pale)">＋ 이 날 기록 추가</button>` : ""}`;
+    box.querySelector("[data-close]").onclick = close;
+    const add = box.querySelector("#dd-add"); if (add) add.onclick = () => { close(); openManualSheet(null, date); };
+    box.querySelectorAll("[data-delrec]").forEach(b => b.onclick = () => {
+      const r = state.records.find(x => x.id === b.dataset.delrec);
+      if (b.dataset.armed) {
+        state.records = state.records.filter(x => x.id !== r.id);
+        state.plans.forEach(p => { if (p.recordId === r.id) { p.recordId = null; p.status = "planned"; } });
+        Store.save(); render(); draw();
+      } else { b.dataset.armed = "1"; b.textContent = "한 번 더 누르면 삭제"; }
+    });
+  };
+  draw();
+}
+function recRow(r, del){
+  const c = ch(r.charId), sp = recSpan(r);
+  return `<div class="list-item">
+    <img src="${SP(c.id, "idle")}" alt="" style="width:34px;height:34px;object-fit:contain">
+    <div class="grow"><strong>${esc(c.skill)}</strong> <span class="muted">${sp ? `${hm(sp[0])}~ · ` : ""}${r.source === "timer" ? "⏱ 타이머" : r.planId ? "📋 일정 완료" : "직접 입력"}</span>${r.memo ? `<br><span class="muted">${esc(r.memo)}</span>` : ""}</div>
+    <span class="amt">${fmtDur(r.minutes)}</span>
+    ${del ? `<button class="btn-sm btn-danger" data-delrec="${r.id}">✕</button>` : ""}
+  </div>`;
 }
 
 /* --- 일정 추가·수정 --- */
