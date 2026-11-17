@@ -246,6 +246,25 @@
   .stat-grid input { padding: 10px 6px; text-align: center; }
   @media (max-width: 560px) { .stat-grid { grid-template-columns: repeat(3, 1fr); } .rh-weeks { gap: 3px; } .rh-w b { font-size: 17px; } }
 
+
+  /* 릴리 팝업 + 스튜디오 나란히 */
+  .overlay.wide .modal { max-width: 1060px; padding: 0; overflow: hidden; display: flex; }
+  .duo { display: grid; grid-template-columns: 380px minmax(0, 1fr); width: 100%; max-height: 92vh; }
+  .duo-l, .duo-r { min-width: 0; }
+  .duo-l { padding: 22px; overflow-y: auto; border-right: 2px dashed var(--line); position: relative; }
+  .duo-r { padding: 18px 18px 8px; overflow-y: auto; background: var(--cream); }
+  .duo-r .card { margin-bottom: 12px; padding: 14px; }
+  .duo-title { font-size: 26px; margin: 0 0 10px; }
+  .duo .close-x { z-index: 2; }
+  @media (max-width: 860px) {
+    .overlay.wide { align-items: flex-start; overflow-y: auto; }
+    .overlay.wide .modal { max-height: none; }
+    .duo { grid-template-columns: minmax(0, 1fr); max-height: none; }
+    .overlay.wide .modal { width: 100%; min-width: 0; }
+    .duo-l { border-right: 0; border-bottom: 2px dashed var(--line); overflow: visible; }
+    .duo-r { overflow: visible; }
+  }
+
   /* 탭바 */
   .tabbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: max(14px, env(safe-area-inset-bottom)); display: flex; gap: 4px; background: var(--paper); border: 2px solid var(--ink); border-radius: 999px; padding: 6px; box-shadow: 0 5px 0 var(--shadow); z-index: 5; }
   .tabbar button { border: 0; box-shadow: none; background: transparent; padding: 8px 18px; font-family: var(--hand); font-size: 19px; font-weight: 700; color: var(--ink-soft); white-space: nowrap; }
@@ -653,6 +672,8 @@ function render(){
   </nav><button class="fab" id="fab" aria-label="시간 기록하기">＋</button>`;
   document.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => { ui.tab = b.dataset.tab; window.scrollTo(0,0); render(); });
   document.getElementById("fab").onclick = () => openManualSheet();
+  const rp = document.getElementById("reels-panel");
+  if (rp && ui.tab !== "reels") { const y = rp.scrollTop; rp.innerHTML = viewReels(true); bindReels(); rp.scrollTop = y; }
   if (ui.tab === "home") bindHome(); else if (ui.tab === "tt") bindTimetable(); else if (ui.tab === "cal") bindCalendar(); else if (ui.tab === "reels") bindReels(); else bindSettings();
   tick();
 }
@@ -754,11 +775,13 @@ function openCharPopup(id){
         ${run ? `<button class="stop" id="cp-stop">■ 끝내기</button>` : `<button class="btn-primary" id="cp-start">▶ 타이머 시작</button>`}
         <button id="cp-manual">✎ 시간 입력</button>
       </div>
-      ${id === "reels" ? `<button class="btn-block" id="cp-studio" style="margin-top:10px;background:var(--blush-pale)">🎬 릴스 스튜디오 (업로드·팔로워·진행 보드)</button>` : ""}
+      ${id === "reels" ? `<button class="btn-block btn-ghost" id="cp-studio" style="margin-top:10px">↗ 릴스 스튜디오 크게 보기</button>` : ""}
     </div>`;
   };
-  const close = openModal(draw(), { bare: true });
-  const box = document.querySelector("#modal-root .modal");
+  const duo = id === "reels";
+  const wrap = () => duo ? `<div class="duo"><div class="duo-l">${draw()}</div><div class="duo-r" id="reels-panel">${viewReels(true)}</div></div>` : draw();
+  const close = openModal(wrap(), { bare: true, wide: duo });
+  const box = duo ? lastModal().querySelector(".duo-l") : lastModal();
   const bind = () => {
     box.querySelector("[data-close]").onclick = close;
     const st = box.querySelector("#cp-start"), sp = box.querySelector("#cp-stop");
@@ -766,6 +789,7 @@ function openCharPopup(id){
     if (sp) sp.onclick = () => { close(); stopTimer(); };
     box.querySelector("#cp-manual").onclick = () => { close(); openManualSheet(id); };
     const studio = box.querySelector("#cp-studio"); if (studio) studio.onclick = () => { close(); ui.tab = "reels"; window.scrollTo(0, 0); render(); };
+    if (duo) bindReels();
   };
   bind();
   floaties(box.querySelector(".hero"), "✨");
@@ -822,7 +846,7 @@ function bindDurInput(){ document.querySelectorAll("[data-d]").forEach(b => b.on
 function openManualSheet(id, date){
   let sel = id || CHARS[0].id, keep = { mins: 0, date: date || todayStr(), memo: "", start: "" };
   const close = openModal("", { sheet: true });
-  const box = document.querySelector("#modal-root .modal");
+  const box = lastModal();
   const draw = () => {
     const c = ch(sel);
     box.innerHTML = `<button class="close-x" data-close aria-label="닫기">✕</button>
@@ -891,7 +915,7 @@ function addRecord(id, minutes, date, memo, source, extra = {}){
     <div class="lines">${lines.map(l => `<p>${esc(l)}</p>`).join("")}</div>
     <span class="xp-chip">+${gained} XP</span>${lv}
   </div>`, { okLabel: pick(["좋아!", "고마워!", "계속 할래!"]) });
-  if (dailyNew || weeklyNew || after > before) floaties(document.querySelector("#modal-root .hero"), weeklyNew ? "💕" : "✨");
+  if (dailyNew || weeklyNew || after > before) floaties(lastModal()?.querySelector(".hero"), weeklyNew ? "💕" : "✨");
 }
 
 /* --- 주간 시간표 (요일 × 시간) --- */
@@ -1000,7 +1024,7 @@ function openTemplateForm(id, preset = {}){
   const t = id ? state.template.find(x => x.id === id) : null;
   let cat = t ? t.category || "기타" : "기타", charId = t ? t.charId : null, dow = t ? t.dow : (preset.dow ?? 0);
   const close = openModal("", { sheet: true });
-  const box = document.querySelector("#modal-root .modal");
+  const box = lastModal();
   const draw = keep => {
     const v = keep || { name: t?.name || "", start: t?.start || preset.start || "", end: t?.end || preset.end || "", dur: t?.durationMin || "", reviewed: false };
     box.innerHTML = `<button class="close-x" data-close aria-label="닫기">✕</button>
@@ -1157,7 +1181,7 @@ function bindCalendar(){
 // 날짜를 누르면: 그날 기록한 스킬을 시간표처럼
 function openDayDetail(date){
   const close = openModal("", { sheet: true });
-  const box = document.querySelector("#modal-root .modal");
+  const box = lastModal();
   const draw = () => {
     const recs = state.records.filter(r => r.date === date).sort((a, b) => (recSpan(a)?.[0] ?? 9999) - (recSpan(b)?.[0] ?? 9999) || a.ts - b.ts);
     const total = recs.reduce((a, r) => a + r.minutes, 0);
@@ -1215,7 +1239,7 @@ function openPlanForm(id, preset = {}){
   const p = id ? state.plans.find(x => x.id === id) : null;
   let cat = p ? p.category : "기타", charId = p ? p.charId : null;
   const close = openModal("", { sheet: true });
-  const box = document.querySelector("#modal-root .modal");
+  const box = lastModal();
   const draw = keep => {
     const v = keep || { name: p?.name || "", date: p?.date || preset.date || ui.selectedDate, start: p?.start || preset.start || "", end: p?.end || preset.end || "", dur: p?.durationMin || "", memo: p?.memo || "", reviewed: false };
     box.innerHTML = `<button class="close-x" data-close aria-label="닫기">✕</button>
@@ -1275,7 +1299,7 @@ function togglePlan(id){
   let sel = p.charId || suggestChar(p);
   const mins0 = planMinutes(p) || 30;
   const close = openModal("", { bare: true });
-  const box = document.querySelector("#modal-root .modal");
+  const box = lastModal();
   const draw = keepMin => {
     const c = sel ? ch(sel) : null;
     box.innerHTML = `<div class="pop-c" style="${c ? charStyle(c) : ""}">
@@ -1441,7 +1465,7 @@ function statsDue(p){
   return null;
 }
 
-function viewReels(){
+function viewReels(compact){
   const c = ch("reels"), rh = rhythm(), ag = ageOf(c);
   const fs = followerSeries(), lastF = fs[fs.length - 1] || null;
   const thisMon = ymd(mondayOf(new Date()));
@@ -1475,12 +1499,12 @@ function viewReels(){
   })();
 
   return `
-  <div class="row" style="margin-bottom:6px"><button class="btn-sm" id="rs-back">← 마을</button></div>
+  ${compact ? `<h2 class="duo-title">🎬 릴스 스튜디오</h2>` : `<div class="row" style="margin-bottom:6px"><button class="btn-sm" id="rs-back">← 마을</button></div>
   <div class="studio-head" style="${charStyle(c)}">
     <img src="${SP("reels", rh.thisN >= rh.target ? "done2" : "base")}" alt="">
     <div><h1 style="margin:0">릴리의 릴스 스튜디오</h1>
     <p class="muted">${esc(c.skill)} ${ag ? ag.label + " · " + ag.days + "일째" : ""} · 업로드 ${R().posts.length}개</p></div>
-  </div>
+  </div>`}
 
   <!-- 1. 업로드 리듬 -->
   <div class="card" style="${charStyle(c)}">
@@ -1539,7 +1563,7 @@ function viewReels(){
 }
 function bindReels(){
   const $ = id => document.getElementById(id);
-  $("rs-back").onclick = () => { ui.tab = "home"; render(); };
+  if ($("rs-back")) $("rs-back").onclick = () => { ui.tab = "home"; render(); };
   $("rh-edit").onclick = () => {
     const close = openModal(`<div class="pop-c" style="text-align:left"><button class="close-x" data-close aria-label="닫기">✕</button><h2>업로드 리듬</h2>
       <label for="rh-n">일주일에 몇 개 올릴까요?</label><input type="number" id="rh-n" min="1" max="21" inputmode="numeric" value="${rhythmTarget()}">
@@ -1582,7 +1606,7 @@ function typeChips(sel){ return `<div class="row">${REEL_TYPES.map(t => `<span c
 function openBoardForm(id){
   const b = id ? R().board.find(x => x.id === id) : null;
   let type = b?.type || "";
-  const close = openModal("", { sheet: true }), box = document.querySelector("#modal-root .modal");
+  const close = openModal("", { sheet: true }), box = lastModal();
   const draw = v => {
     v = v || { title: b?.title || "", product: b?.product || "", hook: b?.hook || "", due: b?.due || "", note: b?.note || "" };
     box.innerHTML = `<button class="close-x" data-close aria-label="닫기">✕</button><h2>${b ? "릴스 카드" : "새 아이디어"}</h2>
@@ -1610,7 +1634,7 @@ function openBoardForm(id){
 function openPostForm(id, preset = {}){
   const p = id ? R().posts.find(x => x.id === id) : null;
   let type = p?.type || preset.type || "";
-  const close = openModal("", { sheet: true }), box = document.querySelector("#modal-root .modal");
+  const close = openModal("", { sheet: true }), box = lastModal();
   const sv = (o, k) => o && o[k] != null ? o[k] : "";
   const statInputs = (pre, o) => `<div class="stat-grid">${[["views","👁 조회"],["likes","♥ 좋아요"],["saves","🔖 저장"],["shares","↗ 공유"],["follows","＋ 팔로우"]].map(([k, l]) =>
     `<div><label for="${pre}-${k}">${l}</label><input type="number" min="0" inputmode="numeric" id="${pre}-${k}" value="${sv(o, k)}"></div>`).join("")}</div>`;
@@ -1656,15 +1680,20 @@ function openPostForm(id, preset = {}){
 
 /* ============ 공통 ============ */
 function openModal(html, opts = {}){
+  // 창을 겹쳐서 열 수 있게: 위 창을 닫으면 아래 창(예: 릴리 + 스튜디오)으로 돌아감
   const root = document.getElementById("modal-root");
   const footer = (opts.sheet || opts.bare) ? "" : `<div class="row" style="margin-top:18px;justify-content:center">${opts.buttons || `<button class="btn-primary" data-close style="min-width:140px">${opts.okLabel || "확인"}</button>`}</div>`;
-  root.innerHTML = `<div class="overlay ${opts.sheet ? "sheet" : ""}" id="ov"><div class="modal" role="dialog" aria-modal="true">${html}${footer}</div></div>`;
-  const close = () => { root.innerHTML = ""; };
-  root.querySelector("#ov").onclick = e => { if (e.target.id === "ov") close(); };
-  root.querySelectorAll("[data-close]").forEach(b => b.onclick = close);
+  const ov = document.createElement("div");
+  ov.className = `overlay ${opts.sheet ? "sheet" : ""} ${opts.wide ? "wide" : ""}`;
+  ov.innerHTML = `<div class="modal" role="dialog" aria-modal="true">${html}${footer}</div>`;
+  root.appendChild(ov);
+  const close = () => { ov.remove(); };
+  ov.onclick = e => { if (e.target === ov) close(); };
+  ov.querySelectorAll("[data-close]").forEach(b => b.onclick = close);
   tick();
   return close;
 }
+function lastModal(){ const all = document.querySelectorAll("#modal-root .modal"); return all[all.length - 1] || null; }
 function confirmModal(msg, yes, onYes, charId, pose){
   const c = ch(charId || "jp");
   const close = openModal(`<div class="pop-c" style="${charStyle(c)}"><div class="hero"><img src="${SP(c.id, pose || "think")}" alt="" style="width:110px;height:110px"></div><p style="font-size:16px;margin-top:8px">${esc(msg)}</p></div>`,
@@ -1730,7 +1759,7 @@ function showNowPopup(x, next){
       ${c && !state.timer ? `<button class="btn-primary" id="np-timer">▶ 타이머 시작</button>` : `<button id="np-tt">🗓 시간표 보기</button>`}
       <button ${c && !state.timer ? "" : 'class="btn-primary"'} data-close>알겠어요</button>
     </div></div>`, { bare: true });
-  floaties(document.querySelector("#modal-root .hero"), "⏰");
+  floaties(lastModal()?.querySelector(".hero"), "⏰");
   const t = document.getElementById("np-timer"); if (t) t.onclick = () => { close(); startTimer(c.id); };
   const g = document.getElementById("np-tt"); if (g) g.onclick = () => { close(); ui.tab = "tt"; ui.ttMode = "week"; ui.weekOffset = 0; render(); };
 }
