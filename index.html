@@ -315,7 +315,7 @@
 const CHARS = [
   { id: "jp",    folder: "cat",     skill: "일본어",   name: "모찌",   verb: "공부", prop: "あ", main: "#F6D978", bg: "#FBF0C9", dailyGoal: 60, weeklyGoal: 420, x: 79, y: 84, w: 8.5, spot: "도서관", startDate: "2022-08-03" },
   { id: "toon",  folder: "sprout",  skill: "인스타툰", name: "콩이",   verb: "작업", prop: "✏️", main: "#AFCB8F", bg: "#EAF2DD", dailyGoal: 60, weeklyGoal: 300, x: 47, y: 74, w: 8,   spot: "분수 광장", startDate: null },
-  { id: "reels", folder: "bunny",   skill: "릴스",     name: "릴리",   verb: "작업", prop: "🎬", main: "#F4B4AC", bg: "#FCE6E1", dailyGoal: 60, weeklyGoal: 300, x: 67, y: 57, w: 8.5, spot: "카페 테라스", startDate: "2025-06-26" },
+  { id: "reels", folder: "bunny",   skill: "릴스",     name: "릴리",   verb: "작업", prop: "🎬", main: "#F4B4AC", bg: "#FCE6E1", dailyGoal: 60, weeklyGoal: 300, x: 67, y: 57, w: 8.5, spot: "카페 테라스", startDate: "2026-06-26" },
   { id: "drum",  folder: "hamster", skill: "드럼",     name: "둥둥이", verb: "연습", prop: "🥁", main: "#E6C3A0", bg: "#F7EADC", dailyGoal: 30, weeklyGoal: 180, x: 27, y: 64, w: 11,  spot: "공연 무대", startDate: "2024-04-12" },
 ];
 const POSES = ["idle","hi","base","focus","done1","done2","done3","sleep","cry","lazy","eat","levelup","weekly","empty","think"];
@@ -598,8 +598,15 @@ function moodOf(id){
 const ui = { tab: "home", weekOffset: 0, monthOffset: 0, selectedDate: todayStr(), scroll: null, ttMode: "week" };
 
 /* ============ 렌더 ============ */
+function fixReelsStart(){
+  if (state.imports.includes("reels-start-2026")) return false;
+  if (state.chars.reels && state.chars.reels.startDate === "2025-06-26") state.chars.reels.startDate = "2026-06-26";
+  state.imports.push("reels-start-2026");
+  return true;
+}
 function render(){
   let ch1 = ensureSeed();
+  ch1 = fixReelsStart() || ch1;
   ch1 = ensureTemplate() || ch1;
   ch1 = fillFromTemplate([...weekDays(mondayOf(new Date())), ...ttWeek()]) || ch1;
   if (ch1) Store.save();
