@@ -233,7 +233,7 @@
   .bcard .mv { padding: 2px 10px; }
   .fchart { width: 100%; height: auto; margin-top: 8px; }
   .cmp { border: 2px solid var(--line); border-radius: 14px; overflow: hidden; font-size: 13px; }
-  .cmp-h, .cmp-r { display: grid; grid-template-columns: 1.5fr .6fr 1fr .9fr .8fr; gap: 4px; padding: 6px 10px; }
+  .cmp-h, .cmp-r { display: grid; grid-template-columns: 1.4fr .5fr 1fr .8fr .8fr .7fr; gap: 4px; padding: 6px 10px; }
   .cmp-h { background: #F3EBDD; font-weight: 700; font-size: 12px; }
   .cmp-r { border-top: 1.5px solid var(--line); }
   .cmp-r.best { background: var(--blush-pale); font-weight: 700; }
@@ -265,6 +265,12 @@
     .duo-r { overflow: visible; }
   }
 
+  .ocr-box { background: var(--blush-pale); border: 2px dashed #E8A9A0; border-radius: 16px; padding: 10px 12px; margin: 8px 0 4px; }
+  .ocr-btn { display: inline-flex; align-items: center; cursor: pointer; background: #fff; font-weight: 700; }
+  .ocr-status { font-size: 13px; margin-top: 6px; line-height: 1.5; }
+  .busy { opacity: .45; pointer-events: none; }
+  .ocr-hit { background: linear-gradient(transparent 60%, var(--butter) 60%); display: inline-block; }
+  .ins-line { font-size: 12.5px; color: var(--ink-soft); margin-top: 4px; }
   /* 탭바 */
   .tabbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: max(14px, env(safe-area-inset-bottom)); display: flex; gap: 4px; background: var(--paper); border: 2px solid var(--ink); border-radius: 999px; padding: 6px; box-shadow: 0 5px 0 var(--shadow); z-index: 5; }
   .tabbar button { border: 0; box-shadow: none; background: transparent; padding: 8px 18px; font-family: var(--hand); font-size: 19px; font-weight: 700; color: var(--ink-soft); white-space: nowrap; }
@@ -1476,10 +1482,11 @@ function viewReels(compact){
   const due = posts.filter(statsDue);
   // 유형별 비교
   const byType = {};
-  posts.forEach(p => { const st = postStats(p); if (st.views == null) return; const t = p.type || "기타"; (byType[t] = byType[t] || []).push({ v: st.views, s: pct(st.saves, st.views), sh: pct(st.shares, st.views), f: st.follows }); });
+  posts.forEach(p => { const st = postStats(p); if (st.views == null) return; const t = p.type || "기타"; (byType[t] = byType[t] || []).push({ v: st.views, s: pct(st.saves, st.views), sh: pct(st.shares, st.views), f: st.follows, k: st.skipRate }); });
   const typeRows = Object.entries(byType).map(([t, a]) => ({ t, n: a.length, v: a.reduce((x, y) => x + y.v, 0) / a.length,
     s: (q => q.length ? q.reduce((x, y) => x + y, 0) / q.length : null)(a.map(y => y.s).filter(x => x != null)),
-    f: a.reduce((x, y) => x + (y.f || 0), 0) })).sort((a, b) => b.v - a.v);
+    f: a.reduce((x, y) => x + (y.f || 0), 0),
+    k: (q => q.length ? q.reduce((x, y) => x + y, 0) / q.length : null)(a.map(y => y.k).filter(x => x != null)) })).sort((a, b) => b.v - a.v);
   const ranked = posts.filter(p => postStats(p).views != null).sort((a, b) => postStats(b).views - postStats(a).views);
   const top = ranked[0];
 
@@ -1548,8 +1555,8 @@ function viewReels(compact){
     <div class="row between"><h2 style="margin:0">📮 릴스 업로드 기록</h2><button class="btn-sm" id="po-add" style="background:var(--sage-pale)">＋ 업로드 기록</button></div>
     ${due.length ? `<p class="review-note">⏰ 성과를 적을 때가 된 릴스가 ${due.length}개 있어요 (올린 뒤 24시간·7일)</p>` : ""}
     ${typeRows.length ? `<h3 style="margin:14px 0 6px">어떤 유형이 잘됐나</h3>
-      <div class="cmp"><div class="cmp-h"><span>유형</span><span>개수</span><span>평균 조회</span><span>저장률</span><span>팔로우</span></div>
-      ${typeRows.map((r, i) => `<div class="cmp-r ${i === 0 && typeRows.length > 1 ? "best" : ""}"><span>${i === 0 && typeRows.length > 1 ? "👑 " : ""}${esc(r.t)}</span><span>${r.n}</span><span>${fmtN(Math.round(r.v))}</span><span>${fmtP(r.s)}</span><span>${r.f ? "+" + r.f : "—"}</span></div>`).join("")}</div>
+      <div class="cmp"><div class="cmp-h"><span>유형</span><span>개수</span><span>평균 조회</span><span>저장률</span><span>건너뜀</span><span>팔로우</span></div>
+      ${typeRows.map((r, i) => `<div class="cmp-r ${i === 0 && typeRows.length > 1 ? "best" : ""}"><span>${i === 0 && typeRows.length > 1 ? "👑 " : ""}${esc(r.t)}</span><span>${r.n}</span><span>${fmtN(Math.round(r.v))}</span><span>${fmtP(r.s)}</span><span>${r.k == null ? "—" : fmtP(r.k)}</span><span>${r.f ? "+" + r.f : "—"}</span></div>`).join("")}</div>
       ${top ? `<p class="muted" style="margin-top:6px">가장 잘된 릴스: <b>${esc(top.title)}</b> · 조회 ${fmtN(postStats(top).views)} (${postStats(top).basis})${top.hook ? ` · 훅 "${esc(top.hook)}"` : ""}</p>` : ""}
       <p class="muted" style="font-size:12px">7일 성과가 있으면 7일, 없으면 24시간 성과로 비교해요.</p>` : ""}
     <div style="margin-top:8px">${posts.length ? posts.map(p => { const st = postStats(p), dueK = statsDue(p);
@@ -1557,6 +1564,7 @@ function viewReels(compact){
         <div class="row between"><b>${esc(p.title)}</b><span class="muted">${fmtMD(p.date)}</span></div>
         <div class="row" style="gap:5px;margin-top:3px">${p.type ? `<span class="cat" style="background:${c.bg}">${esc(p.type)}</span>` : ""}${p.product ? `<span class="muted">🧴 ${esc(p.product)}</span>` : ""}${dueK ? `<span class="rv-badge">${dueK} 성과 입력</span>` : ""}</div>
         ${p.hook ? `<p class="muted" style="margin-top:3px">훅: "${esc(p.hook)}"</p>` : ""}
+        ${insightSummary(postStats(p)) ? `<p class="ins-line">${insightSummary(postStats(p))}</p>` : ""}
         ${st.basis ? `<div class="pstats"><span>👁 ${fmtN(st.views)}</span><span>♥ ${fmtN(st.likes)}</span><span>🔖 ${fmtN(st.saves)} <i>${fmtP(pct(st.saves, st.views))}</i></span><span>↗ ${fmtN(st.shares)}</span><span>＋${fmtN(st.follows)}</span><span class="muted">${st.basis}</span></div>` : ""}
       </div>`; }).join("") : `<div class="empty"><img src="${SP("reels", "empty")}" alt=""><p class="muted">아직 업로드 기록이 없어요</p></div>`}</div>
   </div>`;
@@ -1631,39 +1639,273 @@ function openBoardForm(id){
   };
   draw();
 }
+
+/* ============ 📷 인사이트 캡처 자동 입력 (기기 안에서 글자 인식) ============ */
+// ===== 인스타 릴스 인사이트 캡처 분석 =====
+function insightNum(t){
+  if (t == null) return null;
+  t = String(t).replace(/\s/g, "");
+  const m = t.match(/(\d[\d.,]*)(만|천|[KkMm])?/); if (!m) return null;
+  let v = parseFloat(m[1].replace(/,/g, "")); if (isNaN(v)) return null;
+  const u = m[2]; if (u === "만") v *= 10000; else if (u === "천" || u === "K" || u === "k") v *= 1000; else if (u === "M" || u === "m") v *= 1e6;
+  return Math.round(v);
+}
+// 단어 → 같은 줄·가까운 글자끼리 묶은 '조각'(글자가 낱자로 쪼개져 읽혀도 다시 붙임)
+function insightSegments(words, W){
+  const s = W / 1185;
+  const ws = words.map(w => ({ t: (w.text || "").trim(), x0: w.bbox.x0, y0: w.bbox.y0, x1: w.bbox.x1, y1: w.bbox.y1 }))
+    .filter(w => w.t).map(w => ({ ...w, cy: (w.y0 + w.y1) / 2 })).sort((a, b) => a.cy - b.cy);
+  const rows = [];
+  ws.forEach(w => { const r = rows.find(r => Math.abs(r.cy - w.cy) < 24 * s); if (r) { r.ws.push(w); r.cy = (r.cy * (r.ws.length - 1) + w.cy) / r.ws.length; } else rows.push({ cy: w.cy, ws: [w] }); });
+  const segs = [];
+  rows.forEach(r => { r.ws.sort((a, b) => a.x0 - b.x0); let cur = null;
+    r.ws.forEach(w => { if (cur && w.x0 - cur.x1 < 70 * s) { cur.t += w.t; cur.x1 = Math.max(cur.x1, w.x1); cur.y0 = Math.min(cur.y0, w.y0); cur.y1 = Math.max(cur.y1, w.y1); }
+      else { cur = { t: w.t, x0: w.x0, x1: w.x1, y0: w.y0, y1: w.y1 }; segs.push(cur); } }); });
+  segs.forEach(g => g.cy = (g.y0 + g.y1) / 2);
+  return segs;
+}
+function parseInsightWords(words, W){
+  const s = W / 1185, out = {}, segs = insightSegments(words, W).filter(g => g.y0 > 170 * s);   // 맨 위 상태줄(시계) 제외
+  const isNum = g => /^\d[\d.,]*(만|천|[KkMm])?$/.test(g.t);
+  const pctOf = g => { const m = g.t.match(/(\d{1,3}(?:[.,]\d)?)%/); return m ? parseFloat(m[1].replace(",", ".")) : null; };
+  const find = re => segs.filter(g => re.test(g.t));
+  const below = (lb, test, maxDy = 170) => segs.filter(o => test(o) && o.cy > lb.y1 && o.cy - lb.y1 < maxDy * s && o.x0 > lb.x0 - 40 * s && o.x0 < lb.x0 + 260 * s).sort((a, b) => a.cy - b.cy)[0];
+  const card = re => { for (const lb of find(re)) { const v = below(lb, isNum); if (v) return insightNum(v.t); } return null; };
+  out.views = card(/^조회$/);
+  out.reach = card(/^조회한사람$/);
+  out.follows = card(/^팔로우$/);
+  for (const lb of find(/^평균조회시간$/)) { const v = below(lb, g => /\d/.test(g.t)); if (v) { const mm = v.t.match(/(\d+)분/), sec = v.t.match(/(\d+(?:\.\d)?)\D*$/); out.avgWatch = mm ? +mm[1] * 60 + (/(\d+)초/.test(v.t) ? +v.t.match(/(\d+)초/)[1] : 0) : (sec ? parseFloat(sec[1]) : null); break; } }
+  // 비율: 같은 줄 오른쪽 %
+  const ratio = re => { for (const lb of find(re)) { const v = segs.filter(o => pctOf(o) != null && Math.abs(o.cy - lb.cy) < 60 * s && o.x0 > W * 0.55).sort((a, b) => Math.abs(a.cy - lb.cy) - Math.abs(b.cy - lb.cy))[0]; if (v) return pctOf(v); } return null; };
+  out.skipRate = ratio(/(건너뛰기|뛰기비율)/);
+  out.shareRate = ratio(/^공유비율/);
+  out.likeRate = ratio(/좋아요비율/);
+  out.saveRate = ratio(/^저장비율/);
+  out.repostRate = ratio(/리포스트비율/);
+  out.commentRate = ratio(/^댓글비율/);
+  // 조회 출처: 라벨 아래 막대 오른쪽 %
+  const src = {};
+  [["reels", /^릴스탭$/], ["explore", /^탐색탭$/], ["feed", /^피드$/], ["story", /^스토리$/], ["profile", /^프로필$/], ["search", /^검색$/]].forEach(([k, re]) => {
+    for (const lb of find(re)) { if (lb.x0 > W * 0.3) continue; const v = segs.filter(o => pctOf(o) != null && o.cy > lb.cy - 10 * s && o.cy - lb.cy < 130 * s && o.x0 > W * 0.6).sort((a, b) => a.cy - b.cy)[0]; if (v) { src[k] = pctOf(v); break; } }
+  });
+  if (Object.keys(src).length) out.sources = src;
+  // 영상 길이: 0:00 … 0:17 눈금
+  const lens = segs.flatMap(g => [...g.t.matchAll(/(\d{1,2}):(\d{2})/g)].map(m => +m[1] * 60 + +m[2]));
+  if (lens.length > 1 && Math.max(...lens) > 0) out.length = Math.max(...lens);
+  // 게시일: 조회수 추이 첫 날짜 "11월 15"
+  for (const g of segs) { const m = g.t.match(/(\d{1,2})월(\d{1,2})/); if (m && +m[1] <= 12 && +m[2] <= 31) { out.firstDay = { m: +m[1], d: +m[2] }; break; } }
+  Object.keys(out).forEach(k => out[k] == null && delete out[k]);
+  return out;
+}
+function parseIconRow(text){
+  const nums = (text.match(/\d[\d.,]*(만|천|[KkMm])?/g) || []).map(insightNum).filter(v => v != null);
+  if (nums.length >= 5) return { likes: nums[0], comments: nums[1], reposts: nums[2], shares: nums[3], saves: nums[4] };
+  if (nums.length === 4) return { likes: nums[0], comments: nums[1], shares: nums[2], saves: nums[3] };
+  return {};
+}
+function iconBand(words, W){
+  const s = W / 1185, g = words.find(w => /^개요$/.test((w.text || "").trim()));
+  if (!g) return null;
+  const top = Math.max(0, g.bbox.y0 - 190 * s), bot = g.bbox.y0 - 50 * s;
+  return bot > top ? { left: 0, top: Math.round(top), width: W, height: Math.round(bot - top) } : null;
+}
+
+
+// 붙여넣은 글자(아이패드 '텍스트 인식'으로 복사한 것)에서 읽기
+function parseInsightText(text){
+  const lines = String(text).split(/\n+/).map(l => l.trim()).filter(Boolean), flat = lines.map(l => l.replace(/\s/g, ""));
+  const out = {}, numIn = t => { const m = t.match(/\d[\d.,]*(만|천|[KkMm])?/); return m ? insightNum(m[0]) : null; };
+  const pctIn = t => { const m = t.match(/(\d{1,3}(?:[.,]\d)?)%/); return m ? parseFloat(m[1].replace(",", ".")) : null; };
+  const after = (re, get, span = 2) => { for (let i = 0; i < flat.length; i++) { const m = flat[i].match(re); if (!m) continue;
+    const rest = flat[i].slice(m.index + m[0].length); let v = get(rest); if (v != null) return v;
+    for (let j = 1; j <= span && i + j < flat.length; j++) { v = get(flat[i + j]); if (v != null) return v; } } return null; };
+  // 두 카드가 한 줄에 붙어 있으면(조회 / 조회한 사람) 다음 줄 값도 공백으로 나눠서 왼쪽·오른쪽
+  const pair = (reL, reR, setL, setR) => { for (let i = 0; i < flat.length - 1; i++) { if (!(reL.test(flat[i]) && reR.test(flat[i]))) continue;
+    for (let j = i + 1; j <= i + 2 && j < lines.length; j++) { const toks = lines[j].split(/\s+/).filter(t => /\d/.test(t)); if (toks.length >= 2) { setL(toks[0]); setR(toks[toks.length - 1]); return true; } } } return false; };
+  const secOf = t => { const mm = t.match(/(\d+)분/), ss = t.match(/(\d+(?:\.\d)?)초/); return mm || ss ? (mm ? +mm[1] * 60 : 0) + (ss ? +ss[1] : 0) : numIn(t); };
+  pair(/조회(?!한)/, /조회한사람/, t => out.views = numIn(t), t => out.reach = numIn(t));
+  pair(/평균조회시간/, /팔로우/, t => out.avgWatch = secOf(t), t => out.follows = numIn(t));
+  if (out.views == null) out.views = after(/^조회(?!한|수)/, numIn);
+  if (out.reach == null) out.reach = after(/^조회한사람/, numIn);
+  if (out.follows == null) out.follows = after(/^팔로우(?!워)/, numIn);
+  const aw = out.avgWatch == null ? after(/^평균조회시간/, t => /\d/.test(t) ? t : null) : null;
+  if (aw) { const mm = aw.match(/(\d+)분/), ss = aw.match(/(\d+(?:\.\d)?)초/); out.avgWatch = (mm ? +mm[1] * 60 : 0) + (ss ? +ss[1] : (!mm ? numIn(aw) || 0 : 0)); }
+  const near = re => { for (let i = 0; i < flat.length; i++) if (re.test(flat[i])) { for (const j of [i, i - 1, i + 1]) { if (j < 0 || j >= flat.length) continue; const v = pctIn(flat[j]); if (v != null) return v; } } return null; };
+  out.skipRate = near(/건너뛰기/); out.shareRate = near(/^공유비율/); out.likeRate = near(/좋아요비율/); out.saveRate = near(/^저장비율/);
+  const src = {}; [["reels", /^릴스탭/], ["explore", /^탐색탭/], ["feed", /^피드$/], ["story", /^스토리$/], ["profile", /^프로필$/], ["search", /^검색$/]].forEach(([k, re]) => { const v = after(re, pctIn); if (v != null) src[k] = v; });
+  if (Object.keys(src).length) out.sources = src;
+  const gi = flat.findIndex(l => /^개요/.test(l));
+  if (gi > 0) { const nums = []; for (let i = gi - 1; i >= 0 && nums.length < 5 && /^[\d.,만천K\s]+$/.test(lines[i]); i--) nums.unshift(lines[i]); Object.assign(out, parseIconRow(nums.join(" "))); }
+  for (const l of flat) { const m = l.match(/(\d{1,2})월(\d{1,2})/); if (m) { out.firstDay = { m: +m[1], d: +m[2] }; break; } }
+  // 영상 길이: '0:00 … 0:17' 눈금 줄에서만 (맨 위 시계 제외)
+  const axis = flat.find(l => /0:00/.test(l)); if (axis) { const lens = [...axis.matchAll(/(\d{1,2}):(\d{2})/g)].map(m => +m[1] * 60 + +m[2]); if (Math.max(...lens) > 0) out.length = Math.max(...lens); }
+  Object.keys(out).forEach(k => out[k] == null && delete out[k]);
+  return out;
+}
+let tessLoad = null, ocrWorkers = null, ocrProgress = null;
+function loadTesseract(){
+  if (window.Tesseract) return Promise.resolve();
+  if (!tessLoad) tessLoad = new Promise((res, rej) => { const sc = document.createElement("script"); sc.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+    sc.onload = res; sc.onerror = () => { tessLoad = null; rej(new Error("글자 인식 도구를 받지 못했어요. 인터넷 연결을 확인해 주세요.")); }; document.head.appendChild(sc); });
+  return tessLoad;
+}
+async function getOcrWorkers(){
+  await loadTesseract();
+  if (!ocrWorkers) ocrWorkers = (async () => {
+    const kor = await Tesseract.createWorker(["kor", "eng"], 1, { logger: m => ocrProgress && ocrProgress(m) });
+    await kor.setParameters({ tessedit_pageseg_mode: "11" });
+    const dig = await Tesseract.createWorker("eng", 1);
+    await dig.setParameters({ tessedit_pageseg_mode: "7", tessedit_char_whitelist: "0123456789,." });
+    return { kor, dig };
+  })().catch(e => { ocrWorkers = null; throw e; });
+  return ocrWorkers;
+}
+// 흑백 + 다크모드 반전 + 대비
+async function fileToCanvas(file){
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error("사진을 열지 못했어요")); i.src = url; });
+    const W = img.naturalWidth > 1600 ? 1600 : img.naturalWidth, H = Math.round(img.naturalHeight * W / img.naturalWidth);
+    const c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d"); g.drawImage(img, 0, 0, W, H);
+    const d = g.getImageData(0, 0, W, H), a = d.data; let sum = 0;
+    for (let i = 0; i < a.length; i += 4) { const v = a[i] * .299 + a[i + 1] * .587 + a[i + 2] * .114; a[i] = v; sum += v; }
+    const dark = sum / (a.length / 4) < 128;
+    for (let i = 0; i < a.length; i += 4) { let v = dark ? 255 - a[i] : a[i]; v = Math.max(0, Math.min(255, (v - 60) * 1.6)); a[i] = a[i + 1] = a[i + 2] = v; a[i + 3] = 255; }
+    g.putImageData(d, 0, 0); return c;
+  } finally { URL.revokeObjectURL(url); }
+}
+function cropCanvas(src, r, k = 2){
+  const left = Math.max(0, r.left), top = Math.max(0, r.top), w = Math.min(src.width - left, r.width), h = Math.min(src.height - top, r.height);
+  const c = document.createElement("canvas"); c.width = Math.max(1, w * k); c.height = Math.max(1, h * k);
+  c.getContext("2d").drawImage(src, left, top, w, h, 0, 0, c.width, c.height); return c;
+}
+async function analyzeInsightImages(files, onStatus){
+  ocrProgress = m => { if (m.status && /load|initializ/.test(m.status)) onStatus(`글자 인식 준비 중… ${Math.round((m.progress || 0) * 100)}% (처음 한 번만)`); };
+  onStatus("글자 인식 준비 중…");
+  const { kor, dig } = await getOcrWorkers();
+  const merged = {};
+  for (let i = 0; i < files.length; i++) {
+    onStatus(`캡처 ${i + 1}/${files.length} 읽는 중…`);
+    const cv = await fileToCanvas(files[i]), W = cv.width, s = W / 1185;
+    const words = (await kor.recognize(cv)).data.words || [];
+    const r = parseInsightWords(words, W);
+    const band = iconBand(words, W);
+    if (band) Object.assign(r, parseIconRow((await dig.recognize(cropCanvas(cv, band))).data.text));
+    const segs = insightSegments(words, W);
+    for (const [key, re] of [["views", /^조회$/], ["reach", /^조회한사람$/], ["follows", /^팔로우$/], ["avgWatch", /^평균조회시간$/]]) {
+      if (r[key] != null) continue;
+      const lb = segs.find(g => re.test(g.t)); if (!lb) continue;
+      const n = insightNum((await dig.recognize(cropCanvas(cv, { left: Math.round(lb.x0 - 20 * s), top: Math.round(lb.y1 + 15 * s), width: Math.round(320 * s), height: Math.round(135 * s) }))).data.text);
+      if (n != null) r[key] = n;
+    }
+    Object.entries(r).forEach(([k, v]) => { if (k === "sources") merged.sources = { ...(merged.sources || {}), ...v }; else if (merged[k] == null) merged[k] = v; });
+  }
+  return finishInsight(merged);
+}
+function finishInsight(m){
+  const r1 = v => Math.round(v * 10) / 10;
+  if (m.views) {
+    if (m.shareRate == null && m.shares != null) m.shareRate = r1(m.shares / m.views * 100);
+    if (m.likeRate == null && m.likes != null) m.likeRate = r1(m.likes / m.views * 100);
+    if (m.saveRate == null && m.saves != null) m.saveRate = r1(m.saves / m.views * 100);
+  }
+  return m;
+}
+const INSIGHT_LABELS = { views: "조회", reach: "조회한 사람", likes: "좋아요", comments: "댓글", reposts: "리포스트", shares: "공유", saves: "저장", follows: "팔로우" };
+function insightSummary(o){
+  if (!o) return "";
+  const parts = [];
+  if (o.reach != null) parts.push(`👤 ${fmtN(o.reach)}명`);
+  if (o.avgWatch != null) parts.push(`⏱ 평균 ${o.avgWatch}초${o.length ? ` / ${o.length}초` : ""}`);
+  if (o.skipRate != null) parts.push(`⏭ 건너뜀 ${o.skipRate}%`);
+  if (o.comments != null) parts.push(`💬 ${o.comments}`);
+  if (o.sources) { const top = Object.entries(o.sources).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k, v]) => `${{ reels: "릴스탭", explore: "탐색", feed: "피드", story: "스토리", profile: "프로필", search: "검색" }[k]} ${v}%`); parts.push(`📍 ${top.join(" · ")}`); }
+  return parts.join(" · ");
+}
+
 function openPostForm(id, preset = {}){
   const p = id ? R().posts.find(x => x.id === id) : null;
   let type = p?.type || preset.type || "";
+  // 칸에 안 보이는 상세 인사이트(도달·평균 시청·건너뛰기·출처)도 함께 보관
+  const base = { h: { ...(p?.h24 || {}) }, w: { ...(p?.d7 || {}) } };
+  let ocrNote = "", lastSlot = null;
   const close = openModal("", { sheet: true }), box = lastModal();
   const sv = (o, k) => o && o[k] != null ? o[k] : "";
+  const F5 = ["views", "likes", "saves", "shares", "follows"];
   const statInputs = (pre, o) => `<div class="stat-grid">${[["views","👁 조회"],["likes","♥ 좋아요"],["saves","🔖 저장"],["shares","↗ 공유"],["follows","＋ 팔로우"]].map(([k, l]) =>
     `<div><label for="${pre}-${k}">${l}</label><input type="number" min="0" inputmode="numeric" id="${pre}-${k}" value="${sv(o, k)}"></div>`).join("")}</div>`;
+  let v0 = null;
+  const read = () => ({ title: box.querySelector("#pf2-t").value, date: box.querySelector("#pf2-d").value, product: box.querySelector("#pf2-p").value, hook: box.querySelector("#pf2-h").value, link: box.querySelector("#pf2-l").value });
+  const sync = () => { ["h", "w"].forEach(pre => F5.forEach(k => { base[pre][k] = n0(box.querySelector(`#${pre}-${k}`).value); })); };
+  const slotData = pre => { const o = { ...base[pre] }; Object.keys(o).forEach(k => o[k] == null && delete o[k]); return Object.keys(o).length ? o : null; };
   const draw = v => {
-    v = v || { title: p?.title || preset.title || "", date: p?.date || todayStr(), product: p?.product || preset.product || "", hook: p?.hook || preset.hook || "", link: p?.link || "" };
+    v = v || v0 || { title: p?.title || preset.title || "", date: p?.date || todayStr(), product: p?.product || preset.product || "", hook: p?.hook || preset.hook || "", link: p?.link || "" };
     const age = daysBetween(v.date || todayStr(), todayStr());
     box.innerHTML = `<button class="close-x" data-close aria-label="닫기">✕</button><h2>${p ? "업로드 기록" : "릴스 올렸어요 📮"}</h2>
+      <div class="ocr-box">
+        <div class="row">
+          <label class="btn-sm ocr-btn" for="ocr-file">📷 인사이트 캡처로 채우기</label>
+          <input type="file" id="ocr-file" accept="image/*" multiple style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+          <button type="button" class="btn-sm btn-ghost" id="ocr-paste">📋 글자 붙여넣기</button>
+        </div>
+        <p class="muted" style="margin-top:6px">릴스 → 인사이트 화면 캡처를 여러 장 한꺼번에 골라도 돼요. 사진은 이 기기 밖으로 나가지 않아요.</p>
+        <div id="ocr-status" class="ocr-status">${ocrNote}</div>
+      </div>
       <div class="row"><div class="grow"><label for="pf2-t">제목·주제</label><input type="text" id="pf2-t" maxlength="50" value="${esc(v.title)}"></div>
       <div style="width:170px"><label for="pf2-d">올린 날</label><input type="date" id="pf2-d" value="${v.date}" max="${todayStr()}"></div></div>
       <label>유형</label>${typeChips(type)}
       <div class="row"><div class="grow"><label for="pf2-p">제품 (선택)</label><input type="text" id="pf2-p" maxlength="40" value="${esc(v.product)}"></div>
       <div class="grow"><label for="pf2-l">링크 (선택)</label><input type="text" id="pf2-l" maxlength="200" value="${esc(v.link)}" placeholder="instagram.com/reel/…"></div></div>
       <label for="pf2-h">첫 3초 훅 문구</label><input type="text" id="pf2-h" maxlength="80" value="${esc(v.hook)}" placeholder="영상 첫 자막이나 첫 마디">
-      <h3 style="margin:16px 0 0">24시간 성과 ${age < 1 && !p?.h24 ? `<span class="muted" style="font-size:13px">· 내일 적어주세요</span>` : ""}</h3>${statInputs("h", p?.h24)}
-      <h3 style="margin:14px 0 0">7일 성과 ${age < 7 && !p?.d7 ? `<span class="muted" style="font-size:13px">· ${7 - age}일 뒤에 적어주세요</span>` : ""}</h3>${statInputs("w", p?.d7)}
-      <p class="muted" style="margin-top:6px">숫자는 인스타그램 앱의 릴스 → 인사이트에서 볼 수 있어요. 모르는 칸은 비워두세요.</p>
+      <h3 style="margin:16px 0 0" class="${lastSlot === "h" ? "ocr-hit" : ""}">24시간 성과 ${age < 1 && !slotData("h") ? `<span class="muted" style="font-size:13px">· 내일 적어주세요</span>` : ""}</h3>${statInputs("h", base.h)}
+      ${insightSummary(base.h) ? `<p class="ins-line">${insightSummary(base.h)}</p>` : ""}
+      <h3 style="margin:14px 0 0" class="${lastSlot === "w" ? "ocr-hit" : ""}">7일 성과 ${age < 7 && !slotData("w") ? `<span class="muted" style="font-size:13px">· ${7 - age}일 뒤에 적어주세요</span>` : ""}</h3>${statInputs("w", base.w)}
+      ${insightSummary(base.w) ? `<p class="ins-line">${insightSummary(base.w)}</p>` : ""}
+      <p class="muted" style="margin-top:6px">모르는 칸은 비워두세요. 자동으로 채운 숫자는 저장 전에 한 번 확인해 주세요.</p>
       <div class="err" id="pf2-err"></div>
       <div class="row" style="margin-top:4px">${p ? `<button class="btn-danger" id="pf2-del" style="border:2px solid #E5B3AA">✕ 삭제</button>` : ""}<button class="btn-primary grow" id="pf2-save">저장하기</button></div>`;
-    const read = () => ({ title: box.querySelector("#pf2-t").value, date: box.querySelector("#pf2-d").value, product: box.querySelector("#pf2-p").value, hook: box.querySelector("#pf2-h").value, link: box.querySelector("#pf2-l").value });
-    const readStats = pre => { const o = {}; let any = false; ["views","likes","saves","shares","follows"].forEach(k => { const x = n0(box.querySelector(`#${pre}-${k}`).value); o[k] = x; if (x != null) any = true; }); return any ? o : null; };
     box.querySelector("[data-close]").onclick = close;
-    box.querySelectorAll("[data-type]").forEach(x => x.onclick = () => { const k = read(); const h = readStats("h"), w = readStats("w"); type = type === x.dataset.type ? "" : x.dataset.type; draw(k);
-      [["h", h], ["w", w]].forEach(([pre, o]) => o && Object.entries(o).forEach(([kk, vv]) => { if (vv != null) box.querySelector(`#${pre}-${kk}`).value = vv; })); });
+    box.querySelectorAll("[data-type]").forEach(x => x.onclick = () => { const k = read(); sync(); type = type === x.dataset.type ? "" : x.dataset.type; draw(k); });
+    // 캡처 → 자동 입력
+    const applyInsight = (res, how) => {
+      const k = read(); sync();
+      let date = k.date;
+      if (res.firstDay && !p) { const t = new Date(); let y = t.getFullYear(); const d = `${y}-${pad(res.firstDay.m)}-${pad(res.firstDay.d)}`; date = d > todayStr() ? `${y - 1}-${pad(res.firstDay.m)}-${pad(res.firstDay.d)}` : d; }
+      const age = daysBetween(date || todayStr(), todayStr()), slot = age >= 6 ? "w" : "h";
+      const { firstDay, ...vals } = res;
+      const got = Object.keys(vals).length;
+      if (!got) { ocrNote = `<span class="err">숫자를 찾지 못했어요. 인사이트 화면(조회·좋아요가 보이는 화면) 캡처인지 확인해 주세요.</span>`; draw(k); return; }
+      base[slot] = { ...base[slot], ...vals }; lastSlot = slot;
+      const shown = Object.entries(INSIGHT_LABELS).filter(([kk]) => vals[kk] != null).map(([kk, l]) => `${l} ${fmtN(vals[kk])}`);
+      ocrNote = `✅ ${how}에서 ${got}개 항목을 읽어 <b>${slot === "h" ? "24시간" : "7일"} 성과</b>에 넣었어요${firstDay && !p ? ` · 올린 날 ${firstDay.m}월 ${firstDay.d}일` : ""}<br><span class="muted">${shown.join(" · ")}</span>
+        <button type="button" class="btn-sm btn-ghost" id="ocr-move" style="margin-left:4px">${slot === "h" ? "7일" : "24시간"} 성과로 옮기기</button>`;
+      draw({ ...k, date });
+      const mv = box.querySelector("#ocr-move");
+      if (mv) mv.onclick = () => { const kk = read(); sync(); const other = slot === "h" ? "w" : "h";
+        base[other] = { ...base[other], ...vals }; Object.keys(vals).forEach(x => delete base[slot][x]); lastSlot = other;
+        ocrNote = ocrNote.replace(/<b>.*?성과<\/b>/, `<b>${other === "h" ? "24시간" : "7일"} 성과</b>`).replace(/<button[\s\S]*<\/button>/, ""); draw(kk); };
+    };
+    const fileIn = box.querySelector("#ocr-file"), st = box.querySelector("#ocr-status");
+    fileIn.onchange = async () => {
+      const files = [...fileIn.files]; if (!files.length) return;
+      const btns = box.querySelectorAll(".ocr-btn, #ocr-paste, #pf2-save"); btns.forEach(b => b.classList.add("busy"));
+      try { const res = await analyzeInsightImages(files, t => { st.innerHTML = `⏳ ${t}`; }); applyInsight(res, `캡처 ${files.length}장`); }
+      catch (e) { st.innerHTML = `<span class="err">${esc(e.message || "글자를 읽지 못했어요")}</span>`; btns.forEach(b => b.classList.remove("busy")); }
+    };
+    box.querySelector("#ocr-paste").onclick = () => {
+      const closeP = openModal(`<div class="pop-c" style="text-align:left"><button class="close-x" data-close aria-label="닫기">✕</button><h2>글자 붙여넣기</h2>
+        <p class="muted">사진 앱에서 인사이트 캡처를 열고, 글자를 길게 눌러 <b>모두 선택 → 복사</b>한 뒤 아래에 붙여넣어 주세요.</p>
+        <textarea id="ocr-text" rows="8" style="width:100%;margin-top:8px;padding:10px;border:2px solid var(--line);border-radius:14px;font:inherit"></textarea>
+        <button class="btn-primary btn-block" id="ocr-text-go" style="margin-top:10px">읽어서 채우기</button></div>`, { bare: true });
+      document.getElementById("ocr-text-go").onclick = () => { const res = finishInsight(parseInsightText(document.getElementById("ocr-text").value)); closeP(); applyInsight(res, "붙여넣은 글자"); };
+    };
     const del = box.querySelector("#pf2-del"); if (del) del.onclick = () => { if (del.dataset.armed) { R().posts = R().posts.filter(x => x.id !== p.id); R().board.forEach(b => { if (b.postId === p.id) b.postId = null; }); Store.save(); close(); render(); } else { del.dataset.armed = 1; del.textContent = "한 번 더 누르면 삭제"; } };
     box.querySelector("#pf2-save").onclick = () => {
       const f = read(), err = box.querySelector("#pf2-err");
       if (!f.title.trim()) { err.textContent = "제목이나 주제를 적어주세요."; return; }
       if (!f.date) { err.textContent = "올린 날을 골라주세요."; return; }
-      const data = { title: f.title.trim(), date: f.date, type, product: f.product.trim(), hook: f.hook.trim(), link: f.link.trim(), h24: readStats("h"), d7: readStats("w") };
+      sync();
+      const data = { title: f.title.trim(), date: f.date, type, product: f.product.trim(), hook: f.hook.trim(), link: f.link.trim(), h24: slotData("h"), d7: slotData("w") };
       const isNew = !p, before = rhythm();
       if (p) Object.assign(p, data);
       else { const np = { id: uid(), ...data, ts: Date.now() }; R().posts.push(np); if (preset.boardId) { const b = R().board.find(x => x.id === preset.boardId); if (b) { b.postId = np.id; b.stage = "done"; } } }
