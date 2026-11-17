@@ -211,6 +211,7 @@
     .mdn { font-size: 15px; }
   }
 
+  .age-line { font-size: 13.5px; margin-top: 6px; }
   /* 탭바 */
   .tabbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: max(14px, env(safe-area-inset-bottom)); display: flex; gap: 4px; background: var(--paper); border: 2px solid var(--ink); border-radius: 999px; padding: 6px; box-shadow: 0 5px 0 var(--shadow); z-index: 5; }
   .tabbar button { border: 0; box-shadow: none; background: transparent; padding: 8px 18px; font-family: var(--hand); font-size: 19px; font-weight: 700; color: var(--ink-soft); white-space: nowrap; }
@@ -312,10 +313,10 @@
 <script>
 /* ============ 캐릭터 정의 ============ */
 const CHARS = [
-  { id: "jp",    folder: "cat",     skill: "일본어",   name: "모찌",   verb: "공부", prop: "あ", main: "#F6D978", bg: "#FBF0C9", dailyGoal: 60, weeklyGoal: 420, x: 79, y: 84, w: 8.5, spot: "도서관" },
-  { id: "toon",  folder: "sprout",  skill: "인스타툰", name: "콩이",   verb: "작업", prop: "✏️", main: "#AFCB8F", bg: "#EAF2DD", dailyGoal: 60, weeklyGoal: 300, x: 47, y: 74, w: 8,   spot: "분수 광장" },
-  { id: "reels", folder: "bunny",   skill: "릴스",     name: "릴리",   verb: "작업", prop: "🎬", main: "#F4B4AC", bg: "#FCE6E1", dailyGoal: 60, weeklyGoal: 300, x: 67, y: 57, w: 8.5, spot: "카페 테라스" },
-  { id: "drum",  folder: "hamster", skill: "드럼",     name: "둥둥이", verb: "연습", prop: "🥁", main: "#E6C3A0", bg: "#F7EADC", dailyGoal: 30, weeklyGoal: 180, x: 27, y: 64, w: 11,  spot: "공연 무대" },
+  { id: "jp",    folder: "cat",     skill: "일본어",   name: "모찌",   verb: "공부", prop: "あ", main: "#F6D978", bg: "#FBF0C9", dailyGoal: 60, weeklyGoal: 420, x: 79, y: 84, w: 8.5, spot: "도서관", startDate: "2022-08-03" },
+  { id: "toon",  folder: "sprout",  skill: "인스타툰", name: "콩이",   verb: "작업", prop: "✏️", main: "#AFCB8F", bg: "#EAF2DD", dailyGoal: 60, weeklyGoal: 300, x: 47, y: 74, w: 8,   spot: "분수 광장", startDate: null },
+  { id: "reels", folder: "bunny",   skill: "릴스",     name: "릴리",   verb: "작업", prop: "🎬", main: "#F4B4AC", bg: "#FCE6E1", dailyGoal: 60, weeklyGoal: 300, x: 67, y: 57, w: 8.5, spot: "카페 테라스", startDate: "2025-06-26" },
+  { id: "drum",  folder: "hamster", skill: "드럼",     name: "둥둥이", verb: "연습", prop: "🥁", main: "#E6C3A0", bg: "#F7EADC", dailyGoal: 30, weeklyGoal: 180, x: 27, y: 64, w: 11,  spot: "공연 무대", startDate: "2024-04-12" },
 ];
 const POSES = ["idle","hi","base","focus","done1","done2","done3","sleep","cry","lazy","eat","levelup","weekly","empty","think"];
 const SP = (id, pose) => `sprites/${(CHARS.find(c => c.id === id) || CHARS[0]).folder}/${pose}.webp`;
@@ -564,6 +565,19 @@ function stageOf(l){
 function allDone(date){ return CHARS.every(c => minOn(c.id, date) >= ch(c.id).dailyGoal); }
 function timerOf(id){ return state.timer && state.timer.charId === id ? state.timer : null; }
 
+/* 스킬 나이: 시작한 날부터 */
+function ageOf(c, today = todayStr()){
+  if (!c.startDate || c.startDate > today) return null;
+  const a = parseYmd(c.startDate), t = parseYmd(today);
+  let y = t.getFullYear() - a.getFullYear(), m = t.getMonth() - a.getMonth();
+  if (t.getDate() < a.getDate()) m--;
+  if (m < 0) { y--; m += 12; }
+  const days = Math.round((t - a) / 86400000) + 1;   // 시작한 날 = 1일째
+  const label = y > 0 ? (m ? `${y}살 ${m}개월` : `${y}살`) : m > 0 ? `${m}개월` : `${days}일`;
+  const birthday = today !== c.startDate && t.getMonth() === a.getMonth() && t.getDate() === a.getDate();
+  return { y, m, days, label, short: y > 0 ? `${y}살` : m > 0 ? `${m}개월` : `${days}일`, birthday };
+}
+
 /* 캐릭터 기분 → 포즈 */
 function moodOf(id){
   const c = ch(id), today = todayStr(), hour = new Date().getHours();
@@ -614,7 +628,7 @@ function viewHome(){
       return `<div class="npc" data-char="${c.id}" style="left:${c.x}%;top:${c.y}%;width:${(c.w*(.82+.18*st.scale)).toFixed(2)}%;${charStyle(c)}" role="button" aria-label="${esc(c.name)} 오늘 기록 보기">
         <div class="tagline">
           <span class="nm">${esc(c.name)}</span>
-          ${run ? `<span class="run" data-timer>${fmtClock(Date.now() - run.startedAt)}</span>` : `<span class="tm">${mins ? fmtDur(mins) : esc(c.skill)}</span>`}
+          ${run ? `<span class="run" data-timer>${fmtClock(Date.now() - run.startedAt)}</span>` : `<span class="tm">${mins ? fmtDur(mins) : (() => { const ag = ageOf(c); return ag ? `${esc(c.skill)} · ${ag.short}${ag.birthday ? " 🎂" : ""}` : `${esc(c.skill)} · 🥚`; })()}</span>`}
         </div>
         <div class="body"><span class="prop">${c.prop}</span><img class="sprite" src="${SP(c.id, m.pose)}" alt="${esc(c.name)}"></div>
         <div class="mini"><i style="width:${Math.min(100, mins/c.dailyGoal*100)}%"></i></div>
@@ -679,6 +693,9 @@ function openCharPopup(id){
         <span class="hand" style="font-size:26px">${esc(c.name)}</span>
         <span class="tag">${esc(c.skill)} · 🌱 ${st.label} Lv.${li.level}</span>
       </div>
+      ${(() => { const ag = ageOf(c); return ag
+        ? `<p class="age-line">${ag.birthday ? `🎂 오늘은 ${esc(c.skill)} ${ag.y}번째 생일이에요! · ` : "🗓 "}${esc(c.skill)} <b>${ag.label}</b> · 시작한 지 ${ag.days.toLocaleString()}일째 <span class="muted">(${c.startDate.replace(/-/g, ".")}~)</span></p>`
+        : `<p class="age-line">🥚 아직 태어나지 않았어요 · 첫 ${esc(c.skill)} 기록을 남기면 태어나요</p>`; })()}
       <div class="row" style="max-width:280px;margin:8px auto 0"><div class="bar thin grow"><i style="width:${li.cur/li.need*100}%;background:${c.main}"></i></div><span class="muted">${li.cur}/${li.need} XP</span></div>
       <div class="big">${mins
         ? `오늘은 ${esc(josa(c.skill, "을", "를"))}<br><em>${fmtDur(mins)}</em> ${c.verb}했어요`
@@ -801,6 +818,8 @@ function addRecord(id, minutes, date, memo, source, extra = {}){
   const before = levelInfo(xpOf(id)).level, beforeXP = xpOf(id);
   const monday = mondayOf(parseYmd(date));
   const dayBefore = minOn(id, date), weekBefore = minWeek(id, monday);
+  const born = !c.startDate;
+  if (born) { state.chars[id] = { ...(state.chars[id] || {}), startDate: date }; c.startDate = date; }
   state.records.push({ id: uid(), charId: id, date, minutes, memo, source, ts: Date.now(), ...extra });
   Store.save();
 
@@ -814,10 +833,10 @@ function addRecord(id, minutes, date, memo, source, extra = {}){
     day >= c.dailyGoal ? `🎯 하루 목표 ${fmtDur(c.dailyGoal)} ${dailyNew ? "달성!" : "이미 달성"}` : `🌱 하루 목표까지 ${fmtDur(c.dailyGoal - day)} 남았어요`,
     `📅 이번 주 ${fmtDur(week)} / ${fmtDur(c.weeklyGoal)}${weeklyNew ? " · 주간 목표 달성! 🎉" : ""}`,
   ];
-  let lv = "";
+  let lv = born ? `<div class="levelup">🐣 ${esc(callName(c.name))}가 태어났어요!<br><span style="font-size:16px">${esc(c.skill)} 시작한 날: ${fmtMD(date)}</span></div>` : "";
   if (after > before) {
     const s0 = stageOf(before), s1 = stageOf(after);
-    lv = `<div class="levelup">⬆️ ${esc(callName(c.name))}가 Lv.${after}로 자랐어요!${s0.key !== s1.key ? `<br>🌱 ${s1.label} 단계가 되었어요` : ""}</div>`;
+    lv += `<div class="levelup">⬆️ ${esc(callName(c.name))}가 Lv.${after}로 자랐어요!${s0.key !== s1.key ? `<br>🌱 ${s1.label} 단계가 되었어요` : ""}</div>`;
   }
   ui.selectedDate = date;
   render();
@@ -1273,12 +1292,13 @@ function viewSettings(){
   ${allChars().map(c => `<div class="card" style="${charStyle(c)}">
     <div class="row" style="gap:12px">
       <img src="${SP(c.id, "hi")}" alt="" style="width:64px;height:64px;object-fit:contain">
-      <div class="grow"><h3>${esc(c.name)} <span class="muted">· ${esc(c.spot)}</span></h3><p class="muted">Lv.${levelInfo(xpOf(c.id)).level} · 누적 ${fmtDur(recsOf(c.id).reduce((a,r)=>a+r.minutes,0))}</p></div>
+      <div class="grow"><h3>${esc(c.name)} <span class="muted">· ${esc(c.spot)}</span></h3><p class="muted">Lv.${levelInfo(xpOf(c.id)).level} · ${(() => { const ag = ageOf(c); return ag ? `${ag.label} (${ag.days.toLocaleString()}일째)` : "🥚 아직 시작 전"; })()} · 누적 ${fmtDur(recsOf(c.id).reduce((a,r)=>a+r.minutes,0))}</p></div>
     </div>
     <div class="row">
       <div class="grow"><label for="n-${c.id}">이름</label><input type="text" id="n-${c.id}" maxlength="10" value="${esc(c.name)}"></div>
       <div class="grow"><label for="s-${c.id}">스킬</label><input type="text" id="s-${c.id}" maxlength="12" value="${esc(c.skill)}"></div>
       <div style="width:90px"><label for="v-${c.id}">하는 일</label><input type="text" id="v-${c.id}" maxlength="4" value="${esc(c.verb)}" placeholder="공부"></div>
+      <div style="width:160px"><label for="sd-${c.id}">시작한 날 <span class="muted">(비우면 시작 전)</span></label><input type="date" id="sd-${c.id}" value="${c.startDate || ""}" max="${todayStr()}"></div>
     </div>
     <div class="row">
       <div style="width:120px"><label for="d-${c.id}">하루 목표(분)</label><input type="number" id="d-${c.id}" min="1" inputmode="numeric" value="${c.dailyGoal}"></div>
@@ -1306,11 +1326,13 @@ function bindSettings(){
       const name = document.getElementById("n-"+c.id).value.trim();
       const skill = document.getElementById("s-"+c.id).value.trim() || c.skill;
       const verb = document.getElementById("v-"+c.id).value.trim() || c.verb;
+      const startDate = document.getElementById("sd-"+c.id).value || null;
       const d = Math.round(Number(document.getElementById("d-"+c.id).value));
       const w = Math.round(Number(document.getElementById("w-"+c.id).value) * 60);
       if (!name) { err.textContent = `${c.name}의 이름을 입력해 주세요.`; return; }
       if (!(d > 0) || !(w > 0)) { err.textContent = `${c.name}의 목표를 1 이상으로 입력해 주세요.`; return; }
-      next[c.id] = { name, skill, verb, dailyGoal: d, weeklyGoal: w };
+      if (startDate && startDate > todayStr()) { err.textContent = `${c.name}의 시작한 날은 오늘 이전이어야 해요.`; return; }
+      next[c.id] = { name, skill, verb, startDate, dailyGoal: d, weeklyGoal: w };
     }
     state.chars = next; Store.save(); render();
     openModal(`<div class="pop-c" style="${charStyle(ch("jp"))}"><div class="hero"><img src="${SP("toon","done1")}" alt="" style="width:110px;height:110px"></div><div class="big" style="font-size:23px">저장했어요!</div></div>`);
