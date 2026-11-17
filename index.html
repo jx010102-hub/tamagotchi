@@ -123,10 +123,10 @@
   .hud > * { pointer-events: auto; }
   .hud-card { background: rgba(255,253,247,.93); border: 2px solid var(--ink); border-radius: 18px; padding: 8px 14px; box-shadow: 0 4px 0 rgba(74,53,41,.2); }
   .hud-btn { background: rgba(255,253,247,.95); }
-  .quick { position: fixed; top: calc(max(12px, env(safe-area-inset-top)) + 64px); left: 12px; display: none; gap: 6px; z-index: 4; }
+  .quick { position: fixed; top: calc(max(12px, env(safe-area-inset-top)) + 84px); left: 12px; display: none; gap: 6px; z-index: 4; }
   .quick button { width: 48px; height: 48px; border-radius: 50%; padding: 2px; background: var(--c-bg); box-shadow: 0 3px 0 var(--ink); }
   .quick img { width: 100%; height: 100%; object-fit: contain; }
-  @media (max-aspect-ratio: 4/3) { .quick { display: flex; } .hint { top: 132px; } }
+  @media (max-aspect-ratio: 4/3) { .quick { display: flex; } .hint { top: 152px; } }
   .hint { position: fixed; left: 50%; transform: translateX(-50%); top: 84px; background: var(--butter-pale); border: 2px solid var(--ink); border-radius: 999px; padding: 6px 14px; font-size: 14px; z-index: 4; white-space: nowrap; animation: nudge 1.6s ease-in-out infinite; pointer-events: none; }
   @keyframes nudge { 50% { transform: translate(-50%, 4px); } }
   .timer-pill { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(max(14px, env(safe-area-inset-bottom)) + 72px); display: flex; align-items: center; gap: 10px; background: var(--c-bg); border: 2px solid var(--ink); border-radius: 22px; padding: 6px 10px 6px 6px; box-shadow: 0 4px 0 rgba(74,53,41,.25); z-index: 5; white-space: nowrap; }
@@ -170,6 +170,14 @@
   .tt-actual { padding: 3px; display: flex; flex-direction: column; gap: 2px; min-height: 30px; background: #FFFDF7; border-bottom: 0 !important; }
   .tt > .tt-side:nth-last-child(8) { border-bottom: 0; }
   .tt-act { font-size: 10.5px; padding: 1px 4px; border-radius: 6px; border: 1.5px solid #2E2620; }
+
+
+  .now-line { font-size: 13px; margin-top: 3px; }
+  .toast { position: fixed; left: 50%; top: max(14px, env(safe-area-inset-top)); transform: translate(-50%, -140%); background: var(--paper); border: 2px solid var(--ink); border-radius: 999px; padding: 8px 16px; font-size: 14px; box-shadow: 0 4px 0 rgba(74,53,41,.2); z-index: 30; transition: transform .35s ease; white-space: nowrap; max-width: 94vw; overflow: hidden; text-overflow: ellipsis; }
+  .toast.show { transform: translate(-50%, 0); }
+  .tpl-tag { display: flex; height: 100%; align-items: center; justify-content: center; font-family: var(--hand); font-weight: 700; font-size: 15px; color: #9A6A10; background: var(--butter-pale); }
+  .tt.is-tpl { box-shadow: 0 6px 0 #F2DFA6; }
+  .tt-block.tpl { border-style: solid; border-color: #6B5547; }
 
   /* 탭바 */
   .tabbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: max(14px, env(safe-area-inset-bottom)); display: flex; gap: 4px; background: var(--paper); border: 2px solid var(--ink); border-radius: 999px; padding: 6px; box-shadow: 0 5px 0 var(--shadow); z-index: 5; }
@@ -305,13 +313,14 @@ function fmtClock(ms){ const s = Math.max(0, Math.floor(ms/1000)); return `${pad
 
 /* ============ 상태 ============ */
 let state = emptyState();
-function emptyState(){ return { chars: {}, records: [], timer: null, plans: [], goals: [], goalLogs: [], imports: [], createdAt: Date.now(), updatedAt: 0 }; }
+function emptyState(){ return { chars: {}, records: [], timer: null, plans: [], goals: [], goalLogs: [], imports: [], template: [], templateFrom: null, filledDates: [], createdAt: Date.now(), updatedAt: 0 }; }
 function normalize(s){
   const e = emptyState();
   if (!s || typeof s !== "object") return e;
   const arr = k => Array.isArray(s[k]) ? s[k] : [];
   return { chars: s.chars || {}, records: arr("records"), timer: s.timer || null,
     plans: arr("plans"), goals: arr("goals"), goalLogs: arr("goalLogs"), imports: arr("imports"),
+    template: arr("template"), templateFrom: s.templateFrom || null, filledDates: arr("filledDates"),
     createdAt: s.createdAt || e.createdAt, updatedAt: s.updatedAt || 0 };
 }
 
@@ -398,6 +407,63 @@ function goalPeriod(g, date){
   return { start: ymd(start), end: ymd(end) };
 }
 function goalCount(g, per){ return state.goalLogs.filter(l => l.goalId === g.id && l.date >= per.start && l.date <= per.end).length; }
+
+/* ============ 기본 시간표 (매주 반복) ============ */
+// 11월 둘째 주 일정(사용자가 고친 내용 포함)을 기본 시간표로 만들고, 다음 주부터 날짜마다 한 번씩 채워 넣음
+const TPL_ID = "template-v1";
+const dowOf = date => (parseYmd(date).getDay() + 6) % 7;   // 0=월 … 6=일
+const TPL_FIELDS = ["name", "category", "start", "end", "durationMin", "charId", "needsReview"];
+function ensureTemplate(){
+  if (state.imports.includes(TPL_ID)) return false;
+  if (!state.template.length) {
+    state.plans.filter(p => p.source === SEED_ID).forEach(p => {
+      const t = { id: uid(), dow: dowOf(p.date) };
+      TPL_FIELDS.forEach(k => t[k] = p[k] ?? null);
+      t.needsReview = !!p.needsReview;
+      state.template.push(t);
+      p.templateId = t.id;
+    });
+  }
+  state.templateFrom = state.templateFrom || "2026-11-08";
+  Object.values(SEED.dates).forEach(d => { if (!state.filledDates.includes(d)) state.filledDates.push(d); });
+  state.imports.push(TPL_ID);
+  return true;
+}
+function planFromTemplate(t, date){
+  const p = { id: uid(), date, status: "planned", recordId: null, memo: "", source: "template", templateId: t.id, ts: Date.now() };
+  TPL_FIELDS.forEach(k => p[k] = t[k] ?? null);
+  p.needsReview = !!t.needsReview;
+  return p;
+}
+// 보이는 날짜(이번 주·보고 있는 주)에 기본 시간표를 채움. 한 번 채운 날은 다시 채우지 않음(지운 일정이 되살아나지 않게)
+function fillFromTemplate(dates){
+  if (!state.templateFrom) return false;
+  const limit = (() => { const d = new Date(); d.setDate(d.getDate() + 70); return ymd(d); })();
+  let changed = false;
+  dates.forEach(date => {
+    if (date < state.templateFrom || date > limit || state.filledDates.includes(date)) return;
+    state.template.filter(t => t.dow === dowOf(date)).forEach(t => state.plans.push(planFromTemplate(t, date)));
+    state.filledDates.push(date); changed = true;
+  });
+  return changed;
+}
+// 기본 시간표를 바꾸면: 오늘 이후, 아직 계획 상태이고 따로 고치지 않은 일정에도 반영
+function syncTemplate(t, removed){
+  const today = todayStr();
+  const target = p => p.templateId === t.id && p.date >= today && p.status === "planned" && !p.custom;
+  if (removed) { state.plans = state.plans.filter(p => !target(p)); return; }
+  const have = new Set();
+  state.plans.forEach(p => {
+    if (p.templateId !== t.id || p.date < today) return;
+    have.add(p.date);
+    if (target(p)) {
+      if (dowOf(p.date) !== t.dow) { p._drop = true; have.delete(p.date); return; }
+      TPL_FIELDS.forEach(k => p[k] = t[k] ?? null); p.needsReview = !!t.needsReview;
+    }
+  });
+  state.plans = state.plans.filter(p => !p._drop);
+  state.filledDates.filter(d => d >= today && dowOf(d) === t.dow && !have.has(d)).forEach(d => state.plans.push(planFromTemplate(t, d)));
+}
 // 기본 정의 + 사용자가 바꾼 이름·목표
 function ch(id){ const d = CHARS.find(c => c.id === id); return { ...d, ...(state.chars[id] || {}) }; }
 function allChars(){ return CHARS.map(c => ch(c.id)); }
@@ -483,11 +549,14 @@ function moodOf(id){
 }
 
 /* ============ 화면 상태 ============ */
-const ui = { tab: "home", weekOffset: 0, selectedDate: todayStr(), scroll: null };
+const ui = { tab: "home", weekOffset: 0, selectedDate: todayStr(), scroll: null, ttMode: "week" };
 
 /* ============ 렌더 ============ */
 function render(){
-  if (ensureSeed()) Store.save();
+  let ch1 = ensureSeed();
+  ch1 = ensureTemplate() || ch1;
+  ch1 = fillFromTemplate([...weekDays(mondayOf(new Date())), ...ttWeek()]) || ch1;
+  if (ch1) Store.save();
   const app = document.getElementById("app");
   app.innerHTML = ui.tab === "home" ? viewHome() : ui.tab === "tt" ? viewTimetable() : ui.tab === "cal" ? viewCalendar() : viewSettings();
   document.getElementById("nav-root").innerHTML = `<nav class="tabbar">
@@ -526,6 +595,7 @@ function viewHome(){
     <div class="hud-card">
       <div class="hand" style="font-size:22px;line-height:1">🌱 오늘의 성장</div>
       <div class="muted">${fmtMD(today)} (${DOW[(new Date().getDay()+6)%7]}) · 총 <b>${fmtDur(total)}</b></div>
+      ${(() => { const ni = nowInfo(), c0 = ni.current[0]; return c0 ? `<div class="now-line">⏰ 지금: <b>${esc(c0.p.name)}</b> ~${esc(c0.p.end || "")}</div>` : ni.next ? `<div class="now-line">🌿 다음: ${esc(ni.next.p.name)} ${ni.next.p.start}</div>` : ""; })()}
     </div>
     <button class="btn-sm hud-btn" id="btn-summary">📋 결산</button>
   </div>
@@ -742,15 +812,20 @@ function ttLanes(items){
   return items;
 }
 function viewTimetable(){
+  const tpl = ui.ttMode === "tpl";
   const days = ttWeek(), today = todayStr();
-  const plans = state.plans.filter(p => days.includes(p.date));
-  const [lo, hi] = ttRange(plans), H = (hi - lo) * TT_ROW;
-  const reviewN = plans.filter(p => p.needsReview).length;
+  // 열: 이번 주 = 날짜 7개 / 기본 시간표 = 요일 7개
+  const cols = tpl ? [0,1,2,3,4,5,6].map(i => ({ key: "dow:" + i, i, items: state.template.filter(t => t.dow === i) }))
+                   : days.map((d, i) => ({ key: d, i, date: d, items: plansOn(d) }));
+  const all = cols.flatMap(c => c.items);
+  const [lo, hi] = ttRange(all), H = (hi - lo) * TT_ROW;
+  const reviewN = all.filter(p => p.needsReview).length;
   const now = new Date(), nowMin = now.getHours() * 60 + now.getMinutes();
+  const attr = tpl ? "data-tpl" : "data-plan";
   const block = (p, it) => {
     const c = p.charId ? ch(p.charId) : null, done = p.status === "done";
     const style = it ? `top:${(it.span[0] - lo*60) / 60 * TT_ROW}px;height:${(it.span[1] - it.span[0]) / 60 * TT_ROW - 3}px;left:calc(${it.lane / it.lanes * 100}% + 2px);width:calc(${100 / it.lanes}% - 4px);` : "";
-    return `<button class="tt-block ${it ? "" : "chip-b"} ${done ? "done" : ""} ${p.needsReview ? "review" : ""}" data-plan="${p.id}" style="${style}background:${c ? c.bg : catColor(p.category)}">
+    return `<button class="tt-block ${it ? "" : "chip-b"} ${done ? "done" : ""} ${p.needsReview ? "review" : ""} ${tpl ? "tpl" : ""}" ${attr}="${p.id}" style="${style}background:${c ? c.bg : catColor(p.category)}">
       ${done ? `<span class="tt-stamp">✓</span>` : ""}${p.needsReview ? `<span class="tt-rv">!</span>` : ""}
       <span class="tt-name">${esc(p.name)}</span>
       ${it && (it.span[1] - it.span[0]) >= 50 ? `<span class="tt-time">${esc(planTime(p))}</span>` : (!it && p.durationMin ? `<span class="tt-time">${fmtDur(p.durationMin)}</span>` : "")}
@@ -758,51 +833,152 @@ function viewTimetable(){
   };
   return `
   <h1>주간 시간표</h1>
-  <p class="muted" style="margin-bottom:10px">칸을 누르면 일정 추가, 일정을 누르면 완료 체크·수정을 할 수 있어요</p>
-  <div class="week-nav" style="margin-bottom:6px">
+  <div class="row" style="margin:6px 0 10px">
+    <span class="chip ${tpl?"":"on"}" data-ttmode="week" style="${tpl?"":"background:var(--sage-pale)"}">📋 이번 주</span>
+    <span class="chip ${tpl?"on":""}" data-ttmode="tpl" style="${tpl?"background:var(--butter-pale)":""}">🔁 기본 시간표 (매주 반복)</span>
+  </div>
+  <p class="muted" style="margin-bottom:10px">${tpl
+    ? "여기서 고치면 앞으로의 주에 자동으로 들어가요. 이미 완료했거나 따로 고친 일정은 그대로 둬요."
+    : "기본 시간표가 매주 자동으로 들어와요. 칸을 누르면 이번 주에만 일정 추가, 일정을 누르면 완료 체크·수정을 할 수 있어요."}</p>
+  ${tpl ? `<div class="row" style="margin-bottom:8px"><button class="btn-sm" id="tt-ics" style="background:var(--blush-pale)">🔔 아이패드 캘린더 알림 만들기</button><span class="muted">앱을 꺼둬도 시작 시간에 알림이 와요</span></div>`
+  : `<div class="week-nav" style="margin-bottom:6px">
     <button class="btn-sm" id="tt-prev" aria-label="이전 주">◀</button>
     <strong>${fmtMD(days[0])} ~ ${fmtMD(days[6])}</strong>
     <button class="btn-sm" id="tt-next" aria-label="다음 주" ${ui.weekOffset>=8?"disabled":""}>▶</button>
-  </div>
-  ${reviewN ? `<p class="review-note" style="margin:0 0 8px">⚠️ 확인이 필요한 일정이 ${reviewN}개 있어요. <span class="tt-rv" style="position:static;display:inline-flex">!</span> 표시를 눌러 고쳐주세요.</p>` : ""}
+  </div>`}
+  ${reviewN ? `<p class="review-note" style="margin:0 0 8px">⚠️ 확인이 필요한 일정이 ${reviewN}개 있어요. <span class="tt-rv" style="position:static;display:inline-flex">!</span> 표시를 눌러 고쳐주세요.${tpl ? "" : " 기본 시간표에서 고치면 다음 주부터는 안 떠요."}</p>` : ""}
   <div class="tt-scroll"><div class="tt-paper">
     <img class="tt-doodle" src="doodle.webp" alt="">
-    <div class="tt">
-      <div class="tt-corner"></div>
-      ${days.map((d, i) => `<div class="tt-dh ${d===today?"today":""} ${i>=5?"wk":""}"><b>${DOW_EN[i]}</b><span>${parseYmd(d).getDate()}일</span></div>`).join("")}
+    <div class="tt ${tpl ? "is-tpl" : ""}">
+      <div class="tt-corner">${tpl ? `<span class="tpl-tag">매주</span>` : ""}</div>
+      ${cols.map(c => `<div class="tt-dh ${!tpl && c.date===today?"today":""} ${c.i>=5?"wk":""}"><b>${DOW_EN[c.i]}</b><span>${tpl ? DOW[c.i] + "요일" : parseYmd(c.date).getDate() + "일"}</span></div>`).join("")}
       <div class="tt-side small">종일</div>
-      ${days.map(d => { const ps = plansOn(d).filter(p => !p.start); return `<div class="tt-allday" data-add-day="${d}">${ps.map(p => block(p, null)).join("")}</div>`; }).join("")}
+      ${cols.map(c => `<div class="tt-allday" data-add-day="${c.key}">${c.items.filter(p => !p.start).map(p => block(p, null)).join("")}</div>`).join("")}
       <div class="tt-side"><div class="tt-hours" style="height:${H}px">${Array.from({length: hi - lo}, (_, k) => `<span style="top:${k*TT_ROW}px">${lo + k}</span>`).join("")}</div></div>
-      ${days.map(d => {
-        const items = ttLanes(plansOn(d).filter(p => p.start).map(p => ({ p, span: ttSpan(p) })));
-        return `<div class="tt-col ${d===today?"today":""}" data-col="${d}" style="height:${H}px;background-size:100% ${TT_ROW}px">
-          ${d === today && nowMin >= lo*60 && nowMin <= hi*60 ? `<div class="tt-now" style="top:${(nowMin - lo*60) / 60 * TT_ROW}px"></div>` : ""}
+      ${cols.map(c => {
+        const items = ttLanes(c.items.filter(p => p.start).map(p => ({ p, span: ttSpan(p) })));
+        const isToday = !tpl && c.date === today;
+        return `<div class="tt-col ${isToday?"today":""}" data-col="${c.key}" style="height:${H}px;background-size:100% ${TT_ROW}px">
+          ${isToday && nowMin >= lo*60 && nowMin <= hi*60 ? `<div class="tt-now" style="top:${(nowMin - lo*60) / 60 * TT_ROW}px"></div>` : ""}
           ${items.map(it => block(it.p, it)).join("")}
         </div>`; }).join("")}
-      <div class="tt-side small">실제</div>
+      ${tpl ? "" : `<div class="tt-side small">실제</div>
       ${days.map(d => { const ents = allChars().map(c => ({ c, n: minOn(c.id, d) })).filter(x => x.n > 0);
-        return `<div class="tt-actual">${ents.map(x => `<span class="tt-act" style="background:${x.c.bg}">${esc(x.c.skill)} ${fmtShort(x.n)}</span>`).join("")}</div>`; }).join("")}
+        return `<div class="tt-actual">${ents.map(x => `<span class="tt-act" style="background:${x.c.bg}">${esc(x.c.skill)} ${fmtShort(x.n)}</span>`).join("")}</div>`; }).join("")}`}
     </div>
   </div></div>
   <div class="row" style="margin-top:10px;gap:6px">
     ${Object.keys(CATS).map(k => `<span class="cat" style="background:${catColor(k)}">${k}</span>`).join("")}
-    <span class="muted">· 점선 = 계획 · <b>✓</b> = 완료 · <span class="tt-rv" style="position:static;display:inline-flex">!</span> = 확인 필요 · 실제 = 실제 기록 시간</span>
+    <span class="muted">· 점선 = 계획 · <b>✓</b> = 완료 · <span class="tt-rv" style="position:static;display:inline-flex">!</span> = 확인 필요${tpl ? "" : " · 실제 = 실제 기록 시간"}</span>
   </div>`;
 }
 function bindTimetable(){
-  document.getElementById("tt-prev").onclick = () => { ui.weekOffset--; render(); };
-  document.getElementById("tt-next").onclick = () => { if (ui.weekOffset < 8) { ui.weekOffset++; render(); } };
+  const tpl = ui.ttMode === "tpl";
+  document.querySelectorAll("[data-ttmode]").forEach(b => b.onclick = () => { ui.ttMode = b.dataset.ttmode; render(); });
+  if (!tpl) {
+    document.getElementById("tt-prev").onclick = () => { ui.weekOffset--; render(); };
+    document.getElementById("tt-next").onclick = () => { if (ui.weekOffset < 8) { ui.weekOffset++; render(); } };
+  } else document.getElementById("tt-ics").onclick = exportICS;
   document.querySelectorAll("[data-plan]").forEach(b => b.onclick = e => { e.stopPropagation(); openPlanActions(b.dataset.plan); });
+  document.querySelectorAll("[data-tpl]").forEach(b => b.onclick = e => { e.stopPropagation(); openTemplateForm(b.dataset.tpl); });
+  const lo = (() => { const items = tpl ? state.template : state.plans.filter(p => ttWeek().includes(p.date)); return ttRange(items)[0]; })();
+  const slot = key => key.startsWith("dow:") ? { dow: Number(key.slice(4)) } : { date: key };
   document.querySelectorAll("[data-col]").forEach(col => col.onclick = e => {
     if (e.target !== col) return;
-    const plans = state.plans.filter(p => ttWeek().includes(p.date)), [lo] = ttRange(plans);
     const h = Math.min(23, lo + Math.floor(e.offsetY / TT_ROW));
-    openPlanForm(null, { date: col.dataset.col, start: `${pad(h)}:00`, end: `${pad(Math.min(23, h + 1))}:${h + 1 > 23 ? "59" : "00"}` });
+    const pre = { ...slot(col.dataset.col), start: `${pad(h)}:00`, end: h >= 23 ? "23:59" : `${pad(h + 1)}:00` };
+    tpl ? openTemplateForm(null, pre) : openPlanForm(null, pre);
   });
-  document.querySelectorAll("[data-add-day]").forEach(c => c.onclick = e => { if (e.target === c) openPlanForm(null, { date: c.dataset.addDay }); });
+  document.querySelectorAll("[data-add-day]").forEach(c => c.onclick = e => { if (e.target !== c) return; const pre = slot(c.dataset.addDay); tpl ? openTemplateForm(null, pre) : openPlanForm(null, pre); });
   const sc = document.querySelector(".tt-scroll"), td = document.querySelector(".tt-dh.today");
   if (sc && td && sc.scrollWidth > sc.clientWidth) sc.scrollLeft = Math.max(0, td.offsetLeft - 60);
 }
+
+/* --- 기본 시간표 항목 추가·수정 --- */
+function openTemplateForm(id, preset = {}){
+  const t = id ? state.template.find(x => x.id === id) : null;
+  let cat = t ? t.category || "기타" : "기타", charId = t ? t.charId : null, dow = t ? t.dow : (preset.dow ?? 0);
+  const close = openModal("", { sheet: true });
+  const box = document.querySelector("#modal-root .modal");
+  const draw = keep => {
+    const v = keep || { name: t?.name || "", start: t?.start || preset.start || "", end: t?.end || preset.end || "", dur: t?.durationMin || "", reviewed: false };
+    box.innerHTML = `<button class="close-x" data-close aria-label="닫기">✕</button>
+      <h2>${t ? "기본 시간표 수정" : "기본 시간표에 추가"}</h2>
+      <p class="muted">🔁 매주 ${DOW[dow]}요일에 반복돼요</p>
+      ${t?.needsReview ? `<p class="review-note">⚠️ 확인이 필요한 일정이에요. 이름, 시간, 분류가 맞는지 확인해 주세요.</p>` : ""}
+      <label for="tf-name">무엇을 하나요?</label>
+      <input type="text" id="tf-name" maxlength="40" value="${esc(v.name)}" placeholder="예: 237 알바">
+      <label>요일</label>
+      <div class="row">${DOW.map((d, i) => `<span class="chip ${i===dow?"on":""}" data-dow="${i}" style="${i===dow?"background:var(--sage-pale)":""}">${d}</span>`).join("")}</div>
+      <div class="row">
+        <div class="grow"><label for="tf-start">시작</label><input type="time" id="tf-start" value="${v.start}"></div>
+        <div class="grow"><label for="tf-end">끝</label><input type="time" id="tf-end" value="${v.end}"></div>
+        <div class="grow"><label for="tf-dur">또는 걸리는 시간(분)</label><input type="number" id="tf-dur" min="0" inputmode="numeric" value="${v.dur}"></div>
+      </div>
+      <label>분류</label>
+      <div class="row">${Object.keys(CATS).map(k => `<span class="chip ${k===cat?"on":""}" data-cat="${k}" style="${k===cat?`background:${catColor(k)}`:""}">${k}</span>`).join("")}</div>
+      <label>연결할 스킬 <span class="muted">(완료하면 이 스킬 경험치로 들어가요)</span></label>
+      <div class="row"><span class="chip ${!charId?"on":""}" data-ch="">없음</span>${allChars().map(c => `<span class="chip ${c.id===charId?"on":""}" data-ch="${c.id}" style="${c.id===charId?`background:${c.bg}`:""}"><span class="dot" style="background:${c.main}"></span>${esc(c.skill)}</span>`).join("")}</div>
+      ${t?.needsReview ? `<label class="row" style="gap:8px;color:var(--ink);font-size:15px;margin-top:14px"><input type="checkbox" id="tf-reviewed" ${v.reviewed?"checked":""} style="width:22px;height:22px"> 내용을 확인했어요</label>` : ""}
+      <div class="err" id="tf-err"></div>
+      <div class="row" style="margin-top:4px">
+        ${t ? `<button class="btn-danger" id="tf-del" style="border:2px solid #E5B3AA">✕ 기본 시간표에서 빼기</button>` : ""}
+        <button class="btn-primary grow" id="tf-save">저장하기</button>
+      </div>`;
+    const read = () => ({ name: box.querySelector("#tf-name").value, start: box.querySelector("#tf-start").value, end: box.querySelector("#tf-end").value, dur: box.querySelector("#tf-dur").value, reviewed: !!box.querySelector("#tf-reviewed")?.checked });
+    box.querySelector("[data-close]").onclick = close;
+    box.querySelectorAll("[data-dow]").forEach(x => x.onclick = () => { const k = read(); dow = Number(x.dataset.dow); draw(k); });
+    box.querySelectorAll("[data-cat]").forEach(x => x.onclick = () => { const k = read(); cat = x.dataset.cat; draw(k); });
+    box.querySelectorAll("[data-ch]").forEach(x => x.onclick = () => { const k = read(); charId = x.dataset.ch || null; draw(k); });
+    const del = box.querySelector("#tf-del");
+    if (del) del.onclick = () => { close(); confirmModal(`'${t.name}'을(를) 기본 시간표에서 뺄까요? 다음 주부터 안 나와요. 지난 기록과 완료한 일정은 그대로 둬요.`, "빼기", () => {
+      state.template = state.template.filter(x => x.id !== t.id); syncTemplate(t, true); Store.save(); render(); }, "toon", "think"); };
+    box.querySelector("#tf-save").onclick = () => {
+      const f = read(), err = box.querySelector("#tf-err");
+      if (!f.name.trim()) { err.textContent = "무엇을 하는지 적어주세요."; return; }
+      if (f.start && f.end && toMin(f.end) <= toMin(f.start)) { err.textContent = "끝나는 시간이 시작보다 늦어야 해요."; return; }
+      const data = { name: f.name.trim(), dow, start: f.start || null, end: f.end || null, durationMin: Number(f.dur) > 0 ? Math.round(Number(f.dur)) : null, category: cat, charId };
+      let item = t;
+      if (t) { Object.assign(t, data); if (t.needsReview && f.reviewed) t.needsReview = false; }
+      else { item = { id: uid(), ...data, needsReview: false }; state.template.push(item); }
+      syncTemplate(item, false);
+      Store.save(); close(); render();
+    };
+  };
+  draw();
+}
+
+/* --- 아이패드 캘린더 알림(.ics): 앱을 꺼둬도 시작 시간에 알림 --- */
+function exportICS(){
+  const items = state.template.filter(t => t.start);
+  if (!items.length) { openModal(`<p>시간이 정해진 기본 일정이 없어요.</p>`); return; }
+  const z = n => String(n).padStart(2, "0");
+  const stamp = (() => { const d = new Date(); return `${d.getUTCFullYear()}${z(d.getUTCMonth()+1)}${z(d.getUTCDate())}T${z(d.getUTCHours())}${z(d.getUTCMinutes())}00Z`; })();
+  const nextDate = dow => { const d = new Date(); d.setHours(0,0,0,0); while ((d.getDay() + 6) % 7 !== dow) d.setDate(d.getDate() + 1); return d; };
+  const fmt = (d, hm) => `${d.getFullYear()}${z(d.getMonth()+1)}${z(d.getDate())}T${hm.replace(":", "")}00`;
+  const escI = t => String(t).replace(/[\\,;]/g, m => "\\" + m).replace(/\n/g, "\\n");
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//growth-tamagotchi//KO", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "X-WR-CALNAME:다마고치 시간표",
+    "BEGIN:VTIMEZONE", "TZID:Asia/Seoul", "BEGIN:STANDARD", "DTSTART:19700101T000000", "TZOFFSETFROM:+0900", "TZOFFSETTO:+0900", "TZNAME:KST", "END:STANDARD", "END:VTIMEZONE"];
+  items.forEach(t => {
+    const d = nextDate(t.dow), endHM = t.end || (() => { const m = toMin(t.start) + (t.durationMin || 60); return `${z(Math.min(23, Math.floor(m/60)))}:${z(m%60)}`; })();
+    lines.push("BEGIN:VEVENT", `UID:tamagotchi-${t.id}@growth-tamagotchi`, `DTSTAMP:${stamp}`,
+      `DTSTART;TZID=Asia/Seoul:${fmt(d, t.start)}`, `DTEND;TZID=Asia/Seoul:${fmt(d, endHM)}`, "RRULE:FREQ=WEEKLY",
+      `SUMMARY:${escI(t.name)}`, `DESCRIPTION:${escI("지금은 " + t.name + " 시간이에요 🌱")}`,
+      "BEGIN:VALARM", "ACTION:DISPLAY", "TRIGGER:-PT0M", `DESCRIPTION:${escI("지금은 " + t.name + " 시간이에요")}`, "END:VALARM", "END:VEVENT");
+  });
+  lines.push("END:VCALENDAR");
+  const blob = new Blob([lines.join("\r\n")], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob), a = document.createElement("a");
+  a.href = url; a.download = "다마고치-시간표.ics"; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  openModal(`<div class="pop-c"><div class="hero"><img src="${SP("toon","hi")}" alt="" style="width:100px;height:100px"></div>
+    <div class="big" style="font-size:22px">캘린더 파일을 만들었어요</div>
+    <div class="lines"><p>1. 뜨는 화면에서 <b>모두 추가</b>를 누르면 아이패드 캘린더에 매주 반복 일정 ${items.length}개가 들어가요.</p>
+    <p>2. 시작 시간마다 알림이 와요. 앱을 꺼둬도 와요.</p>
+    <p>3. 안 열리면 <b>파일</b> 앱의 다운로드에서 파일을 눌러주세요.</p>
+    <p class="muted">기본 시간표를 바꾸면 캘린더 일정은 직접 고치거나 다시 만들어야 해요.</p></div></div>`);
+}
+
 function openPlanActions(id){
   const p = state.plans.find(x => x.id === id); if (!p) return;
   const c = p.charId ? ch(p.charId) : null, done = p.status === "done";
@@ -1015,7 +1191,7 @@ function openPlanForm(id, preset = {}){
       if (!f.date) { err.textContent = "날짜를 골라주세요."; return; }
       if (f.start && f.end && toMin(f.end) <= toMin(f.start)) { err.textContent = "끝나는 시간이 시작보다 늦어야 해요."; return; }
       const data = { name: f.name.trim(), date: f.date, start: f.start || null, end: f.end || null, durationMin: Number(f.dur) > 0 ? Math.round(Number(f.dur)) : null, category: cat, charId, memo: f.memo.trim() };
-      if (p) { Object.assign(p, data); if (p.needsReview && f.reviewed) p.needsReview = false; }
+      if (p) { Object.assign(p, data); p.custom = true; if (p.needsReview && f.reviewed) p.needsReview = false; }
       else state.plans.push({ id: uid(), ...data, needsReview: false, status: "planned", recordId: null, source: "user", ts: Date.now() });
       ui.selectedDate = f.date;
       const mo = mondayOf(parseYmd(f.date)), cur = mondayOf(new Date());
@@ -1196,9 +1372,76 @@ function floaties(el, chr){
 }
 function tick(){ if (!state.timer) return; const t = fmtClock(Date.now() - state.timer.startedAt); document.querySelectorAll("[data-timer]").forEach(e => e.textContent = t); }
 setInterval(tick, 1000);
+/* ============ 지금은 무슨 시간? (시간표 따라 팝업) ============ */
+function nowInfo(){
+  const today = todayStr(), n = new Date(), m = n.getHours() * 60 + n.getMinutes();
+  const timed = plansOn(today).filter(p => p.start).map(p => ({ p, span: ttSpan(p) }));
+  const current = timed.filter(x => x.span[0] <= m && m < x.span[1]);
+  const next = timed.filter(x => x.span[0] > m).sort((a, b) => a.span[0] - b.span[0])[0] || null;
+  const ended = timed.filter(x => x.span[1] <= m && m - x.span[1] <= 180 && x.p.status === "planned");
+  return { m, current, next, ended };
+}
+const ANN_KEY = "tg-announced";
+function annLoad(){ try { return JSON.parse(localStorage.getItem(ANN_KEY) || "{}"); } catch(e) { return {}; } }
+function annSave(o){ try { const t = todayStr(); Object.keys(o).forEach(k => { if (!k.includes(t)) delete o[k]; }); localStorage.setItem(ANN_KEY, JSON.stringify(o)); } catch(e) {} }
+let toastTimer = null;
+function toast(html){
+  let el = document.getElementById("toast");
+  if (!el) { el = document.createElement("div"); el.id = "toast"; el.className = "toast"; document.body.appendChild(el); }
+  el.innerHTML = html; el.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove("show"), 6000);
+  el.onclick = () => el.classList.remove("show");
+}
+function checkNow(opening){
+  if (document.hidden) return;
+  if (document.querySelector("#modal-root .overlay")) return;   // 다른 창이 열려 있으면 다음에
+  const { m, current, next, ended } = nowInfo(), today = todayStr(), ann = annLoad(), nowTs = Date.now();
+  // 1) 지금 시작된(진행 중인) 일정: 처음 한 번 + 앱을 다시 열면 1시간마다
+  const cur = current.find(x => { const k = `s:${today}:${x.p.id}`; return !ann[k] || (opening && nowTs - ann[k] > 60 * 60000); });
+  if (cur) { ann[`s:${today}:${cur.p.id}`] = nowTs; annSave(ann); showNowPopup(cur, next); return; }
+  // 2) 방금 끝난 일정: 했는지 물어보기 (한 번만)
+  const end = ended.find(x => !ann[`e:${today}:${x.p.id}`]);
+  if (end) { ann[`e:${today}:${end.p.id}`] = nowTs; annSave(ann); showEndPopup(end); return; }
+  // 3) 앱을 열었는데 지금 일정이 없으면 짧은 안내만
+  if (opening && !current.length) toast(next ? `🌿 지금은 자유 시간 · 다음은 <b>${esc(next.p.name)}</b> ${next.p.start}` : `🌿 지금은 자유 시간이에요`);
+}
+function showNowPopup(x, next){
+  const p = x.p, c = p.charId ? ch(p.charId) : null, left = x.span[1] - nowInfo().m;
+  const close = openModal(`<div class="pop-c" style="${c ? charStyle(c) : ""}">
+    <div class="muted">⏰ ${new Date().getHours()}:${pad(new Date().getMinutes())}</div>
+    <div class="hero"><img src="${SP(c ? c.id : "toon", c ? "focus" : "hi")}" alt=""></div>
+    <div class="big">지금은<br><em>${esc(p.name)}</em> 시간이에요</div>
+    <div class="lines">
+      <p>🕐 ${esc(planTime(p))} · ${left > 0 ? `끝나기까지 ${fmtDur(left)}` : "곧 끝나요"}</p>
+      ${c ? `<p>${c.prop} 완료하면 ${esc(c.skill)} 경험치가 들어가요</p>` : ""}
+      ${p.needsReview ? `<p>⚠️ 확인이 필요한 일정이에요</p>` : ""}
+      ${next ? `<p class="muted">다음: ${esc(next.p.name)} ${next.p.start}</p>` : ""}
+    </div>
+    <div class="actions">
+      ${c && !state.timer ? `<button class="btn-primary" id="np-timer">▶ 타이머 시작</button>` : `<button id="np-tt">🗓 시간표 보기</button>`}
+      <button ${c && !state.timer ? "" : 'class="btn-primary"'} data-close>알겠어요</button>
+    </div></div>`, { bare: true });
+  floaties(document.querySelector("#modal-root .hero"), "⏰");
+  const t = document.getElementById("np-timer"); if (t) t.onclick = () => { close(); startTimer(c.id); };
+  const g = document.getElementById("np-tt"); if (g) g.onclick = () => { close(); ui.tab = "tt"; ui.ttMode = "week"; ui.weekOffset = 0; render(); };
+}
+function showEndPopup(x){
+  const p = x.p, c = p.charId ? ch(p.charId) : null;
+  const close = openModal(`<div class="pop-c" style="${c ? charStyle(c) : ""}">
+    <div class="hero"><img src="${SP(c ? c.id : "toon", "think")}" alt=""></div>
+    <div class="big" style="font-size:24px"><em>${esc(p.name)}</em><br>시간이 끝났어요. 했나요?</div>
+    <p class="muted">${esc(planTime(p))}${c ? ` · 완료하면 ${esc(c.skill)} 경험치` : ""}</p>
+    <div class="actions"><button data-close>나중에</button><button class="btn-primary" id="ep-done">○ 완료 체크</button></div>
+  </div>`, { bare: true });
+  document.getElementById("ep-done").onclick = () => { close(); togglePlan(p.id); };
+}
+setInterval(() => checkNow(false), 30000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) setTimeout(() => checkNow(true), 600); });
+
 document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });
 
 Store.init();
+setTimeout(() => checkNow(true), 1200);
 if ("serviceWorker" in navigator && location.protocol === "https:") {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(e => console.warn("sw", e)));
 }
