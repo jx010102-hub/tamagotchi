@@ -212,6 +212,40 @@
   }
 
   .age-line { font-size: 13.5px; margin-top: 6px; }
+
+  /* 릴스 스튜디오 */
+  .studio-head { display: flex; align-items: center; gap: 12px; margin: 4px 0 14px; }
+  .studio-head img { width: 76px; height: 76px; object-fit: contain; }
+  .rh-big { display: flex; align-items: baseline; gap: 10px; margin: 8px 0 6px; }
+  .rh-big .hand { font-size: 36px; line-height: 1; }
+  .rh-weeks { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; margin-top: 12px; }
+  .rh-w { text-align: center; border: 2px dashed var(--line); border-radius: 12px; padding: 4px 0; background: #fff; }
+  .rh-w b { display: block; font-family: var(--hand); font-size: 20px; line-height: 1.1; }
+  .rh-w span { font-size: 10px; color: var(--ink-soft); }
+  .rh-w.hit { border-style: solid; border-color: var(--ink); background: var(--c-bg); }
+  .rh-w.now { outline: 2px solid var(--c-main); outline-offset: 1px; }
+  .board { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+  .lane { background: #FBF6EC; border: 2px solid var(--line); border-radius: 16px; padding: 8px; min-height: 120px; }
+  .lane-h { font-family: var(--hand); font-weight: 700; font-size: 18px; margin-bottom: 6px; }
+  .lane-empty { font-size: 12px; text-align: center; padding: 12px 0; }
+  .bcard { background: #fff; border: 2px solid var(--ink); border-radius: 12px; padding: 7px 8px; margin-bottom: 7px; box-shadow: 0 2px 0 var(--shadow); }
+  .bcard .bt { font-weight: 700; font-size: 14px; cursor: pointer; word-break: keep-all; margin-bottom: 3px; }
+  .bcard .mv { padding: 2px 10px; }
+  .fchart { width: 100%; height: auto; margin-top: 8px; }
+  .cmp { border: 2px solid var(--line); border-radius: 14px; overflow: hidden; font-size: 13px; }
+  .cmp-h, .cmp-r { display: grid; grid-template-columns: 1.5fr .6fr 1fr .9fr .8fr; gap: 4px; padding: 6px 10px; }
+  .cmp-h { background: #F3EBDD; font-weight: 700; font-size: 12px; }
+  .cmp-r { border-top: 1.5px solid var(--line); }
+  .cmp-r.best { background: var(--blush-pale); font-weight: 700; }
+  .post { padding: 10px 0; border-top: 2px dashed var(--line); cursor: pointer; }
+  .post:first-child { border-top: 0; }
+  .pstats { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 5px; font-size: 13px; }
+  .pstats i { font-style: normal; color: var(--ink-soft); font-size: 11px; }
+  .stat-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .stat-grid label { margin: 8px 0 4px; font-size: 12px; }
+  .stat-grid input { padding: 10px 6px; text-align: center; }
+  @media (max-width: 560px) { .stat-grid { grid-template-columns: repeat(3, 1fr); } .rh-weeks { gap: 3px; } .rh-w b { font-size: 17px; } }
+
   /* 탭바 */
   .tabbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: max(14px, env(safe-area-inset-bottom)); display: flex; gap: 4px; background: var(--paper); border: 2px solid var(--ink); border-radius: 999px; padding: 6px; box-shadow: 0 5px 0 var(--shadow); z-index: 5; }
   .tabbar button { border: 0; box-shadow: none; background: transparent; padding: 8px 18px; font-family: var(--hand); font-size: 19px; font-weight: 700; color: var(--ink-soft); white-space: nowrap; }
@@ -346,7 +380,8 @@ function fmtClock(ms){ const s = Math.max(0, Math.floor(ms/1000)); return `${pad
 
 /* ============ 상태 ============ */
 let state = emptyState();
-function emptyState(){ return { chars: {}, records: [], timer: null, plans: [], goals: [], goalLogs: [], imports: [], template: [], templateFrom: null, filledDates: [], createdAt: Date.now(), updatedAt: 0 }; }
+function emptyState(){ return { chars: {}, records: [], timer: null, plans: [], goals: [], goalLogs: [], imports: [], template: [], templateFrom: null, filledDates: [], reels: emptyReels(), createdAt: Date.now(), updatedAt: 0 }; }
+function emptyReels(){ return { posts: [], followers: [], board: [], weeklyTarget: null }; }
 function normalize(s){
   const e = emptyState();
   if (!s || typeof s !== "object") return e;
@@ -354,6 +389,7 @@ function normalize(s){
   return { chars: s.chars || {}, records: arr("records"), timer: s.timer || null,
     plans: arr("plans"), goals: arr("goals"), goalLogs: arr("goalLogs"), imports: arr("imports"),
     template: arr("template"), templateFrom: s.templateFrom || null, filledDates: arr("filledDates"),
+    reels: (r => ({ posts: Array.isArray(r.posts) ? r.posts : [], followers: Array.isArray(r.followers) ? r.followers : [], board: Array.isArray(r.board) ? r.board : [], weeklyTarget: r.weeklyTarget || null }))(s.reels || {}),
     createdAt: s.createdAt || e.createdAt, updatedAt: s.updatedAt || 0 };
 }
 
@@ -611,13 +647,13 @@ function render(){
   ch1 = fillFromTemplate([...weekDays(mondayOf(new Date())), ...ttWeek()]) || ch1;
   if (ch1) Store.save();
   const app = document.getElementById("app");
-  app.innerHTML = ui.tab === "home" ? viewHome() : ui.tab === "tt" ? viewTimetable() : ui.tab === "cal" ? viewCalendar() : viewSettings();
+  app.innerHTML = ui.tab === "home" ? viewHome() : ui.tab === "tt" ? viewTimetable() : ui.tab === "cal" ? viewCalendar() : ui.tab === "reels" ? viewReels() : viewSettings();
   document.getElementById("nav-root").innerHTML = `<nav class="tabbar">
     ${[["home","🏡 마을"],["tt","🗓 시간표"],["cal","📅 달력"],["set","⚙️ 설정"]].map(([k,l]) => `<button data-tab="${k}" class="${ui.tab===k?"on":""}">${l}</button>`).join("")}
   </nav><button class="fab" id="fab" aria-label="시간 기록하기">＋</button>`;
   document.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => { ui.tab = b.dataset.tab; window.scrollTo(0,0); render(); });
   document.getElementById("fab").onclick = () => openManualSheet();
-  if (ui.tab === "home") bindHome(); else if (ui.tab === "tt") bindTimetable(); else if (ui.tab === "cal") bindCalendar(); else bindSettings();
+  if (ui.tab === "home") bindHome(); else if (ui.tab === "tt") bindTimetable(); else if (ui.tab === "cal") bindCalendar(); else if (ui.tab === "reels") bindReels(); else bindSettings();
   tick();
 }
 
@@ -718,6 +754,7 @@ function openCharPopup(id){
         ${run ? `<button class="stop" id="cp-stop">■ 끝내기</button>` : `<button class="btn-primary" id="cp-start">▶ 타이머 시작</button>`}
         <button id="cp-manual">✎ 시간 입력</button>
       </div>
+      ${id === "reels" ? `<button class="btn-block" id="cp-studio" style="margin-top:10px;background:var(--blush-pale)">🎬 릴스 스튜디오 (업로드·팔로워·진행 보드)</button>` : ""}
     </div>`;
   };
   const close = openModal(draw(), { bare: true });
@@ -728,6 +765,7 @@ function openCharPopup(id){
     if (st) st.onclick = () => startTimer(id, () => { box.innerHTML = draw(); bind(); floaties(box.querySelector(".hero"), "🔥"); tick(); });
     if (sp) sp.onclick = () => { close(); stopTimer(); };
     box.querySelector("#cp-manual").onclick = () => { close(); openManualSheet(id); };
+    const studio = box.querySelector("#cp-studio"); if (studio) studio.onclick = () => { close(); ui.tab = "reels"; window.scrollTo(0, 0); render(); };
   };
   bind();
   floaties(box.querySelector(".hero"), "✨");
@@ -1366,6 +1404,254 @@ function bindSettings(){
   document.getElementById("reset").onclick = () => confirmModal("모든 친구의 기록과 레벨이 사라져요. 정말 지울까요?", "모두 지우기", () => {
     state.records = []; state.timer = null; Store.save(); render();
   }, "jp", "cry");
+}
+
+
+/* ============ 🎬 릴스 스튜디오 (릴리) ============ */
+const REEL_TYPES = ["제품 리뷰", "튜토리얼", "GRWM", "비포/애프터", "추천템", "일상", "기타"];
+const STAGES = [ { k: "idea", label: "💡 아이디어" }, { k: "shoot", label: "🎥 촬영" }, { k: "edit", label: "✂️ 편집" }, { k: "done", label: "✅ 업로드" } ];
+const R = () => state.reels;
+const n0 = v => (v == null || v === "" || isNaN(v)) ? null : Number(v);
+const fmtN = v => v == null ? "—" : Number(v).toLocaleString();
+const pct = (a, b) => (a == null || !b) ? null : a / b * 100;
+const fmtP = v => v == null ? "—" : (v >= 10 ? v.toFixed(0) : v.toFixed(1)) + "%";
+// 성과: 7일 값이 있으면 7일, 없으면 24시간
+function postStats(p){ const s = (p.d7 && p.d7.views != null) ? p.d7 : (p.h24 || {}); return { ...s, basis: (p.d7 && p.d7.views != null) ? "7일" : (p.h24 && p.h24.views != null) ? "24시간" : null }; }
+function rhythmTarget(){
+  if (R().weeklyTarget) return R().weeklyTarget;
+  const g = state.goals.find(x => /뷰티/.test(x.name)); return g ? g.target : 2;
+}
+function postsInWeek(monday){ const days = new Set(weekDays(monday)); return R().posts.filter(p => days.has(p.date)).length; }
+function rhythm(){
+  const target = rhythmTarget(), cur = mondayOf(new Date());
+  const weeks = Array.from({ length: 8 }, (_, i) => { const m = new Date(cur); m.setDate(m.getDate() - (7 - i) * 7); return { monday: ymd(m), n: postsInWeek(m) }; });
+  let streak = 0;
+  // 이번 주는 아직 진행 중이라, 달성했으면 포함하고 아니면 지난주부터 셈
+  const thisN = postsInWeek(cur);
+  if (thisN >= target) streak++;
+  for (let i = weeks.length - 2; i >= 0; i--) { if (weeks[i].n >= target) streak++; else break; }
+  const last = R().posts.reduce((m, p) => p.date > m ? p.date : m, "");
+  return { target, thisN, weeks, streak, sinceLast: last ? daysBetween(last, todayStr()) : null };
+}
+function followerSeries(){ return [...R().followers].sort((a, b) => a.date < b.date ? -1 : 1); }
+function statsDue(p){
+  const age = daysBetween(p.date, todayStr());
+  if (age >= 7 && !(p.d7 && p.d7.views != null)) return "7일";
+  if (age >= 1 && !(p.h24 && p.h24.views != null)) return "24시간";
+  return null;
+}
+
+function viewReels(){
+  const c = ch("reels"), rh = rhythm(), ag = ageOf(c);
+  const fs = followerSeries(), lastF = fs[fs.length - 1] || null;
+  const thisMon = ymd(mondayOf(new Date()));
+  const prevF = [...fs].reverse().find(f => f.date < thisMon) || null;
+  const weekDelta = lastF && prevF && lastF.date >= thisMon ? lastF.count - prevF.count : null;
+  const loggedThisWeek = lastF && lastF.date >= thisMon;
+  const posts = [...R().posts].sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : b.ts - a.ts);
+  const due = posts.filter(statsDue);
+  // 유형별 비교
+  const byType = {};
+  posts.forEach(p => { const st = postStats(p); if (st.views == null) return; const t = p.type || "기타"; (byType[t] = byType[t] || []).push({ v: st.views, s: pct(st.saves, st.views), sh: pct(st.shares, st.views), f: st.follows }); });
+  const typeRows = Object.entries(byType).map(([t, a]) => ({ t, n: a.length, v: a.reduce((x, y) => x + y.v, 0) / a.length,
+    s: (q => q.length ? q.reduce((x, y) => x + y, 0) / q.length : null)(a.map(y => y.s).filter(x => x != null)),
+    f: a.reduce((x, y) => x + (y.f || 0), 0) })).sort((a, b) => b.v - a.v);
+  const ranked = posts.filter(p => postStats(p).views != null).sort((a, b) => postStats(b).views - postStats(a).views);
+  const top = ranked[0];
+
+  // 팔로워 그래프(SVG)
+  const chart = (() => {
+    const pts = fs.slice(-12); if (pts.length < 2) return "";
+    const W = 560, H = 140, P = 26, min = Math.min(...pts.map(x => x.count)), max = Math.max(...pts.map(x => x.count)), span = Math.max(1, max - min);
+    const X = i => P + i * (W - P * 2) / (pts.length - 1), Y = v => H - P - (v - min) / span * (H - P * 2);
+    const d = pts.map((x, i) => `${i ? "L" : "M"}${X(i).toFixed(1)},${Y(x.count).toFixed(1)}`).join(" ");
+    return `<svg viewBox="0 0 ${W} ${H}" class="fchart" role="img" aria-label="팔로워 변화">
+      <path d="${d} L${X(pts.length - 1)},${H - P} L${X(0)},${H - P} Z" fill="${c.bg}"/>
+      <path d="${d}" fill="none" stroke="${c.main}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      ${pts.map((x, i) => `<circle cx="${X(i)}" cy="${Y(x.count)}" r="4" fill="#fff" stroke="#4A3529" stroke-width="2"/>
+        ${i === 0 || i === pts.length - 1 ? `<text x="${X(i)}" y="${Y(x.count) - 9}" text-anchor="${i ? "end" : "start"}" font-size="12" fill="#4A3529">${x.count.toLocaleString()}</text>` : ""}
+        <text x="${X(i)}" y="${H - 8}" text-anchor="middle" font-size="10" fill="#8C7466">${parseYmd(x.date).getMonth() + 1}/${parseYmd(x.date).getDate()}</text>`).join("")}
+    </svg>`;
+  })();
+
+  return `
+  <div class="row" style="margin-bottom:6px"><button class="btn-sm" id="rs-back">← 마을</button></div>
+  <div class="studio-head" style="${charStyle(c)}">
+    <img src="${SP("reels", rh.thisN >= rh.target ? "done2" : "base")}" alt="">
+    <div><h1 style="margin:0">릴리의 릴스 스튜디오</h1>
+    <p class="muted">${esc(c.skill)} ${ag ? ag.label + " · " + ag.days + "일째" : ""} · 업로드 ${R().posts.length}개</p></div>
+  </div>
+
+  <!-- 1. 업로드 리듬 -->
+  <div class="card" style="${charStyle(c)}">
+    <div class="row between"><h2 style="margin:0">🎵 업로드 리듬</h2><button class="btn-sm" id="rh-edit">주 ${rh.target}개 ✎</button></div>
+    <div class="rh-big"><span class="hand">${rh.thisN} / ${rh.target}</span><span class="muted">이번 주 업로드</span></div>
+    <div class="bar"><i style="width:${Math.min(100, rh.thisN / rh.target * 100)}%;background:${c.main}"></i></div>
+    <div class="rh-weeks">${rh.weeks.map((w, i) => `<div class="rh-w ${w.n >= rh.target ? "hit" : ""} ${i === 7 ? "now" : ""}"><b>${w.n}</b><span>${i === 7 ? "이번 주" : `${parseYmd(w.monday).getMonth() + 1}/${parseYmd(w.monday).getDate()}`}</span></div>`).join("")}</div>
+    <p style="margin-top:10px">🔥 연속 달성 <b>${rh.streak}주</b> · ${rh.sinceLast == null ? "아직 업로드 기록이 없어요" : rh.sinceLast === 0 ? "오늘 올렸어요!" : `마지막 업로드 ${rh.sinceLast}일 전`}
+      ${rh.thisN < rh.target ? `<span class="muted"> · 이번 주 ${rh.target - rh.thisN}개 남았어요</span>` : `<span class="muted"> · 이번 주 목표 달성 🎉</span>`}</p>
+  </div>
+
+  <!-- 2. 진행 보드 -->
+  <div class="card">
+    <div class="row between"><h2 style="margin:0">🗂 릴스 진행 보드</h2><button class="btn-sm" id="bd-add" style="background:var(--butter-pale)">＋ 아이디어</button></div>
+    <p class="muted" style="margin:4px 0 8px">◀ ▶로 단계를 옮겨요. 업로드로 옮기면 업로드 기록이 함께 만들어져요.</p>
+    <div class="board">${STAGES.map(st => { const cards = R().board.filter(b => b.stage === st.k && !(st.k === "done" && b.archived));
+      return `<div class="lane"><div class="lane-h">${st.label} <span class="muted">${cards.length}</span></div>
+        ${cards.map(b => `<div class="bcard">
+          <div class="bt" data-bd-edit="${b.id}">${esc(b.title)}</div>
+          ${b.type ? `<span class="cat" style="background:${c.bg}">${esc(b.type)}</span>` : ""}${b.due ? `<span class="muted" style="font-size:11px"> · ${fmtMD(b.due)}까지</span>` : ""}
+          <div class="row" style="justify-content:space-between;margin-top:6px">
+            <button class="btn-sm mv" data-bd-mv="${b.id}" data-dir="-1" ${st.k === "idea" ? "disabled" : ""} aria-label="이전 단계">◀</button>
+            ${st.k === "done" ? `<button class="btn-sm btn-ghost" data-bd-arc="${b.id}" style="font-size:11px">정리</button>` : ""}
+            ${st.k === "done" ? "" : `<button class="btn-sm mv" data-bd-mv="${b.id}" data-dir="1" aria-label="다음 단계">▶</button>`}
+          </div></div>`).join("") || `<p class="muted lane-empty">비어 있어요</p>`}
+      </div>`; }).join("")}</div>
+  </div>
+
+  <!-- 3. 팔로워 주간 기록 -->
+  <div class="card" style="${charStyle(c)}">
+    <div class="row between"><h2 style="margin:0">👥 팔로워 주간 기록</h2><button class="btn-sm" id="fw-add" style="background:var(--blush-pale)">＋ 이번 주 기록</button></div>
+    ${lastF ? `<div class="rh-big"><span class="hand">${lastF.count.toLocaleString()}명</span><span class="muted">${fmtMD(lastF.date)} 기준${weekDelta != null ? ` · 이번 주 <b style="color:${weekDelta >= 0 ? "#4F7A35" : "#B04A3E"}">${weekDelta >= 0 ? "+" : ""}${weekDelta.toLocaleString()}</b>` : ""}</span></div>` : `<p class="muted" style="margin:8px 0">아직 기록이 없어요. 일주일에 한 번 팔로워 수를 적어주세요.</p>`}
+    ${!loggedThisWeek ? `<p class="review-note" style="margin:6px 0">📌 이번 주 팔로워 수를 아직 안 적었어요</p>` : ""}
+    ${chart}
+    ${fs.length ? `<details class="dtl-list"><summary>기록 목록</summary>${[...fs].reverse().map((f, i, arr) => { const prev = arr[i + 1]; const dlt = prev ? f.count - prev.count : null;
+      return `<div class="list-item"><div class="grow">${fmtMD(f.date)}</div><span class="amt">${f.count.toLocaleString()}</span><span class="muted" style="width:60px;text-align:right">${dlt == null ? "" : (dlt >= 0 ? "+" : "") + dlt}</span><button class="btn-sm btn-danger" data-fw-del="${f.id}">✕</button></div>`; }).join("")}</details>` : ""}
+  </div>
+
+  <!-- 4. 업로드 기록 -->
+  <div class="card">
+    <div class="row between"><h2 style="margin:0">📮 릴스 업로드 기록</h2><button class="btn-sm" id="po-add" style="background:var(--sage-pale)">＋ 업로드 기록</button></div>
+    ${due.length ? `<p class="review-note">⏰ 성과를 적을 때가 된 릴스가 ${due.length}개 있어요 (올린 뒤 24시간·7일)</p>` : ""}
+    ${typeRows.length ? `<h3 style="margin:14px 0 6px">어떤 유형이 잘됐나</h3>
+      <div class="cmp"><div class="cmp-h"><span>유형</span><span>개수</span><span>평균 조회</span><span>저장률</span><span>팔로우</span></div>
+      ${typeRows.map((r, i) => `<div class="cmp-r ${i === 0 && typeRows.length > 1 ? "best" : ""}"><span>${i === 0 && typeRows.length > 1 ? "👑 " : ""}${esc(r.t)}</span><span>${r.n}</span><span>${fmtN(Math.round(r.v))}</span><span>${fmtP(r.s)}</span><span>${r.f ? "+" + r.f : "—"}</span></div>`).join("")}</div>
+      ${top ? `<p class="muted" style="margin-top:6px">가장 잘된 릴스: <b>${esc(top.title)}</b> · 조회 ${fmtN(postStats(top).views)} (${postStats(top).basis})${top.hook ? ` · 훅 "${esc(top.hook)}"` : ""}</p>` : ""}
+      <p class="muted" style="font-size:12px">7일 성과가 있으면 7일, 없으면 24시간 성과로 비교해요.</p>` : ""}
+    <div style="margin-top:8px">${posts.length ? posts.map(p => { const st = postStats(p), dueK = statsDue(p);
+      return `<div class="post" data-po-edit="${p.id}">
+        <div class="row between"><b>${esc(p.title)}</b><span class="muted">${fmtMD(p.date)}</span></div>
+        <div class="row" style="gap:5px;margin-top:3px">${p.type ? `<span class="cat" style="background:${c.bg}">${esc(p.type)}</span>` : ""}${p.product ? `<span class="muted">🧴 ${esc(p.product)}</span>` : ""}${dueK ? `<span class="rv-badge">${dueK} 성과 입력</span>` : ""}</div>
+        ${p.hook ? `<p class="muted" style="margin-top:3px">훅: "${esc(p.hook)}"</p>` : ""}
+        ${st.basis ? `<div class="pstats"><span>👁 ${fmtN(st.views)}</span><span>♥ ${fmtN(st.likes)}</span><span>🔖 ${fmtN(st.saves)} <i>${fmtP(pct(st.saves, st.views))}</i></span><span>↗ ${fmtN(st.shares)}</span><span>＋${fmtN(st.follows)}</span><span class="muted">${st.basis}</span></div>` : ""}
+      </div>`; }).join("") : `<div class="empty"><img src="${SP("reels", "empty")}" alt=""><p class="muted">아직 업로드 기록이 없어요</p></div>`}</div>
+  </div>`;
+}
+function bindReels(){
+  const $ = id => document.getElementById(id);
+  $("rs-back").onclick = () => { ui.tab = "home"; render(); };
+  $("rh-edit").onclick = () => {
+    const close = openModal(`<div class="pop-c" style="text-align:left"><button class="close-x" data-close aria-label="닫기">✕</button><h2>업로드 리듬</h2>
+      <label for="rh-n">일주일에 몇 개 올릴까요?</label><input type="number" id="rh-n" min="1" max="21" inputmode="numeric" value="${rhythmTarget()}">
+      <div class="err" id="rh-err"></div><button class="btn-primary btn-block" id="rh-save">저장하기</button></div>`, { bare: true });
+    $("rh-save").onclick = () => { const v = Math.round(Number($("rh-n").value)); if (!(v > 0)) { $("rh-err").textContent = "1 이상 넣어주세요."; return; } R().weeklyTarget = v; Store.save(); close(); render(); };
+  };
+  // 보드
+  $("bd-add").onclick = () => openBoardForm(null);
+  document.querySelectorAll("[data-bd-edit]").forEach(el => el.onclick = () => openBoardForm(el.dataset.bdEdit));
+  document.querySelectorAll("[data-bd-arc]").forEach(el => el.onclick = () => { const b = R().board.find(x => x.id === el.dataset.bdArc); b.archived = true; Store.save(); render(); });
+  document.querySelectorAll("[data-bd-mv]").forEach(el => el.onclick = () => {
+    const b = R().board.find(x => x.id === el.dataset.bdMv), i = STAGES.findIndex(s => s.k === b.stage) + Number(el.dataset.dir);
+    if (i < 0 || i >= STAGES.length) return;
+    b.stage = STAGES[i].k; Store.save();
+    if (b.stage === "done" && !b.postId) { openPostForm(null, { title: b.title, type: b.type, product: b.product, hook: b.hook, boardId: b.id }); render(); return; }
+    render();
+  });
+  // 팔로워
+  $("fw-add").onclick = () => {
+    const last = followerSeries().slice(-1)[0];
+    const close = openModal(`<div class="pop-c" style="text-align:left"><button class="close-x" data-close aria-label="닫기">✕</button><h2>팔로워 기록</h2>
+      <div class="row"><div class="grow"><label for="fw-n">지금 팔로워 수</label><input type="number" id="fw-n" min="0" inputmode="numeric" value="${last ? last.count : ""}"></div>
+      <div class="grow"><label for="fw-d">날짜</label><input type="date" id="fw-d" value="${todayStr()}" max="${todayStr()}"></div></div>
+      <div class="err" id="fw-err"></div><button class="btn-primary btn-block" id="fw-save">저장하기</button></div>`, { bare: true });
+    $("fw-save").onclick = () => {
+      const n = Math.round(Number($("fw-n").value)), d = $("fw-d").value;
+      if (!(n >= 0) || $("fw-n").value === "") { $("fw-err").textContent = "팔로워 수를 넣어주세요."; return; }
+      if (!d) { $("fw-err").textContent = "날짜를 골라주세요."; return; }
+      // 같은 날 기록은 덮어씀
+      R().followers = R().followers.filter(f => f.date !== d); R().followers.push({ id: uid(), date: d, count: n });
+      Store.save(); close(); render();
+    };
+  };
+  document.querySelectorAll("[data-fw-del]").forEach(el => el.onclick = () => { if (el.dataset.armed) { R().followers = R().followers.filter(f => f.id !== el.dataset.fwDel); Store.save(); render(); } else { el.dataset.armed = 1; el.textContent = "한 번 더"; } });
+  // 업로드
+  $("po-add").onclick = () => openPostForm(null);
+  document.querySelectorAll("[data-po-edit]").forEach(el => el.onclick = () => openPostForm(el.dataset.poEdit));
+}
+function typeChips(sel){ return `<div class="row">${REEL_TYPES.map(t => `<span class="chip ${t === sel ? "on" : ""}" data-type="${t}" style="${t === sel ? "background:var(--blush-pale)" : ""}">${t}</span>`).join("")}</div>`; }
+function openBoardForm(id){
+  const b = id ? R().board.find(x => x.id === id) : null;
+  let type = b?.type || "";
+  const close = openModal("", { sheet: true }), box = document.querySelector("#modal-root .modal");
+  const draw = v => {
+    v = v || { title: b?.title || "", product: b?.product || "", hook: b?.hook || "", due: b?.due || "", note: b?.note || "" };
+    box.innerHTML = `<button class="close-x" data-close aria-label="닫기">✕</button><h2>${b ? "릴스 카드" : "새 아이디어"}</h2>
+      <label for="bf-t">어떤 릴스?</label><input type="text" id="bf-t" maxlength="50" value="${esc(v.title)}" placeholder="예: 겨울 쿠션 3종 비교">
+      <label>유형</label>${typeChips(type)}
+      <div class="row"><div class="grow"><label for="bf-p">제품 (선택)</label><input type="text" id="bf-p" maxlength="40" value="${esc(v.product)}"></div>
+      <div style="width:170px"><label for="bf-d">언제까지 (선택)</label><input type="date" id="bf-d" value="${v.due}"></div></div>
+      <label for="bf-h">첫 3초 훅 아이디어 (선택)</label><input type="text" id="bf-h" maxlength="60" value="${esc(v.hook)}" placeholder="예: 이거 바르고 화장 안 무너졌어요">
+      <label for="bf-n">메모 (선택)</label><input type="text" id="bf-n" maxlength="100" value="${esc(v.note)}">
+      <div class="err" id="bf-err"></div>
+      <div class="row" style="margin-top:4px">${b ? `<button class="btn-danger" id="bf-del" style="border:2px solid #E5B3AA">✕ 삭제</button>` : ""}<button class="btn-primary grow" id="bf-save">저장하기</button></div>`;
+    const read = () => ({ title: box.querySelector("#bf-t").value, product: box.querySelector("#bf-p").value, hook: box.querySelector("#bf-h").value, due: box.querySelector("#bf-d").value, note: box.querySelector("#bf-n").value });
+    box.querySelector("[data-close]").onclick = close;
+    box.querySelectorAll("[data-type]").forEach(x => x.onclick = () => { const k = read(); type = type === x.dataset.type ? "" : x.dataset.type; draw(k); });
+    const del = box.querySelector("#bf-del"); if (del) del.onclick = () => { if (del.dataset.armed) { R().board = R().board.filter(x => x.id !== b.id); Store.save(); close(); render(); } else { del.dataset.armed = 1; del.textContent = "한 번 더 누르면 삭제"; } };
+    box.querySelector("#bf-save").onclick = () => {
+      const f = read(); if (!f.title.trim()) { box.querySelector("#bf-err").textContent = "어떤 릴스인지 적어주세요."; return; }
+      const data = { title: f.title.trim(), type, product: f.product.trim(), hook: f.hook.trim(), due: f.due || null, note: f.note.trim() };
+      if (b) Object.assign(b, data); else R().board.push({ id: uid(), stage: "idea", ...data, ts: Date.now() });
+      Store.save(); close(); render();
+    };
+  };
+  draw();
+}
+function openPostForm(id, preset = {}){
+  const p = id ? R().posts.find(x => x.id === id) : null;
+  let type = p?.type || preset.type || "";
+  const close = openModal("", { sheet: true }), box = document.querySelector("#modal-root .modal");
+  const sv = (o, k) => o && o[k] != null ? o[k] : "";
+  const statInputs = (pre, o) => `<div class="stat-grid">${[["views","👁 조회"],["likes","♥ 좋아요"],["saves","🔖 저장"],["shares","↗ 공유"],["follows","＋ 팔로우"]].map(([k, l]) =>
+    `<div><label for="${pre}-${k}">${l}</label><input type="number" min="0" inputmode="numeric" id="${pre}-${k}" value="${sv(o, k)}"></div>`).join("")}</div>`;
+  const draw = v => {
+    v = v || { title: p?.title || preset.title || "", date: p?.date || todayStr(), product: p?.product || preset.product || "", hook: p?.hook || preset.hook || "", link: p?.link || "" };
+    const age = daysBetween(v.date || todayStr(), todayStr());
+    box.innerHTML = `<button class="close-x" data-close aria-label="닫기">✕</button><h2>${p ? "업로드 기록" : "릴스 올렸어요 📮"}</h2>
+      <div class="row"><div class="grow"><label for="pf2-t">제목·주제</label><input type="text" id="pf2-t" maxlength="50" value="${esc(v.title)}"></div>
+      <div style="width:170px"><label for="pf2-d">올린 날</label><input type="date" id="pf2-d" value="${v.date}" max="${todayStr()}"></div></div>
+      <label>유형</label>${typeChips(type)}
+      <div class="row"><div class="grow"><label for="pf2-p">제품 (선택)</label><input type="text" id="pf2-p" maxlength="40" value="${esc(v.product)}"></div>
+      <div class="grow"><label for="pf2-l">링크 (선택)</label><input type="text" id="pf2-l" maxlength="200" value="${esc(v.link)}" placeholder="instagram.com/reel/…"></div></div>
+      <label for="pf2-h">첫 3초 훅 문구</label><input type="text" id="pf2-h" maxlength="80" value="${esc(v.hook)}" placeholder="영상 첫 자막이나 첫 마디">
+      <h3 style="margin:16px 0 0">24시간 성과 ${age < 1 && !p?.h24 ? `<span class="muted" style="font-size:13px">· 내일 적어주세요</span>` : ""}</h3>${statInputs("h", p?.h24)}
+      <h3 style="margin:14px 0 0">7일 성과 ${age < 7 && !p?.d7 ? `<span class="muted" style="font-size:13px">· ${7 - age}일 뒤에 적어주세요</span>` : ""}</h3>${statInputs("w", p?.d7)}
+      <p class="muted" style="margin-top:6px">숫자는 인스타그램 앱의 릴스 → 인사이트에서 볼 수 있어요. 모르는 칸은 비워두세요.</p>
+      <div class="err" id="pf2-err"></div>
+      <div class="row" style="margin-top:4px">${p ? `<button class="btn-danger" id="pf2-del" style="border:2px solid #E5B3AA">✕ 삭제</button>` : ""}<button class="btn-primary grow" id="pf2-save">저장하기</button></div>`;
+    const read = () => ({ title: box.querySelector("#pf2-t").value, date: box.querySelector("#pf2-d").value, product: box.querySelector("#pf2-p").value, hook: box.querySelector("#pf2-h").value, link: box.querySelector("#pf2-l").value });
+    const readStats = pre => { const o = {}; let any = false; ["views","likes","saves","shares","follows"].forEach(k => { const x = n0(box.querySelector(`#${pre}-${k}`).value); o[k] = x; if (x != null) any = true; }); return any ? o : null; };
+    box.querySelector("[data-close]").onclick = close;
+    box.querySelectorAll("[data-type]").forEach(x => x.onclick = () => { const k = read(); const h = readStats("h"), w = readStats("w"); type = type === x.dataset.type ? "" : x.dataset.type; draw(k);
+      [["h", h], ["w", w]].forEach(([pre, o]) => o && Object.entries(o).forEach(([kk, vv]) => { if (vv != null) box.querySelector(`#${pre}-${kk}`).value = vv; })); });
+    const del = box.querySelector("#pf2-del"); if (del) del.onclick = () => { if (del.dataset.armed) { R().posts = R().posts.filter(x => x.id !== p.id); R().board.forEach(b => { if (b.postId === p.id) b.postId = null; }); Store.save(); close(); render(); } else { del.dataset.armed = 1; del.textContent = "한 번 더 누르면 삭제"; } };
+    box.querySelector("#pf2-save").onclick = () => {
+      const f = read(), err = box.querySelector("#pf2-err");
+      if (!f.title.trim()) { err.textContent = "제목이나 주제를 적어주세요."; return; }
+      if (!f.date) { err.textContent = "올린 날을 골라주세요."; return; }
+      const data = { title: f.title.trim(), date: f.date, type, product: f.product.trim(), hook: f.hook.trim(), link: f.link.trim(), h24: readStats("h"), d7: readStats("w") };
+      const isNew = !p, before = rhythm();
+      if (p) Object.assign(p, data);
+      else { const np = { id: uid(), ...data, ts: Date.now() }; R().posts.push(np); if (preset.boardId) { const b = R().board.find(x => x.id === preset.boardId); if (b) { b.postId = np.id; b.stage = "done"; } } }
+      Store.save(); close(); render();
+      if (isNew) { const after = rhythm(); const c = ch("reels");
+        openModal(`<div class="pop-c" style="${charStyle(c)}"><div class="hero"><img src="${SP("reels", after.thisN >= after.target ? "weekly" : "done1")}" alt=""></div>
+          <div class="big">릴스 업로드 <em>${after.thisN}/${after.target}</em></div>
+          <div class="lines"><p>${after.thisN >= after.target && before.thisN < before.target ? "🎉 이번 주 업로드 목표 달성!" : after.thisN >= after.target ? "이번 주 목표는 이미 달성했어요 ✨" : `🌱 이번 주 ${after.target - after.thisN}개 더 올리면 목표 달성`}</p>
+          <p>🔥 연속 달성 ${after.streak}주</p><p class="muted">내일 24시간 성과를 적으면 어떤 릴스가 잘되는지 비교할 수 있어요</p></div></div>`, { okLabel: "좋아!" }); }
+    };
+  };
+  draw();
 }
 
 /* ============ 공통 ============ */
