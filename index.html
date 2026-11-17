@@ -269,8 +269,11 @@
   .ocr-btn { display: inline-flex; align-items: center; cursor: pointer; background: #fff; font-weight: 700; }
   .ocr-status { font-size: 13px; margin-top: 6px; line-height: 1.5; }
   .busy { opacity: .45; pointer-events: none; }
+  #ocr-undo { border-color: var(--ink); }
   .ocr-hit { background: linear-gradient(transparent 60%, var(--butter) 60%); display: inline-block; }
   .ins-line { font-size: 12.5px; color: var(--ink-soft); margin-top: 4px; }
+  .mchip.up { background: var(--blush-pale); border: 1.5px dashed #E8A9A0; }
+  .day-ups { background: var(--c-bg); border: 2px solid var(--ink); border-radius: 16px; padding: 10px 12px; margin: 10px 0; }
   /* 탭바 */
   .tabbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: max(14px, env(safe-area-inset-bottom)); display: flex; gap: 4px; background: var(--paper); border: 2px solid var(--ink); border-radius: 999px; padding: 6px; box-shadow: 0 5px 0 var(--shadow); z-index: 5; }
   .tabbar button { border: 0; box-shadow: none; background: transparent; padding: 8px 18px; font-family: var(--hand); font-size: 19px; font-weight: 700; color: var(--ink-soft); white-space: nowrap; }
@@ -374,7 +377,7 @@
 const CHARS = [
   { id: "jp",    folder: "cat",     skill: "일본어",   name: "모찌",   verb: "공부", prop: "あ", main: "#F6D978", bg: "#FBF0C9", dailyGoal: 60, weeklyGoal: 420, x: 79, y: 84, w: 8.5, spot: "도서관", startDate: "2022-08-03" },
   { id: "toon",  folder: "sprout",  skill: "인스타툰", name: "콩이",   verb: "작업", prop: "✏️", main: "#AFCB8F", bg: "#EAF2DD", dailyGoal: 60, weeklyGoal: 300, x: 47, y: 74, w: 8,   spot: "분수 광장", startDate: null },
-  { id: "reels", folder: "bunny",   skill: "릴스",     name: "릴리",   verb: "작업", prop: "🎬", main: "#F4B4AC", bg: "#FCE6E1", dailyGoal: 60, weeklyGoal: 300, x: 67, y: 57, w: 8.5, spot: "카페 테라스", startDate: "2026-06-26" },
+  { id: "reels", folder: "bunny",   skill: "릴스",     name: "릴리",   verb: "작업", prop: "🎬", main: "#F4B4AC", bg: "#FCE6E1", dailyGoal: 60, weeklyGoal: 300, x: 67, y: 57, w: 8.5, spot: "카페 테라스", startDate: "2026-06-26", goalType: "count" },
   { id: "drum",  folder: "hamster", skill: "드럼",     name: "둥둥이", verb: "연습", prop: "🥁", main: "#E6C3A0", bg: "#F7EADC", dailyGoal: 30, weeklyGoal: 180, x: 27, y: 64, w: 11,  spot: "공연 무대", startDate: "2024-04-12" },
 ];
 const POSES = ["idle","hi","base","focus","done1","done2","done3","sleep","cry","lazy","eat","levelup","weekly","empty","think"];
@@ -611,8 +614,14 @@ function xpOf(id){
     byDay[r.date] = (byDay[r.date] || 0) + r.minutes;
     const w = ymd(mondayOf(parseYmd(r.date))); byWeek[w] = (byWeek[w] || 0) + r.minutes;
   }
-  for (const d in byDay) if (byDay[d] >= c.dailyGoal) xp += 20;
-  for (const w in byWeek) if (byWeek[w] >= c.weeklyGoal) xp += 100;
+  if (isCount(c)) {
+    // 횟수 목표: 목표를 채운 주마다 +100
+    const weeks = new Set([...recsOf(id).map(r => r.date), ...(id === "reels" ? R().posts.map(p => p.date) : [])].map(d => ymd(mondayOf(parseYmd(d)))));
+    weeks.forEach(w => { if (countIn(id, weekDays(parseYmd(w))) >= weeklyCountTarget(c)) xp += 100; });
+  } else {
+    for (const d in byDay) if (byDay[d] >= c.dailyGoal) xp += 20;
+    for (const w in byWeek) if (byWeek[w] >= c.weeklyGoal) xp += 100;
+  }
   return Math.floor(xp);
 }
 function levelInfo(xp){ let lvl = 1, need = 60, rem = xp; while (rem >= need) { rem -= need; lvl++; need = 60 + (lvl-1) * 30; } return { level: lvl, cur: rem, need }; }
@@ -623,7 +632,23 @@ function stageOf(l){
   if (l <= 9) return { key: "bud", label: "꽃봉오리", scale: .97 };
   return { key: "bloom", label: "활짝", scale: 1 };
 }
-function allDone(date){ return CHARS.every(c => minOn(c.id, date) >= ch(c.id).dailyGoal); }
+/* ===== 목표: 시간(하루 분·주 시간) 또는 횟수(주당 N회) ===== */
+const isCount = c => c.goalType === "count";
+function weeklyCountTarget(c){ return c.id === "reels" ? rhythmTarget() : (c.weeklyCount || 1); }
+// 횟수: 릴스는 업로드 수, 나머지는 기록 횟수
+function countIn(id, days){ const set = new Set(days); return id === "reels" ? R().posts.filter(p => set.has(p.date)).length : recsOf(id).filter(r => set.has(r.date)).length; }
+function goalNow(c, date = todayStr()){
+  const monday = mondayOf(parseYmd(date)), days = weekDays(monday);
+  if (isCount(c)) {
+    const n = countIn(c.id, days), t = weeklyCountTarget(c), unit = c.id === "reels" ? "업로드" : `${c.verb}`;
+    return { count: true, n, t, pct: Math.min(1, n / t), done: n >= t, today: countIn(c.id, [date]),
+      label: `이번 주 ${unit} ${n} / ${t}회`, short: `${n}/${t}회`, left: n >= t ? "이번 주 목표 달성! 🎉" : `${t - n}회 남았어요`, goalText: `주당 ${t}회` };
+  }
+  const m = minOn(c.id, date);
+  return { count: false, n: m, t: c.dailyGoal, pct: Math.min(1, m / c.dailyGoal), done: m >= c.dailyGoal, today: m,
+    label: `오늘 ${fmtDur(m)} / ${fmtDur(c.dailyGoal)}`, short: fmtDur(m), left: m >= c.dailyGoal ? "달성! 🎉" : `${fmtDur(c.dailyGoal - m)} 남았어요`, goalText: `하루 ${fmtDur(c.dailyGoal)}` };
+}
+function allDone(date){ return CHARS.every(c => goalNow(ch(c.id), date).done); }
 function timerOf(id){ return state.timer && state.timer.charId === id ? state.timer : null; }
 
 /* 스킬 나이: 시작한 날부터 */
@@ -647,7 +672,9 @@ function moodOf(id){
   const gap = last ? daysBetween(last, today) : null;
   if (timerOf(id)) return { pose: "focus", text: "집중하는 중… 🔥" };
   if (!recs.length) return { pose: "hi", text: `같이 ${c.skill} ${c.verb} 시작해볼까?` };
-  if (t >= c.dailyGoal) return { pose: pick(["done1","done2","done3"]), text: "오늘 목표 달성! 최고야 ✨" };
+  const gn = goalNow(c);
+  if (gn.count ? gn.done && t > 0 : gn.done) return { pose: pick(["done1","done2","done3"]), text: gn.count ? "이번 주 목표 달성! 최고야 ✨" : "오늘 목표 달성! 최고야 ✨" };
+  if (gn.count && gn.done) return { pose: "done2", text: `이번 주 ${gn.t}회 다 했어! 🎉` };
   if (t > 0) return { pose: "base", text: "조금만 더 하면 목표야!" };
   if (hour >= 23 || hour < 6) return { pose: "sleep", text: "쿨쿨… 내일 만나…" };
   if (gap >= 3) return { pose: "cry", text: `${gap}일이나 못 봤어… 😢` };
@@ -678,6 +705,7 @@ function render(){
   </nav><button class="fab" id="fab" aria-label="시간 기록하기">＋</button>`;
   document.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => { ui.tab = b.dataset.tab; window.scrollTo(0,0); render(); });
   document.getElementById("fab").onclick = () => openManualSheet();
+  document.querySelectorAll("#modal-root .modal[data-day-detail]").forEach(m => m._redraw && m._redraw());
   const rp = document.getElementById("reels-panel");
   if (rp && ui.tab !== "reels") { const y = rp.scrollTop; rp.innerHTML = viewReels(true); bindReels(); rp.scrollTop = y; }
   if (ui.tab === "home") bindHome(); else if (ui.tab === "tt") bindTimetable(); else if (ui.tab === "cal") bindCalendar(); else if (ui.tab === "reels") bindReels(); else bindSettings();
@@ -701,7 +729,7 @@ function viewHome(){
           ${run ? `<span class="run" data-timer>${fmtClock(Date.now() - run.startedAt)}</span>` : `<span class="tm">${mins ? fmtDur(mins) : (() => { const ag = ageOf(c); return ag ? `${esc(c.skill)} · ${ag.short}${ag.birthday ? " 🎂" : ""}` : `${esc(c.skill)} · 🥚`; })()}</span>`}
         </div>
         <div class="body"><span class="prop">${c.prop}</span><img class="sprite" src="${SP(c.id, m.pose)}" alt="${esc(c.name)}"></div>
-        <div class="mini"><i style="width:${Math.min(100, mins/c.dailyGoal*100)}%"></i></div>
+        <div class="mini"><i style="width:${goalNow(c).pct * 100}%"></i></div>
       </div>`;
     }).join("")}
   </div></div>
@@ -739,13 +767,13 @@ function bindHome(){
 function showSummary(){
   const today = todayStr();
   openModal(`<div class="pop-c"><div class="hand" style="font-size:26px;margin-bottom:6px">${fmtMD(today)} 결산</div>
-    ${allChars().map(c => { const mins = minOn(c.id, today), done = mins >= c.dailyGoal;
+    ${allChars().map(c => { const mins = minOn(c.id, today), gn = goalNow(c), done = gn.done;
       return `<div class="sum-line" style="${charStyle(c)}">
         <img src="${SP(c.id, mins ? (done ? "done1" : "base") : "empty")}" alt="">
         <div class="grow" style="text-align:left">
           <div class="t">${mins ? `오늘은 ${esc(josa(c.skill, "을", "를"))} ${fmtDur(mins)} ${c.verb}했어요${done ? " ✓" : ""}` : `오늘은 아직 ${esc(c.skill)} ${c.verb} 기록이 없어요`}</div>
-          <div class="bar thin" style="margin-top:6px"><i style="width:${Math.min(100, mins/c.dailyGoal*100)}%;background:${c.main}"></i></div>
-          <p class="muted" style="margin-top:4px">하루 목표 ${fmtDur(c.dailyGoal)}</p>
+          <div class="bar thin" style="margin-top:6px"><i style="width:${gn.pct * 100}%;background:${c.main}"></i></div>
+          <p class="muted" style="margin-top:4px">${gn.count ? gn.label : `하루 목표 ${fmtDur(c.dailyGoal)}`}</p>
         </div></div>`; }).join("")}</div>`);
 }
 
@@ -755,7 +783,7 @@ function openCharPopup(id){
     const c = ch(id), today = todayStr(), mins = minOn(id, today), w = minWeek(id, mondayOf(new Date()));
     const li = levelInfo(xpOf(id)), st = stageOf(li.level), m = moodOf(id), run = timerOf(id);
     const sessions = recsOf(id).filter(r => r.date === today).sort((a,b) => a.ts - b.ts);
-    const pct = Math.round(mins / c.dailyGoal * 100);
+    const gn = goalNow(c), pct = Math.round(gn.pct * 100);
     return `<div class="pop-c" style="${charStyle(c)}">
       <button class="close-x" data-close aria-label="닫기">✕</button>
       <div class="hero"><span class="prop">${c.prop}</span><img src="${SP(id, m.pose)}" alt="${esc(c.name)}"></div>
@@ -771,9 +799,9 @@ function openCharPopup(id){
         ? `오늘은 ${esc(josa(c.skill, "을", "를"))}<br><em>${fmtDur(mins)}</em> ${c.verb}했어요`
         : `오늘은 아직<br>${esc(c.skill)} ${esc(josa(c.verb, "을", "를"))} 안 했어요`}</div>
       <div class="lines">
-        <p>🎯 하루 목표 ${fmtDur(c.dailyGoal)} 중 <b>${pct}%</b>${mins >= c.dailyGoal ? " · 달성! 🎉" : ` · ${fmtDur(c.dailyGoal - mins)} 남았어요`}</p>
+        <p>🎯 ${gn.count ? `${gn.label}` : `하루 목표 ${fmtDur(c.dailyGoal)} 중 <b>${pct}%</b>`} · ${gn.left}</p>
         <div class="bar thin" style="margin:6px 0 8px"><i style="width:${Math.min(100,pct)}%;background:${c.main}"></i></div>
-        <p>📅 이번 주 ${fmtDur(w)} / ${fmtDur(c.weeklyGoal)}</p>
+        <p>📅 이번 주 ${gn.count ? `작업 시간 ${fmtDur(w)}` : `${fmtDur(w)} / ${fmtDur(c.weeklyGoal)}`}</p>
         ${sessions.length ? `<p class="muted" style="margin-top:8px">오늘 기록 ${sessions.map(r => `${new Date(r.ts).getHours()}:${pad(new Date(r.ts).getMinutes())} ${fmtDur(r.minutes)}${r.source==="timer"?" ⏱":""}`).join(" · ")}</p>` : ""}
         ${run ? `<p style="margin-top:8px">⏱ 지금 ${c.verb} 중 <b data-timer>${fmtClock(Date.now() - run.startedAt)}</b></p>` : ""}
       </div>
@@ -860,7 +888,7 @@ function openManualSheet(id, date){
       <div class="row">${allChars().map(x => `<span class="chip ${x.id===sel?"on":""}" data-s="${x.id}" ${x.id===sel?`style="background:${x.bg}"`:""}><span class="dot" style="background:${x.main}"></span>${esc(x.name)} · ${esc(x.skill)}</span>`).join("")}</div>
       <label style="text-align:center">${esc(josa(c.skill, "을", "를"))} 얼마나 ${c.verb}했나요?</label>
       ${durInputHTML(keep.mins)}
-      <p class="muted" style="text-align:center;margin-top:8px">오늘 ${fmtDur(minOn(sel, todayStr()))} / 목표 ${fmtDur(c.dailyGoal)}</p>
+      <p class="muted" style="text-align:center;margin-top:8px">${isCount(c) ? `오늘 ${fmtDur(minOn(sel, todayStr()))} · ${goalNow(c).label}` : `오늘 ${fmtDur(minOn(sel, todayStr()))} / 목표 ${fmtDur(c.dailyGoal)}`}</p>
       <div class="row">
         <div class="grow"><label for="ms-date">날짜</label><input type="date" id="ms-date" value="${keep.date}" max="${todayStr()}"></div>
         <div class="grow"><label for="ms-start">시작한 시간 (선택)</label><input type="time" id="ms-start" value="${keep.start}"></div>
@@ -900,13 +928,16 @@ function addRecord(id, minutes, date, memo, source, extra = {}){
 
   const after = levelInfo(xpOf(id)).level, gained = xpOf(id) - beforeXP;
   const day = minOn(id, date), week = minWeek(id, monday);
-  const dailyNew = day >= c.dailyGoal && dayBefore < c.dailyGoal, weeklyNew = week >= c.weeklyGoal && weekBefore < c.weeklyGoal;
+  const cnt = isCount(c), gAfter = goalNow(c, date), cntBefore = cnt ? countIn(id, weekDays(monday)) - (id === "reels" ? 0 : 1) : 0;
+  const dailyNew = !cnt && day >= c.dailyGoal && dayBefore < c.dailyGoal;
+  const weeklyNew = cnt ? (gAfter.done && cntBefore < gAfter.t) : (week >= c.weeklyGoal && weekBefore < c.weeklyGoal);
   const pose = after > before ? "levelup" : weeklyNew ? "weekly" : dailyNew ? "done1" : "eat";
   const when = date === todayStr() ? "오늘은" : `${fmtMD(date)}에는`;
   const lines = [
     `➕ 방금 ${fmtDur(minutes)} 기록했어요`,
-    day >= c.dailyGoal ? `🎯 하루 목표 ${fmtDur(c.dailyGoal)} ${dailyNew ? "달성!" : "이미 달성"}` : `🌱 하루 목표까지 ${fmtDur(c.dailyGoal - day)} 남았어요`,
-    `📅 이번 주 ${fmtDur(week)} / ${fmtDur(c.weeklyGoal)}${weeklyNew ? " · 주간 목표 달성! 🎉" : ""}`,
+    ...(cnt ? [`🎯 ${gAfter.label}${weeklyNew ? " · 주간 목표 달성! 🎉" : gAfter.done ? " · 이미 달성" : ` · ${gAfter.left}`}`, ...(id === "reels" ? ["🎬 업로드 횟수는 릴스 스튜디오의 업로드 기록으로 세요"] : [])]
+      : [day >= c.dailyGoal ? `🎯 하루 목표 ${fmtDur(c.dailyGoal)} ${dailyNew ? "달성!" : "이미 달성"}` : `🌱 하루 목표까지 ${fmtDur(c.dailyGoal - day)} 남았어요`,
+         `📅 이번 주 ${fmtDur(week)} / ${fmtDur(c.weeklyGoal)}${weeklyNew ? " · 주간 목표 달성! 🎉" : ""}`]),
   ];
   let lv = born ? `<div class="levelup">🐣 ${esc(callName(c.name))}가 태어났어요!<br><span style="font-size:16px">${esc(c.skill)} 시작한 날: ${fmtMD(date)}</span></div>` : "";
   if (after > before) {
@@ -1158,6 +1189,7 @@ function viewCalendar(){
   const inMonth = d => parseYmd(d).getMonth() === mo;
   const monthRecs = state.records.filter(r => inMonth(r.date) && days.includes(r.date));
   const total = monthRecs.reduce((a, r) => a + r.minutes, 0), activeDays = new Set(monthRecs.map(r => r.date)).size;
+  const monthPosts = R().posts.filter(p => inMonth(p.date) && days.includes(p.date)).length;
   return `
   <h1>달력</h1>
   <div class="card mcal-card">
@@ -1166,13 +1198,15 @@ function viewCalendar(){
       <strong>${first.getFullYear()}년 ${mo + 1}월</strong>
       <button class="btn-sm" id="m-next" aria-label="다음 달">▶</button>
     </div>
-    <p class="muted" style="text-align:center;margin:-4px 0 10px">이번 달 ${fmtDur(total)} · 기록한 날 ${activeDays}일</p>
+    <p class="muted" style="text-align:center;margin:-4px 0 10px">이번 달 ${fmtDur(total)} · 기록한 날 ${activeDays}일${monthPosts ? ` · 🎬 릴스 업로드 ${monthPosts}개` : ""}</p>
     <div class="mcal">
       ${DOW.map((d, i) => `<div class="mdow ${i >= 5 ? "wk" : ""}">${d}</div>`).join("")}
       ${days.map(d => {
         const ents = allChars().map(c => ({ c, n: minOn(c.id, d) })).filter(x => x.n > 0);
+        const ups = R().posts.filter(p => p.date === d).length;
         return `<button class="mday ${inMonth(d) ? "" : "out"} ${d === today ? "today" : ""}" data-mday="${d}" aria-label="${fmtMD(d)} 기록 보기">
           <span class="mdn">${parseYmd(d).getDate()}</span>
+          ${ups ? `<span class="mchip up"><span>🎬</span><span class="mlbl">릴스 업로드</span>${ups > 1 ? ` ${ups}` : ""}</span>` : ""}
           ${ents.map(x => `<span class="mchip" style="background:${x.c.bg}"><i style="background:${x.c.main}"></i><span class="mlbl">${esc(x.c.skill)} </span>${fmtShort(x.n)}</span>`).join("")}
         </button>`;
       }).join("")}
@@ -1188,6 +1222,7 @@ function bindCalendar(){
 function openDayDetail(date){
   const close = openModal("", { sheet: true });
   const box = lastModal();
+  box.dataset.dayDetail = date;
   const draw = () => {
     const recs = state.records.filter(r => r.date === date).sort((a, b) => (recSpan(a)?.[0] ?? 9999) - (recSpan(b)?.[0] ?? 9999) || a.ts - b.ts);
     const total = recs.reduce((a, r) => a + r.minutes, 0);
@@ -1197,9 +1232,17 @@ function openDayDetail(date){
     const ROW = 44, lanes = ttLanes(timed.map(x => ({ ...x })));
     const dd = parseYmd(date);
     const sum = allChars().map(c => ({ c, n: minOn(c.id, date) })).filter(x => x.n > 0);
+    const ups = R().posts.filter(p => p.date === date), rc = ch("reels");
+    const upHTML = ups.length ? `<div class="day-ups" style="${charStyle(rc)}"><p class="hand" style="font-size:19px;margin:0 0 4px">🎬 릴스 업로드 ${ups.length}개</p>
+      ${ups.map(p => { const st = postStats(p); return `<div class="list-item" data-open-post="${p.id}" style="cursor:pointer">
+        <img src="${SP("reels", "done1")}" alt="" style="width:34px;height:34px;object-fit:contain">
+        <div class="grow"><strong>${esc(p.title)}</strong>${p.type ? ` <span class="cat" style="background:${rc.bg}">${esc(p.type)}</span>` : ""}
+        ${st.basis ? `<br><span class="muted">👁 ${fmtN(st.views)} · ♥ ${fmtN(st.likes)} · 🔖 ${fmtN(st.saves)} (${st.basis})</span>` : `<br><span class="muted">성과는 아직 없어요</span>`}</div>
+        <span class="muted">›</span></div>`; }).join("")}</div>` : "";
     box.innerHTML = `<button class="close-x" data-close aria-label="닫기">✕</button>
       <h2 style="margin-bottom:2px">${fmtMD(date)} (${DOW[(dd.getDay() + 6) % 7]})</h2>
       <p class="muted">${recs.length ? `총 ${fmtDur(total)} 기록했어요` : ""}</p>
+      ${upHTML}
       ${recs.length ? `
       <div class="row" style="margin:10px 0 4px">${sum.map(x => `<span class="dchip" style="background:${x.c.bg}"><img src="${SP(x.c.id, "idle")}" alt="">${esc(x.c.skill)} <b>${fmtDur(x.n)}</b></span>`).join("")}</div>
       ${timed.length ? `<div class="dtl" style="height:${(hi - lo) * ROW}px">
@@ -1215,10 +1258,12 @@ function openDayDetail(date){
       ${untimed.length ? `<p class="muted" style="margin:12px 0 2px">시간이 기록되지 않은 활동</p>` : ""}
       <div>${untimed.map(r => recRow(r)).join("")}</div>
       <details class="dtl-list"><summary>기록 목록 · 지우기</summary>${recs.map(r => recRow(r, true)).join("")}</details>`
-      : `<div class="empty"><img src="${SP("toon", date > todayStr() ? "think" : "empty")}" alt=""><p class="muted">${date > todayStr() ? "아직 오지 않은 날이에요" : "이 날은 기록한 스킬이 없어요"}</p></div>`}
+      : ups.length ? "" : `<div class="empty"><img src="${SP("toon", date > todayStr() ? "think" : "empty")}" alt=""><p class="muted">${date > todayStr() ? "아직 오지 않은 날이에요" : "이 날은 기록한 스킬이 없어요"}</p></div>`}
       ${date <= todayStr() ? `<button class="btn-block" id="dd-add" style="margin-top:14px;background:var(--sage-pale)">＋ 이 날 기록 추가</button>` : ""}`;
     box.querySelector("[data-close]").onclick = close;
     const add = box.querySelector("#dd-add"); if (add) add.onclick = () => { close(); openManualSheet(null, date); };
+    box.querySelectorAll("[data-open-post]").forEach(el => el.onclick = () => openPostForm(el.dataset.openPost));
+    box._redraw = draw;
     box.querySelectorAll("[data-delrec]").forEach(b => b.onclick = () => {
       const r = state.records.find(x => x.id === b.dataset.delrec);
       if (b.dataset.armed) {
@@ -1376,8 +1421,12 @@ function viewSettings(){
       <div style="width:160px"><label for="sd-${c.id}">시작한 날 <span class="muted">(비우면 시작 전)</span></label><input type="date" id="sd-${c.id}" value="${c.startDate || ""}" max="${todayStr()}"></div>
     </div>
     <div class="row">
-      <div style="width:120px"><label for="d-${c.id}">하루 목표(분)</label><input type="number" id="d-${c.id}" min="1" inputmode="numeric" value="${c.dailyGoal}"></div>
-      <div style="width:120px"><label for="w-${c.id}">주간 목표(시간)</label><input type="number" id="w-${c.id}" min="1" step="0.5" inputmode="decimal" value="${c.weeklyGoal/60}"></div>
+      <div style="width:100%"><label>목표 방식</label><div class="row">
+        <span class="chip ${isCount(c) ? "" : "on"}" data-gt="${c.id}" data-v="time" style="${isCount(c) ? "" : `background:${c.bg}`}">⏱ 시간</span>
+        <span class="chip ${isCount(c) ? "on" : ""}" data-gt="${c.id}" data-v="count" style="${isCount(c) ? `background:${c.bg}` : ""}">🔢 횟수 (주당 N회)</span></div></div>
+      <div class="gt-count-${c.id}" style="width:200px;${isCount(c) ? "" : "display:none"}"><label for="cn-${c.id}">${c.id === "reels" ? "주당 업로드" : `주당 ${esc(c.verb)}`} (회)</label><input type="number" id="cn-${c.id}" min="1" max="21" inputmode="numeric" value="${weeklyCountTarget(c)}"></div>
+      <div class="gt-time-${c.id}" style="width:120px;${isCount(c) ? "display:none" : ""}"><label for="d-${c.id}">하루 목표(분)</label><input type="number" id="d-${c.id}" min="1" inputmode="numeric" value="${c.dailyGoal}"></div>
+      <div class="gt-time-${c.id}" style="width:120px;${isCount(c) ? "display:none" : ""}"><label for="w-${c.id}">주간 목표(시간)</label><input type="number" id="w-${c.id}" min="1" step="0.5" inputmode="decimal" value="${c.weeklyGoal/60}"></div>
     </div>
   </div>`).join("")}
   <div class="err" id="set-err"></div>
@@ -1394,6 +1443,13 @@ function viewSettings(){
   </div>`;
 }
 function bindSettings(){
+  document.querySelectorAll("[data-gt]").forEach(x => x.onclick = () => {
+    const id = x.dataset.gt, c = ch(id);
+    document.querySelectorAll(`[data-gt="${id}"]`).forEach(y => { const on = y === x; y.classList.toggle("on", on); y.style.background = on ? c.bg : ""; });
+    const cnt = x.dataset.v === "count";
+    document.querySelectorAll(`.gt-count-${id}`).forEach(e => e.style.display = cnt ? "" : "none");
+    document.querySelectorAll(`.gt-time-${id}`).forEach(e => e.style.display = cnt ? "none" : "");
+  });
   document.getElementById("set-save").onclick = () => {
     const err = document.getElementById("set-err");
     const next = {};
@@ -1407,7 +1463,11 @@ function bindSettings(){
       if (!name) { err.textContent = `${c.name}의 이름을 입력해 주세요.`; return; }
       if (!(d > 0) || !(w > 0)) { err.textContent = `${c.name}의 목표를 1 이상으로 입력해 주세요.`; return; }
       if (startDate && startDate > todayStr()) { err.textContent = `${c.name}의 시작한 날은 오늘 이전이어야 해요.`; return; }
-      next[c.id] = { name, skill, verb, startDate, dailyGoal: d, weeklyGoal: w };
+      const gtype = document.querySelector(`[data-gt="${c.id}"].on`)?.dataset.v || "time";
+      const cnum = Math.round(Number(document.getElementById("cn-"+c.id).value));
+      if (gtype === "count" && !(cnum > 0)) { err.textContent = `${c.name}의 주당 횟수를 1 이상으로 넣어주세요.`; return; }
+      next[c.id] = { name, skill, verb, startDate, dailyGoal: d, weeklyGoal: w, goalType: gtype, weeklyCount: cnum > 0 ? cnum : 1 };
+      if (c.id === "reels" && cnum > 0) R().weeklyTarget = cnum;
     }
     state.chars = next; Store.save(); render();
     openModal(`<div class="pop-c" style="${charStyle(ch("jp"))}"><div class="hero"><img src="${SP("toon","done1")}" alt="" style="width:110px;height:110px"></div><div class="big" style="font-size:23px">저장했어요!</div></div>`);
@@ -1659,8 +1719,8 @@ function insightSegments(words, W){
   ws.forEach(w => { const r = rows.find(r => Math.abs(r.cy - w.cy) < 24 * s); if (r) { r.ws.push(w); r.cy = (r.cy * (r.ws.length - 1) + w.cy) / r.ws.length; } else rows.push({ cy: w.cy, ws: [w] }); });
   const segs = [];
   rows.forEach(r => { r.ws.sort((a, b) => a.x0 - b.x0); let cur = null;
-    r.ws.forEach(w => { if (cur && w.x0 - cur.x1 < 70 * s) { cur.t += w.t; cur.x1 = Math.max(cur.x1, w.x1); cur.y0 = Math.min(cur.y0, w.y0); cur.y1 = Math.max(cur.y1, w.y1); }
-      else { cur = { t: w.t, x0: w.x0, x1: w.x1, y0: w.y0, y1: w.y1 }; segs.push(cur); } }); });
+    r.ws.forEach(w => { if (cur && w.x0 - cur.x1 < 70 * s) { cur.sp += (w.x0 - cur.x1 > 9 * s ? " " : "") + w.t; cur.t += w.t; cur.x1 = Math.max(cur.x1, w.x1); cur.y0 = Math.min(cur.y0, w.y0); cur.y1 = Math.max(cur.y1, w.y1); }
+      else { cur = { t: w.t, sp: w.t, x0: w.x0, x1: w.x1, y0: w.y0, y1: w.y1 }; segs.push(cur); } }); });
   segs.forEach(g => g.cy = (g.y0 + g.y1) / 2);
   return segs;
 }
@@ -1711,6 +1771,17 @@ function iconBand(words, W){
 }
 
 
+// 게시물 화면 캡처의 캡션 → 제목 (인사이트 화면에는 제목이 없음)
+const UI_TEXT = /^(좋아요|댓글|공유|팔로우|팔로잉|더보기|오리지널오디오|원본오디오|인사이트보기|게시물홍보하기|이릴스홍보하기|메시지보내기|리믹스|번역보기|답글|조회수|요약|조회수추이|조회수에영향|비율은도달|사람들이회원님|주요조회출처|팔로워가아닌|일반릴스|이릴스|건너뛰기|저장비율|공유비율|좋아요비율|댓글비율|리포스트비율|평균조회시간|조회한사람|릴스인사이트)/;
+function cleanCaption(t){
+  t = String(t).replace(/#[^\s#]+/g, "").replace(/@[\w.]+/g, "").replace(/(\.{2,}|…)?\s*더\s*보기.*$/, "").replace(/^[A-Za-z0-9._]{3,}\s+/, "").replace(/\s{2,}/g, " ").trim();
+  return t.length > 40 ? t.slice(0, 40).trim() + "…" : t;
+}
+const isCaption = t => (t.match(/[가-힣]/g) || []).length >= 4 && !/^\d/.test(t) && !UI_TEXT.test(t.replace(/\s/g, ""));
+function captionFromWords(words, W, H){
+  const segs = insightSegments(words, W).filter(g => g.y0 > H * 0.4 && isCaption(g.sp)).sort((a, b) => a.y0 - b.y0);
+  return segs.length ? cleanCaption(segs[0].sp) : null;
+}
 // 붙여넣은 글자(아이패드 '텍스트 인식'으로 복사한 것)에서 읽기
 function parseInsightText(text){
   const lines = String(text).split(/\n+/).map(l => l.trim()).filter(Boolean), flat = lines.map(l => l.replace(/\s/g, ""));
@@ -1737,6 +1808,7 @@ function parseInsightText(text){
   const gi = flat.findIndex(l => /^개요/.test(l));
   if (gi > 0) { const nums = []; for (let i = gi - 1; i >= 0 && nums.length < 5 && /^[\d.,만천K\s]+$/.test(lines[i]); i--) nums.unshift(lines[i]); Object.assign(out, parseIconRow(nums.join(" "))); }
   for (const l of flat) { const m = l.match(/(\d{1,2})월(\d{1,2})/); if (m) { out.firstDay = { m: +m[1], d: +m[2] }; break; } }
+  if (!/인사이트|개요/.test(text)) { const cap = lines.find(l => isCaption(l) && !/%/.test(l)); if (cap) out.title = cleanCaption(cap); }
   // 영상 길이: '0:00 … 0:17' 눈금 줄에서만 (맨 위 시계 제외)
   const axis = flat.find(l => /0:00/.test(l)); if (axis) { const lens = [...axis.matchAll(/(\d{1,2}):(\d{2})/g)].map(m => +m[1] * 60 + +m[2]); if (Math.max(...lens) > 0) out.length = Math.max(...lens); }
   Object.keys(out).forEach(k => out[k] == null && delete out[k]);
@@ -1788,12 +1860,14 @@ async function analyzeInsightImages(files, onStatus){
     onStatus(`캡처 ${i + 1}/${files.length} 읽는 중…`);
     const cv = await fileToCanvas(files[i]), W = cv.width, s = W / 1185;
     const words = (await kor.recognize(cv)).data.words || [];
-    const r = parseInsightWords(words, W);
-    const band = iconBand(words, W);
+    const isInsight = words.some(w => /인사이트|^개요$/.test((w.text || "").trim()));
+    const r = isInsight ? parseInsightWords(words, W) : {};
+    if (!isInsight) { const cap = captionFromWords(words, W, cv.height); if (cap) r.title = cap; }
+    const band = isInsight ? iconBand(words, W) : null;
     if (band) Object.assign(r, parseIconRow((await dig.recognize(cropCanvas(cv, band))).data.text));
     const segs = insightSegments(words, W);
     for (const [key, re] of [["views", /^조회$/], ["reach", /^조회한사람$/], ["follows", /^팔로우$/], ["avgWatch", /^평균조회시간$/]]) {
-      if (r[key] != null) continue;
+      if (!isInsight || r[key] != null) continue;
       const lb = segs.find(g => re.test(g.t)); if (!lb) continue;
       const n = insightNum((await dig.recognize(cropCanvas(cv, { left: Math.round(lb.x0 - 20 * s), top: Math.round(lb.y1 + 15 * s), width: Math.round(320 * s), height: Math.round(135 * s) }))).data.text);
       if (n != null) r[key] = n;
@@ -1828,7 +1902,9 @@ function openPostForm(id, preset = {}){
   let type = p?.type || preset.type || "";
   // 칸에 안 보이는 상세 인사이트(도달·평균 시청·건너뛰기·출처)도 함께 보관
   const base = { h: { ...(p?.h24 || {}) }, w: { ...(p?.d7 || {}) } };
-  let ocrNote = "", lastSlot = null;
+  let ocrNote = "", lastSlot = null, lastVals = null;
+  const undo = [];   // 자동 입력·옮기기 되돌리기
+  const snap = () => undo.push({ base: JSON.parse(JSON.stringify(base)), form: read(), note: ocrNote, lastSlot, lastVals });
   const close = openModal("", { sheet: true }), box = lastModal();
   const sv = (o, k) => o && o[k] != null ? o[k] : "";
   const F5 = ["views", "likes", "saves", "shares", "follows"];
@@ -1850,6 +1926,9 @@ function openPostForm(id, preset = {}){
         </div>
         <p class="muted" style="margin-top:6px">릴스 → 인사이트 화면 캡처를 여러 장 한꺼번에 골라도 돼요. 사진은 이 기기 밖으로 나가지 않아요.</p>
         <div id="ocr-status" class="ocr-status">${ocrNote}</div>
+        ${lastVals || undo.length ? `<div class="row" style="margin-top:6px">
+          ${lastVals ? `<button type="button" class="btn-sm btn-ghost" id="ocr-move">→ ${lastSlot === "h" ? "7일" : "24시간"} 성과로 옮기기</button>` : ""}
+          ${undo.length ? `<button type="button" class="btn-sm" id="ocr-undo" style="background:#fff">↩ 되돌리기</button>` : ""}</div>` : ""}
       </div>
       <div class="row"><div class="grow"><label for="pf2-t">제목·주제</label><input type="text" id="pf2-t" maxlength="50" value="${esc(v.title)}"></div>
       <div style="width:170px"><label for="pf2-d">올린 날</label><input type="date" id="pf2-d" value="${v.date}" max="${todayStr()}"></div></div>
@@ -1867,24 +1946,34 @@ function openPostForm(id, preset = {}){
     box.querySelector("[data-close]").onclick = close;
     box.querySelectorAll("[data-type]").forEach(x => x.onclick = () => { const k = read(); sync(); type = type === x.dataset.type ? "" : x.dataset.type; draw(k); });
     // 캡처 → 자동 입력
+    const slotName = k => k === "h" ? "24시간" : "7일";
     const applyInsight = (res, how) => {
       const k = read(); sync();
-      let date = k.date;
-      if (res.firstDay && !p) { const t = new Date(); let y = t.getFullYear(); const d = `${y}-${pad(res.firstDay.m)}-${pad(res.firstDay.d)}`; date = d > todayStr() ? `${y - 1}-${pad(res.firstDay.m)}-${pad(res.firstDay.d)}` : d; }
-      const age = daysBetween(date || todayStr(), todayStr()), slot = age >= 6 ? "w" : "h";
-      const { firstDay, ...vals } = res;
+      const { firstDay, title, ...vals } = res;
       const got = Object.keys(vals).length;
-      if (!got) { ocrNote = `<span class="err">숫자를 찾지 못했어요. 인사이트 화면(조회·좋아요가 보이는 화면) 캡처인지 확인해 주세요.</span>`; draw(k); return; }
-      base[slot] = { ...base[slot], ...vals }; lastSlot = slot;
-      const shown = Object.entries(INSIGHT_LABELS).filter(([kk]) => vals[kk] != null).map(([kk, l]) => `${l} ${fmtN(vals[kk])}`);
-      ocrNote = `✅ ${how}에서 ${got}개 항목을 읽어 <b>${slot === "h" ? "24시간" : "7일"} 성과</b>에 넣었어요${firstDay && !p ? ` · 올린 날 ${firstDay.m}월 ${firstDay.d}일` : ""}<br><span class="muted">${shown.join(" · ")}</span>
-        <button type="button" class="btn-sm btn-ghost" id="ocr-move" style="margin-left:4px">${slot === "h" ? "7일" : "24시간"} 성과로 옮기기</button>`;
+      if (!got && !title) { ocrNote = `<span class="err">숫자나 제목을 찾지 못했어요. 인사이트 화면이나 게시물 화면 캡처인지 확인해 주세요.</span>`; draw(k); return; }
+      snap();
+      let date = k.date;
+      if (firstDay && !p) { const y = new Date().getFullYear(); const d = `${y}-${pad(firstDay.m)}-${pad(firstDay.d)}`; date = d > todayStr() ? `${y - 1}-${pad(firstDay.m)}-${pad(firstDay.d)}` : d; }
+      // 제목: 캡션이 있으면 캡션, 없고 비어 있으면 날짜로
+      let titleNote = "";
+      if (title && !k.title.trim()) { k.title = title; titleNote = ` · 제목 "${esc(title)}"`; }
+      else if (!k.title.trim()) { const dd = parseYmd(date || todayStr()); k.title = `${dd.getMonth() + 1}월 ${dd.getDate()}일 릴스`; titleNote = ` · 제목은 날짜로 넣었어요 (인사이트 화면엔 제목이 없어서, 캡션 보이는 게시물 화면을 같이 고르면 캡션으로 채워요)`; }
+      if (got) {
+        const age = daysBetween(date || todayStr(), todayStr()), slot = age >= 6 ? "w" : "h";
+        base[slot] = { ...base[slot], ...vals }; lastSlot = slot; lastVals = vals;
+        const shown = Object.entries(INSIGHT_LABELS).filter(([kk]) => vals[kk] != null).map(([kk, l]) => `${l} ${fmtN(vals[kk])}`);
+        ocrNote = `✅ ${how}에서 ${got}개 항목을 읽어 <b>${slotName(slot)} 성과</b>에 넣었어요${firstDay && !p ? ` · 올린 날 ${firstDay.m}월 ${firstDay.d}일` : ""}${titleNote}<br><span class="muted">${shown.join(" · ")}</span>`;
+      } else ocrNote = `✅ ${how}에서 제목을 읽었어요${titleNote}`;
       draw({ ...k, date });
-      const mv = box.querySelector("#ocr-move");
-      if (mv) mv.onclick = () => { const kk = read(); sync(); const other = slot === "h" ? "w" : "h";
-        base[other] = { ...base[other], ...vals }; Object.keys(vals).forEach(x => delete base[slot][x]); lastSlot = other;
-        ocrNote = ocrNote.replace(/<b>.*?성과<\/b>/, `<b>${other === "h" ? "24시간" : "7일"} 성과</b>`).replace(/<button[\s\S]*<\/button>/, ""); draw(kk); };
     };
+    const mv = box.querySelector("#ocr-move");
+    if (mv) mv.onclick = () => { const kk = read(); sync(); snap(); const other = lastSlot === "h" ? "w" : "h";
+      base[other] = { ...base[other], ...lastVals }; Object.keys(lastVals).forEach(x => delete base[lastSlot][x]);
+      ocrNote = ocrNote.replace(/<b>.*?성과<\/b>/, `<b>${slotName(other)} 성과</b>`); lastSlot = other; draw(kk); };
+    const ud = box.querySelector("#ocr-undo");
+    if (ud) ud.onclick = () => { const u = undo.pop(); if (!u) return;
+      Object.keys(base).forEach(k => base[k] = u.base[k]); ocrNote = u.note; lastSlot = u.lastSlot; lastVals = u.lastVals; draw(u.form); };
     const fileIn = box.querySelector("#ocr-file"), st = box.querySelector("#ocr-status");
     fileIn.onchange = async () => {
       const files = [...fileIn.files]; if (!files.length) return;
