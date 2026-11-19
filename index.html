@@ -274,6 +274,39 @@
   .ins-line { font-size: 12.5px; color: var(--ink-soft); margin-top: 4px; }
   .mchip.up { background: var(--blush-pale); border: 1.5px dashed #E8A9A0; }
   .day-ups { background: var(--c-bg); border: 2px solid var(--ink); border-radius: 16px; padding: 10px 12px; margin: 10px 0; }
+
+  /* 홈 릴스 진행도 카드 */
+  .hud-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  .rc-pill { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,253,247,.95); border-color: var(--ink); padding: 4px 12px 4px 4px; font-size: 14px; font-weight: 700; }
+  .rc-pill img { width: 30px; height: 30px; object-fit: contain; }
+  .rc-dot { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; border-radius: 9px; background: #E2685A; color: #fff; font-size: 11px; padding: 0 5px; }
+  .rc { width: 290px; background: rgba(255,253,247,.96); border: 2px solid var(--ink); border-radius: 20px; box-shadow: 0 4px 0 rgba(74,53,41,.2); overflow: hidden; transition: width .25s ease; animation: rcIn .25s ease; }
+  @keyframes rcIn { from { opacity: 0; transform: translateY(-6px); } }
+  .rc.open { width: min(460px, calc(100vw - 24px)); }
+  .rc-head { display: flex; align-items: center; gap: 6px; padding: 6px 8px 4px 6px; background: var(--c-bg); cursor: pointer; border-bottom: 2px dashed rgba(74,53,41,.15); }
+  .rc-head img { width: 34px; height: 34px; object-fit: contain; }
+  .rc-head b { font-size: 19px; flex: 1; }
+  .rc-tog { font-size: 12px; color: var(--ink-soft); }
+  .rc-x { width: 28px; height: 28px; padding: 0; border-radius: 50%; font-size: 16px; font-weight: 700; box-shadow: 0 2px 0 var(--ink); background: #fff; }
+  .rc-sum { padding: 8px 12px 10px; font-size: 13.5px; }
+  .rc-stages { display: flex; gap: 6px; }
+  .rc-stages span { flex: 1; text-align: center; background: #fff; border: 1.5px solid var(--line); border-radius: 10px; padding: 2px 0; font-size: 13px; }
+  .rc-stages span.zero { opacity: .5; }
+  .rc-next { margin-top: 7px; font-size: 13px; word-break: keep-all; }
+  .rc-alert { display: block; width: 100%; text-align: left; margin-top: 6px; padding: 5px 10px; font-size: 12.5px; border-radius: 10px; border: 1.5px dashed #E09A4E; background: #FFF3DF; box-shadow: none; color: #8A5414; }
+  .rc-alert:active { box-shadow: none; }
+  .rc-detail { max-height: calc(100vh - 330px); max-height: calc(100dvh - 330px); overflow-y: auto; padding: 4px 10px 10px; border-top: 2px dashed var(--line); background: var(--cream); animation: rcGrow .3s ease; }
+  @keyframes rcGrow { from { max-height: 0; opacity: .3; } }
+  .rc-detail .duo-title { display: none; }
+  .rc-detail .card { padding: 12px; margin: 10px 0 0; box-shadow: none; }
+  .rc-detail .board { grid-template-columns: repeat(4, minmax(130px, 1fr)); }
+  @media (max-width: 560px) {
+    .hud { flex-wrap: wrap; }
+    .hud-right:has(.rc.open) { width: 100%; }
+    .rc { width: min(290px, calc(100vw - 24px)); }
+    .rc-detail { max-height: calc(100dvh - 300px); }
+  }
+
   /* 탭바 */
   .tabbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: max(14px, env(safe-area-inset-bottom)); display: flex; gap: 4px; background: var(--paper); border: 2px solid var(--ink); border-radius: 999px; padding: 6px; box-shadow: 0 5px 0 var(--shadow); z-index: 5; }
   .tabbar button { border: 0; box-shadow: none; background: transparent; padding: 8px 18px; font-family: var(--hand); font-size: 19px; font-weight: 700; color: var(--ink-soft); white-space: nowrap; }
@@ -741,7 +774,10 @@ function viewHome(){
       <div class="muted">${fmtMD(today)} (${DOW[(new Date().getDay()+6)%7]}) · 총 <b>${fmtDur(total)}</b></div>
       ${(() => { const ni = nowInfo(), c0 = ni.current[0]; return c0 ? `<div class="now-line">⏰ 지금: <b>${esc(c0.p.name)}</b> ~${esc(c0.p.end || "")}</div>` : ni.next ? `<div class="now-line">🌿 다음: ${esc(ni.next.p.name)} ${ni.next.p.start}</div>` : ""; })()}
     </div>
-    <button class="btn-sm hud-btn" id="btn-summary">📋 결산</button>
+    <div class="hud-right">
+      <button class="btn-sm hud-btn" id="btn-summary">📋 결산</button>
+      ${reelsCardHTML()}
+    </div>
   </div>
   ${!state.records.length && !t ? `<div class="hint">친구를 눌러 오늘 기록을 확인해요 👆</div>` : ""}
   ${t ? `<div class="timer-pill" style="${charStyle(tc)}">
@@ -754,6 +790,7 @@ function bindHome(){
   document.querySelectorAll("[data-char]").forEach(el => el.onclick = () => openCharPopup(el.dataset.char));
   const s = document.getElementById("stop-main"); if (s) s.onclick = stopTimer;
   document.getElementById("btn-summary").onclick = showSummary;
+  bindReelsCard();
   const w = document.getElementById("scene-wrap");
   if (ui.scroll) { w.scrollLeft = ui.scroll[0]; w.scrollTop = ui.scroll[1]; }
   else requestAnimationFrame(() => { w.scrollLeft = (w.scrollWidth - w.clientWidth) / 2; w.scrollTop = (w.scrollHeight - w.clientHeight) / 2; });
@@ -813,6 +850,7 @@ function openCharPopup(id){
     </div>`;
   };
   const duo = id === "reels";
+  if (duo && reelsCardState() === "open") { ui.reelsCard = "preview"; render(); }
   const wrap = () => duo ? `<div class="duo"><div class="duo-l">${draw()}</div><div class="duo-r" id="reels-panel">${viewReels(true)}</div></div>` : draw();
   const close = openModal(wrap(), { bare: true, wide: duo });
   const box = duo ? lastModal().querySelector(".duo-l") : lastModal();
@@ -1650,7 +1688,15 @@ function bindReels(){
     render();
   });
   // 팔로워
-  $("fw-add").onclick = () => {
+  $("fw-add").onclick = () => openFollowerForm();
+
+  document.querySelectorAll("[data-fw-del]").forEach(el => el.onclick = () => { if (el.dataset.armed) { R().followers = R().followers.filter(f => f.id !== el.dataset.fwDel); Store.save(); render(); } else { el.dataset.armed = 1; el.textContent = "한 번 더"; } });
+  // 업로드
+  $("po-add").onclick = () => openPostForm(null);
+  document.querySelectorAll("[data-po-edit]").forEach(el => el.onclick = () => openPostForm(el.dataset.poEdit));
+}
+function openFollowerForm(){
+  const $ = id => document.getElementById(id);
     const last = followerSeries().slice(-1)[0];
     const close = openModal(`<div class="pop-c" style="text-align:left"><button class="close-x" data-close aria-label="닫기">✕</button><h2>팔로워 기록</h2>
       <div class="row"><div class="grow"><label for="fw-n">지금 팔로워 수</label><input type="number" id="fw-n" min="0" inputmode="numeric" value="${last ? last.count : ""}"></div>
@@ -1664,12 +1710,7 @@ function bindReels(){
       R().followers = R().followers.filter(f => f.date !== d); R().followers.push({ id: uid(), date: d, count: n });
       Store.save(); close(); render();
     };
-  };
-  document.querySelectorAll("[data-fw-del]").forEach(el => el.onclick = () => { if (el.dataset.armed) { R().followers = R().followers.filter(f => f.id !== el.dataset.fwDel); Store.save(); render(); } else { el.dataset.armed = 1; el.textContent = "한 번 더"; } });
-  // 업로드
-  $("po-add").onclick = () => openPostForm(null);
-  document.querySelectorAll("[data-po-edit]").forEach(el => el.onclick = () => openPostForm(el.dataset.poEdit));
-}
+  }
 function typeChips(sel){ return `<div class="row">${REEL_TYPES.map(t => `<span class="chip ${t === sel ? "on" : ""}" data-type="${t}" style="${t === sel ? "background:var(--blush-pale)" : ""}">${t}</span>`).join("")}</div>`; }
 function openBoardForm(id){
   const b = id ? R().board.find(x => x.id === id) : null;
@@ -2007,6 +2048,63 @@ function openPostForm(id, preset = {}){
     };
   };
   draw();
+}
+
+
+/* ============ 홈: 릴스 진행도 카드 (닫힘 · 미리보기 · 펼침) ============ */
+const RC_KEY = "tg-reels-card";
+function reelsCardState(){
+  if (ui.reelsCard) return ui.reelsCard;
+  let v = null; try { v = localStorage.getItem(RC_KEY); } catch(e) {}
+  return ui.reelsCard = v || (window.innerWidth < 600 ? "closed" : "preview");
+}
+function setReelsCard(v){ ui.reelsCard = v; try { localStorage.setItem(RC_KEY, v); } catch(e) {} }
+function nextBoardCard(){
+  const order = { edit: 0, shoot: 1, idea: 2 };
+  return R().board.filter(b => b.stage !== "done").sort((a, b) => (a.due || "9999") < (b.due || "9999") ? -1 : (a.due || "9999") > (b.due || "9999") ? 1 : order[a.stage] - order[b.stage] || a.ts - b.ts)[0] || null;
+}
+function reelsAlerts(){
+  const out = [], thisMon = ymd(mondayOf(new Date()));
+  R().posts.filter(statsDue).sort((a, b) => a.date < b.date ? -1 : 1).slice(0, 2).forEach(p => out.push({ k: "post", id: p.id, t: `⏰ '${p.title}' ${statsDue(p)} 성과 입력` }));
+  if (!R().followers.some(f => f.date >= thisMon)) out.push({ k: "fw", t: "📌 이번 주 팔로워 수 기록하기" });
+  return out;
+}
+function reelsCardHTML(){
+  const st = reelsCardState(), c = ch("reels"), rh = rhythm();
+  const counts = STAGES.map(x => ({ ...x, n: R().board.filter(b => b.stage === x.k && !(x.k === "done" && b.archived)).length }));
+  const icon = { idea: "💡", shoot: "🎥", edit: "✂️", done: "✅" };
+  if (st === "closed") return `<button class="rc-pill" id="rc-open" style="${charStyle(c)}" aria-label="릴스 진행도 열기">
+    <img src="${SP("reels", "idle")}" alt="">🎬 ${rh.thisN}/${rh.target}${counts[0].n ? ` · 💡${counts[0].n}` : ""}${reelsAlerts().length ? ` <span class="rc-dot">${reelsAlerts().length}</span>` : ""}</button>`;
+  const nb = nextBoardCard(), al = reelsAlerts(), open = st === "open";
+  return `<div class="rc ${open ? "open" : ""}" id="rc" style="${charStyle(c)}">
+    <div class="rc-head" id="rc-toggle" role="button" aria-expanded="${open}">
+      <img src="${SP("reels", rh.thisN >= rh.target ? "done2" : "idle")}" alt="">
+      <b class="hand">릴스 진행도</b>
+      <span class="rc-tog">${open ? "접기 ▴" : "자세히 ▾"}</span>
+      <button class="rc-x" id="rc-close" aria-label="닫기">－</button>
+    </div>
+    <div class="rc-sum" id="rc-sum">
+      <div class="row between"><span>이번 주 업로드 <b>${rh.thisN} / ${rh.target}</b></span><span class="muted">🔥 ${rh.streak}주${rh.sinceLast != null ? ` · ${rh.sinceLast === 0 ? "오늘" : rh.sinceLast + "일 전"}` : ""}</span></div>
+      <div class="bar thin" style="margin:5px 0 7px"><i style="width:${Math.min(100, rh.thisN / rh.target * 100)}%;background:${c.main}"></i></div>
+      <div class="rc-stages">${counts.map(x => `<span class="${x.n ? "" : "zero"}">${icon[x.k]} ${x.n}</span>`).join("")}</div>
+      ${nb ? `<p class="rc-next">▶ 다음: <b>${esc(nb.title)}</b> <span class="muted">— ${STAGES.find(x => x.k === nb.stage).label.replace(/^\S+\s/, "")}${nb.due ? ` · ${fmtMD(nb.due)}까지` : ""}</span></p>` : ""}
+      ${al.map((a, i) => `<button class="rc-alert" data-rc-alert="${i}">${esc(a.t)} ›</button>`).join("")}
+    </div>
+    ${open ? `<div class="rc-detail" id="rc-detail">${viewReels(true)}</div>` : ""}
+  </div>`;
+}
+function bindReelsCard(){
+  const st = reelsCardState();
+  const o = document.getElementById("rc-open"); if (o) o.onclick = () => { setReelsCard("preview"); render(); };
+  if (st === "closed") return;
+  document.getElementById("rc-close").onclick = e => { e.stopPropagation(); setReelsCard("closed"); render(); };
+  document.getElementById("rc-toggle").onclick = () => { setReelsCard(st === "open" ? "preview" : "open"); render(); };
+  const sum = document.getElementById("rc-sum");
+  if (st === "preview") { sum.onclick = () => { setReelsCard("open"); render(); }; sum.style.cursor = "pointer"; }
+  const al = reelsAlerts();
+  document.querySelectorAll("[data-rc-alert]").forEach(b => b.onclick = e => { e.stopPropagation(); const a = al[+b.dataset.rcAlert]; if (!a) return; a.k === "post" ? openPostForm(a.id) : openFollowerForm(); });
+  const det = document.getElementById("rc-detail");
+  if (det) { if (ui.rcScroll) det.scrollTop = ui.rcScroll; det.onscroll = () => { ui.rcScroll = det.scrollTop; }; bindReels(); }
 }
 
 /* ============ 공통 ============ */
