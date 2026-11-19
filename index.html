@@ -328,6 +328,62 @@
   .chk-s.on { background: var(--sage); border-style: solid; }
   .rc-detail { max-height: calc(100vh - 420px); max-height: calc(100dvh - 420px); min-height: 220px; }
 
+
+  /* ===== 마을 배경: 사계절 × 낮/저녁 ===== */
+  .scene { container-type: size; }
+  .eve-tint, .eve-lights, .eve-stars, .fx { position: absolute; inset: 0; pointer-events: none; }
+  .eve-tint, .eve-lights, .eve-stars { opacity: 0; transition: opacity 1.6s ease; }
+  .scene.tod-evening .eve-tint, .scene.tod-evening .eve-lights, .scene.tod-evening .eve-stars { opacity: 1; }
+  /* 저녁: 투명한 노을빛 + 연보라 조명 (원본 위에 얇게) */
+  .eve-tint::before { content: ""; position: absolute; inset: 0; mix-blend-mode: multiply;
+    background: linear-gradient(180deg, rgba(150,130,215,.55) 0%, rgba(205,165,215,.38) 32%, rgba(225,180,200,.30) 55%, rgba(150,130,205,.45) 100%); }
+  .eve-tint::after { content: ""; position: absolute; inset: 0; mix-blend-mode: soft-light;
+    background: radial-gradient(ellipse 90% 45% at 50% 28%, rgba(255,160,120,.55), transparent 70%), linear-gradient(180deg, rgba(255,150,170,.25), rgba(120,100,200,.25)); }
+  /* 창문·가로등 불빛 */
+  .glow { position: absolute; transform: translate(-50%, -50%); border-radius: 50%; mix-blend-mode: screen; }
+  .glow.win { width: 5.2%; aspect-ratio: 1; background: radial-gradient(circle, rgba(255,226,150,.95) 0, rgba(255,196,110,.55) 30%, rgba(255,170,100,.18) 55%, transparent 72%); }
+  .glow.lamp { width: 3.6%; aspect-ratio: 1; background: radial-gradient(circle, rgba(255,240,180,1) 0, rgba(255,214,120,.6) 28%, rgba(255,190,110,.18) 55%, transparent 72%); }
+  .anim-on .glow { animation: glowPulse 5.5s ease-in-out var(--dl) infinite alternate; }
+  @keyframes glowPulse { 0% { opacity: .78; } 100% { opacity: 1; } }
+  /* 별 */
+  .star { position: absolute; width: 1%; aspect-ratio: 1; transform: translate(-50%, -50%) scale(var(--s)); }
+  .star::before, .star::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle, #fff 0 18%, rgba(255,250,220,.6) 30%, transparent 62%); }
+  .star::after { inset: -60% 42%; background: linear-gradient(transparent, rgba(255,255,240,.95), transparent); box-shadow: none; }
+  .star::before { box-shadow: 0 0 6px 1px rgba(255,248,220,.8); border-radius: 50%; }
+  .anim-on .star { animation: twinkle var(--d) ease-in-out var(--dl) infinite; }
+  @keyframes twinkle { 0%, 100% { opacity: .35; transform: translate(-50%, -50%) scale(calc(var(--s) * .7)); } 50% { opacity: 1; transform: translate(-50%, -50%) scale(var(--s)); } }
+  /* 계절 움직임: 떨어지는 꽃잎·낙엽·눈송이, 여름 반짝임 */
+  .fx { overflow: hidden; }
+  .fx .p { position: absolute; top: -4%; will-change: transform; animation: fxFall var(--d) linear var(--dl) infinite; }
+  .fx .p b { display: block; will-change: transform; animation: fxSway var(--sd) ease-in-out var(--dl) infinite alternate; }
+  @keyframes fxFall { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(0, 108cqh, 0); } }
+  @keyframes fxSway { from { transform: translateX(0) rotate(0deg) scale(var(--s)); } to { transform: translateX(var(--sw)) rotate(220deg) scale(var(--s)); } }
+  .fx-spring b { width: 16px; height: 12px; border-radius: 80% 0 80% 0; background: radial-gradient(circle at 30% 30%, #FFF0F4, #F49AB6 75%); box-shadow: 0 1px 2px rgba(190,90,120,.35); opacity: .95; }
+  .fx-autumn b { width: 16px; height: 16px; border-radius: 0 85% 0 85%; background: hsl(calc(10 + var(--h) * 32), 85%, 58%); box-shadow: inset -2px -2px 0 rgba(120,50,20,.18); opacity: .92; }
+  .fx-winter b { width: 8px; height: 8px; border-radius: 50%; background: #fff; box-shadow: 0 0 6px rgba(255,255,255,.9); opacity: .9; }
+  .fx-winter .p b { animation-name: fxSnow; }
+  @keyframes fxSnow { from { transform: translateX(0) scale(var(--s)); } to { transform: translateX(var(--sw)) scale(var(--s)); } }
+  .fx .p.tw { top: auto; animation: none; }
+  .fx-summer .tw b { width: 14px; height: 14px; animation: fxSpark var(--d) ease-in-out var(--dl) infinite;
+    background: radial-gradient(circle, #fff 0 14%, rgba(255,255,210,.0) 40%), linear-gradient(90deg, transparent 44%, rgba(255,255,235,.95) 50%, transparent 56%), linear-gradient(0deg, transparent 44%, rgba(255,255,235,.95) 50%, transparent 56%); }
+  @keyframes fxSpark { 0%, 100% { opacity: 0; transform: scale(calc(var(--s) * .3)) rotate(0deg); } 50% { opacity: 1; transform: scale(var(--s)) rotate(45deg); } }
+  .scene.tod-evening .fx-winter b { box-shadow: 0 0 8px rgba(230,220,255,.9); }
+  /* 화면이 숨겨지면 멈춤 · 끄기 · 동작 줄이기 */
+  .fx-paused .scene *, .fx-paused .scene *::before, .fx-paused .scene *::after { animation-play-state: paused !important; }
+  .anim-off .glow, .anim-off .star { animation: none !important; }
+  @media (prefers-reduced-motion: reduce) { .fx { display: none; } .glow, .star { animation: none !important; } .eve-tint, .eve-lights, .eve-stars { transition: none; } }
+  /* 조명 위치 편집 */
+  .light-editing .toast, .light-editing .hud, .light-editing .quick, .light-editing .fab, .light-editing .timer-pill, .light-editing .hint, .light-editing .tabbar { display: none !important; }
+  .light-editing .npc { pointer-events: none; opacity: .45; }
+  .scene.editing { cursor: crosshair; }
+  .scene.editing .eve-lights, .scene.editing .eve-stars { z-index: 3; }
+  .scene.editing .glow, .scene.editing .star { pointer-events: auto; }
+  .scene.editing .glow, .scene.editing .star { animation: none !important; }
+  .scene.editing .glow, .scene.editing .star { cursor: pointer; outline: 2px dashed rgba(255,255,255,.95); outline-offset: 2px; }
+  .scene.editing .glow.lamp { outline-color: #FFE38A; }
+  .scene.editing .star { outline-color: #CFC4FF; width: 1.6%; }
+  .le-bar { position: fixed; bottom: max(12px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); z-index: 6; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 12px; background: rgba(255,253,247,.96); border: 2px solid var(--ink); border-radius: 18px; padding: 8px 14px; box-shadow: 0 4px 0 rgba(74,53,41,.2); width: max-content; max-width: calc(100vw - 20px); }
+
   /* 탭바 */
   .tabbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: max(14px, env(safe-area-inset-bottom)); display: flex; gap: 4px; background: var(--paper); border: 2px solid var(--ink); border-radius: 999px; padding: 6px; box-shadow: 0 5px 0 var(--shadow); z-index: 5; }
   .tabbar button { border: 0; box-shadow: none; background: transparent; padding: 8px 18px; font-family: var(--hand); font-size: 19px; font-weight: 700; color: var(--ink-soft); white-space: nowrap; }
@@ -462,7 +518,7 @@ function fmtClock(ms){ const s = Math.max(0, Math.floor(ms/1000)); return `${pad
 
 /* ============ 상태 ============ */
 let state = emptyState();
-function emptyState(){ return { chars: {}, records: [], timer: null, plans: [], goals: [], goalLogs: [], imports: [], template: [], templateFrom: null, filledDates: [], reels: emptyReels(), createdAt: Date.now(), updatedAt: 0 }; }
+function emptyState(){ return { chars: {}, records: [], timer: null, plans: [], goals: [], goalLogs: [], imports: [], template: [], templateFrom: null, filledDates: [], reels: emptyReels(), scene: {}, createdAt: Date.now(), updatedAt: 0 }; }
 function emptyReels(){ return { posts: [], followers: [], board: [], weeklyTarget: null }; }
 function normalize(s){
   const e = emptyState();
@@ -471,6 +527,7 @@ function normalize(s){
   return { chars: s.chars || {}, records: arr("records"), timer: s.timer || null,
     plans: arr("plans"), goals: arr("goals"), goalLogs: arr("goalLogs"), imports: arr("imports"),
     template: arr("template"), templateFrom: s.templateFrom || null, filledDates: arr("filledDates"),
+    scene: s.scene && typeof s.scene === "object" ? s.scene : {},
     reels: (r => ({ posts: Array.isArray(r.posts) ? r.posts : [], followers: Array.isArray(r.followers) ? r.followers : [], board: Array.isArray(r.board) ? r.board : [], weeklyTarget: r.weeklyTarget || null }))(s.reels || {}),
     createdAt: s.createdAt || e.createdAt, updatedAt: s.updatedAt || 0 };
 }
@@ -736,6 +793,86 @@ function moodOf(id){
   return { pose: "idle", text: "오늘도 같이 하자!" };
 }
 
+
+/* ============ 🌸 마을 배경: 사계절 × 낮/저녁 ============ */
+// 낮 06:00~17:59 / 저녁 18:00~05:59 (기기 현지 시간)
+function getTimeOfDay(d = new Date()){ const h = d.getHours(); return h >= 6 && h < 18 ? "day" : "evening"; }
+function getSeason(d = new Date()){ const m = d.getMonth() + 1; return m >= 3 && m <= 5 ? "spring" : m <= 8 && m >= 6 ? "summer" : m >= 9 && m <= 11 ? "autumn" : "winter"; }
+const SEASONS = { spring: "🌸 봄", summer: "🌻 여름", autumn: "🍁 가을", winter: "❄️ 겨울" };
+const scenePref = () => state.scene || (state.scene = {});
+const curTod = () => ui.lightEdit ? "evening" : (scenePref().time === "day" || scenePref().time === "evening" ? scenePref().time : getTimeOfDay());
+const curSeason = () => SEASONS[scenePref().season] ? scenePref().season : getSeason();
+const reduceMotion = () => window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+const animOn = () => scenePref().anim !== false && !reduceMotion();
+// 저녁 불빛 기본 위치 (원본 그림 1448×1086 기준 %, 네 계절 그림이 같은 구도)
+const PX = (x, y) => ({ x: +(x / 14.48).toFixed(2), y: +(y / 10.86).toFixed(2) });
+const DEFAULT_LIGHTS = [
+  ...[[222,98],[155,190],[250,205],[205,312],[1128,512],[1305,506],[1340,772],[1252,770],[1268,212],[1325,195],[552,445],[877,122]].map(([x, y]) => ({ t: "w", ...PX(x, y) })),
+  ...[[383,448],[606,546],[985,435],[1082,635],[1425,410],[348,828],[152,858],[400,532],[1290,405]].map(([x, y]) => ({ t: "l", ...PX(x, y) })),
+];
+const DEFAULT_STARS = [[520,40],[612,22],[700,62],[762,18],[985,28],[1122,22],[1080,45],[470,95],[660,105],[555,140],[735,95]].map(([x, y]) => PX(x, y));
+const sceneLights = () => Array.isArray(scenePref().lights) ? scenePref().lights : DEFAULT_LIGHTS;
+const sceneStars = () => Array.isArray(scenePref().stars) ? scenePref().stars : DEFAULT_STARS;
+// 같은 결과가 나오는 난수(다시 그려도 위치가 안 바뀌게)
+function rng(seed){ let t = seed >>> 0; return () => { t += 0x6D2B79F5; let r = Math.imul(t ^ t >>> 15, 1 | t); r ^= r + Math.imul(r ^ r >>> 7, 61 | r); return ((r ^ r >>> 14) >>> 0) / 4294967296; }; }
+function particlesHTML(season){
+  const R0 = rng({ spring: 11, summer: 22, autumn: 33, winter: 44 }[season]), now = Date.now() / 1000;
+  const n = { spring: 18, summer: 22, autumn: 16, winter: 28 }[season], out = [];
+  for (let i = 0; i < n; i++) {
+    const x = R0() * 100, d = season === "winter" ? 14 + R0() * 12 : season === "summer" ? 2.5 + R0() * 3.5 : 12 + R0() * 10;
+    const dl = -((now + R0() * d) % d), sc = .6 + R0() * .8, sw = (season === "winter" ? 12 : 40) * (R0() > .5 ? 1 : -1), sd = 3 + R0() * 3, hue = R0();
+    if (season === "summer") { const y = 25 + R0() * 72;   // 반짝임: 제자리에서 반짝
+      out.push(`<i class="p tw" style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%;--d:${d.toFixed(1)}s;--dl:${dl.toFixed(2)}s;--s:${sc.toFixed(2)}"><b></b></i>`); }
+    else out.push(`<i class="p" style="left:${x.toFixed(1)}%;--d:${d.toFixed(1)}s;--dl:${dl.toFixed(2)}s;--s:${sc.toFixed(2)};--sw:${sw}px;--sd:${sd.toFixed(1)}s;--h:${hue.toFixed(2)}"><b></b></i>`);
+  }
+  return out.join("");
+}
+function sceneLayersHTML(){
+  const season = curSeason(), now = Date.now() / 1000, R1 = rng(7);
+  const lights = sceneLights().map((l, i) => `<i class="glow ${l.t === "l" ? "lamp" : "win"}" data-li="${i}" style="left:${l.x}%;top:${l.y}%;--dl:${(-((now + R1() * 6) % 6)).toFixed(2)}s"></i>`).join("");
+  const stars = sceneStars().map((st, i) => `<i class="star" data-si="${i}" style="left:${st.x}%;top:${st.y}%;--d:${(2.8 + R1() * 3).toFixed(1)}s;--dl:${(-((now + R1() * 5) % 5)).toFixed(2)}s;--s:${(.7 + R1() * .6).toFixed(2)}"></i>`).join("");
+  return `<div class="eve-tint" aria-hidden="true"></div>
+    <div class="eve-lights" aria-hidden="true">${lights}</div>
+    <div class="eve-stars" aria-hidden="true">${stars}</div>
+    ${animOn() ? `<div class="fx fx-${season}" aria-hidden="true">${particlesHTML(season)}</div>` : ""}`;
+}
+function sceneClass(){ return `season-${curSeason()} tod-${curTod()} ${animOn() ? "anim-on" : "anim-off"} ${ui.lightEdit ? "editing" : ""}`; }
+// 시간대·계절 바뀜 감시: 화면을 새로 그리지 않고 클래스만 바꿔 부드럽게 전환
+function checkScene(){
+  const t = curTod(), se = curSeason(), sc = document.getElementById("scene");
+  if (ui.season && se !== ui.season && ui.tab === "home") { ui.season = se; ui.tod = t; render(); return; }
+  if (sc && t !== ui.tod) { sc.classList.remove("tod-day", "tod-evening"); sc.classList.add(`tod-${t}`); }
+  ui.tod = t; ui.season = se;
+}
+setInterval(checkScene, 30000);
+document.addEventListener("visibilitychange", () => { document.body.classList.toggle("fx-paused", document.hidden); if (!document.hidden) checkScene(); });
+
+/* --- 저녁 조명·별 위치 편집 --- */
+function lightEditBarHTML(){
+  const m = ui.lightEditMode || "w";
+  return `<div class="le-bar">
+    <b class="hand" style="font-size:19px">💡 저녁 조명 위치</b>
+    <div class="row" style="gap:5px">${[["w", "🪟 창문"], ["l", "🏮 가로등·전구"], ["s", "✨ 별"]].map(([k, l]) => `<span class="chip ${m === k ? "on" : ""}" data-le-mode="${k}" style="${m === k ? "background:var(--butter-pale)" : ""}">${l}</span>`).join("")}</div>
+    <span class="muted">빈 곳을 누르면 추가 · 점을 누르면 삭제</span>
+    <div class="row" style="gap:5px"><button class="btn-sm btn-ghost" id="le-reset">기본값</button><button class="btn-sm btn-primary" id="le-done" style="font-size:15px">완료</button></div>
+  </div>`;
+}
+function bindLightEdit(){
+  const sc = document.getElementById("scene"); if (!sc) return;
+  document.querySelectorAll("[data-le-mode]").forEach(c => c.onclick = () => { ui.lightEditMode = c.dataset.leMode; render(); });
+  document.getElementById("le-done").onclick = e => { e.stopPropagation(); ui.lightEdit = false; document.body.classList.remove("light-editing"); ui.tab = "set"; render(); };
+  document.getElementById("le-reset").onclick = e => { e.stopPropagation(); delete scenePref().lights; delete scenePref().stars; Store.save(); render(); };
+  sc.onclick = e => {
+    const r = sc.getBoundingClientRect(), x = +((e.clientX - r.left) / r.width * 100).toFixed(2), y = +((e.clientY - r.top) / r.height * 100).toFixed(2);
+    const li = e.target.closest("[data-li]"), si = e.target.closest("[data-si]");
+    if (li) { const a = [...sceneLights()]; a.splice(+li.dataset.li, 1); scenePref().lights = a; }
+    else if (si) { const a = [...sceneStars()]; a.splice(+si.dataset.si, 1); scenePref().stars = a; }
+    else if ((ui.lightEditMode || "w") === "s") scenePref().stars = [...sceneStars(), { x, y }];
+    else scenePref().lights = [...sceneLights(), { t: ui.lightEditMode || "w", x, y }];
+    Store.save(); render();
+  };
+}
+
 /* ============ 화면 상태 ============ */
 const ui = { tab: "home", weekOffset: 0, monthOffset: 0, selectedDate: todayStr(), scroll: null, ttMode: "week" };
 
@@ -757,7 +894,7 @@ function render(){
   document.getElementById("nav-root").innerHTML = `<nav class="tabbar">
     ${[["home","🏡 마을"],["tt","🗓 시간표"],["cal","📅 달력"],["set","⚙️ 설정"]].map(([k,l]) => `<button data-tab="${k}" class="${ui.tab===k?"on":""}">${l}</button>`).join("")}
   </nav><button class="fab" id="fab" aria-label="시간 기록하기">＋</button>`;
-  document.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => { ui.tab = b.dataset.tab; window.scrollTo(0,0); render(); });
+  document.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => { ui.lightEdit = false; document.body.classList.remove("light-editing"); ui.tab = b.dataset.tab; window.scrollTo(0,0); render(); });
   document.getElementById("fab").onclick = () => openManualSheet();
   document.querySelectorAll("#modal-root .modal[data-day-detail]").forEach(m => m._redraw && m._redraw());
   const rp = document.getElementById("reels-panel");
@@ -773,8 +910,9 @@ function viewHome(){
   const total = CHARS.reduce((a,c) => a + minOn(c.id, today), 0);
   const t = state.timer, tc = t ? ch(t.charId) : null;
   return `
-  <div class="scene-wrap" id="scene-wrap"><div class="scene" id="scene">
-    <img class="village" src="village.webp" alt="마을">
+  <div class="scene-wrap" id="scene-wrap"><div class="scene ${sceneClass()}" id="scene">
+    <img class="village" src="${curSeason()}.webp" alt="${SEASONS[curSeason()].slice(3)} 마을">
+    ${sceneLayersHTML()}
     ${allChars().map(c => {
       const li = levelInfo(xpOf(c.id)), st = stageOf(li.level), m = moodOf(c.id), mins = minOn(c.id, today), run = timerOf(c.id);
       return `<div class="npc" data-char="${c.id}" style="left:${c.x}%;top:${c.y}%;width:${(c.w*(.82+.18*st.scale)).toFixed(2)}%;${charStyle(c)}" role="button" aria-label="${esc(c.name)} 오늘 기록 보기">
@@ -788,6 +926,7 @@ function viewHome(){
     }).join("")}
   </div></div>
 
+  ${ui.lightEdit ? lightEditBarHTML() : ""}
   <div class="quick">${allChars().map(c => `<button data-jump="${c.id}" style="${charStyle(c)}" aria-label="${esc(c.name)}에게 가기"><img src="${SP(c.id, "idle")}" alt=""></button>`).join("")}</div>
   <div class="hud">
     <div class="hud-card">
@@ -808,6 +947,9 @@ function viewHome(){
   </div>` : ""}`;
 }
 function bindHome(){
+  ui.tod = curTod(); ui.season = curSeason();
+  document.body.classList.toggle("light-editing", !!ui.lightEdit);
+  if (ui.lightEdit) bindLightEdit();
   document.querySelectorAll("[data-char]").forEach(el => el.onclick = () => openCharPopup(el.dataset.char));
   const s = document.getElementById("stop-main"); if (s) s.onclick = stopTimer;
   document.getElementById("btn-summary").onclick = showSummary;
@@ -1490,6 +1632,18 @@ function viewSettings(){
   </div>`).join("")}
   <div class="err" id="set-err"></div>
   <button class="btn-primary btn-block" id="set-save">저장하기</button>
+  <div class="card" style="margin-top:16px">
+    <h3>🎨 마을 배경</h3>
+    <p class="muted" style="margin:4px 0 2px">바꾸면 바로 적용돼요</p>
+    <label>시간대 <span class="muted">(낮 06:00~17:59 · 저녁 18:00~05:59)</span></label>
+    <div class="row">${[["auto", `🕒 자동 (지금 ${getTimeOfDay() === "day" ? "낮" : "저녁"})`], ["day", "☀️ 낮"], ["evening", "🌙 저녁"]].map(([k, l]) => { const on = (scenePref().time || "auto") === k; return `<span class="chip ${on ? "on" : ""}" data-scene-time="${k}" style="${on ? "background:var(--butter-pale)" : ""}">${l}</span>`; }).join("")}</div>
+    <label>계절</label>
+    <div class="row">${[["auto", `🗓 자동 (지금 ${SEASONS[getSeason()].slice(3)})`], ...Object.entries(SEASONS)].map(([k, l]) => { const on = (SEASONS[scenePref().season] ? scenePref().season : "auto") === k; return `<span class="chip ${on ? "on" : ""}" data-scene-season="${k}" style="${on ? "background:var(--butter-pale)" : ""}">${l}</span>`; }).join("")}</div>
+    <label>움직임 효과 <span class="muted">(꽃잎·반짝임·낙엽·눈송이, 창문 불빛·별 반짝임)</span></label>
+    <div class="row">${[[true, "켜기"], [false, "끄기"]].map(([v, l]) => { const on = (scenePref().anim !== false) === v; return `<span class="chip ${on ? "on" : ""}" data-scene-anim="${v}" style="${on ? "background:var(--butter-pale)" : ""}">${l}</span>`; }).join("")}</div>
+    ${reduceMotion() ? `<p class="muted" style="margin-top:6px">기기에서 '동작 줄이기'가 켜져 있어서 움직임 효과는 꺼져 있어요.</p>` : ""}
+    <button class="btn-sm" id="light-edit" style="margin-top:12px;background:var(--lilac,#ECE8F8)">💡 저녁 창문·가로등·별 위치 편집</button>
+  </div>
   <div class="card soft" style="margin-top:16px">
     <p class="muted">경험치: 1분 = 1XP · 하루 목표 달성 +20XP · 주간 목표 달성 +100XP</p>
     <div class="row" style="margin-top:12px">
@@ -1502,6 +1656,10 @@ function viewSettings(){
   </div>`;
 }
 function bindSettings(){
+  document.querySelectorAll("[data-scene-time]").forEach(x => x.onclick = () => { const v = x.dataset.sceneTime; if (v === "auto") delete scenePref().time; else scenePref().time = v; Store.save(); render(); });
+  document.querySelectorAll("[data-scene-season]").forEach(x => x.onclick = () => { const v = x.dataset.sceneSeason; if (v === "auto") delete scenePref().season; else scenePref().season = v; Store.save(); render(); });
+  document.querySelectorAll("[data-scene-anim]").forEach(x => x.onclick = () => { scenePref().anim = x.dataset.sceneAnim === "true"; Store.save(); render(); });
+  document.getElementById("light-edit").onclick = () => { ui.lightEdit = true; ui.lightEditMode = "w"; ui.tab = "home"; window.scrollTo(0, 0); render(); };
   document.querySelectorAll("[data-gt]").forEach(x => x.onclick = () => {
     const id = x.dataset.gt, c = ch(id);
     document.querySelectorAll(`[data-gt="${id}"]`).forEach(y => { const on = y === x; y.classList.toggle("on", on); y.style.background = on ? c.bg : ""; });
@@ -2255,6 +2413,7 @@ function annLoad(){ try { return JSON.parse(localStorage.getItem(ANN_KEY) || "{}
 function annSave(o){ try { const t = todayStr(); Object.keys(o).forEach(k => { if (!k.includes(t)) delete o[k]; }); localStorage.setItem(ANN_KEY, JSON.stringify(o)); } catch(e) {} }
 let toastTimer = null;
 function toast(html){
+  if (ui.lightEdit) return;
   let el = document.getElementById("toast");
   if (!el) { el = document.createElement("div"); el.id = "toast"; el.className = "toast"; document.body.appendChild(el); }
   el.innerHTML = html; el.classList.add("show");
@@ -2263,7 +2422,7 @@ function toast(html){
 }
 function checkNow(opening){
   if (document.hidden) return;
-  if (document.querySelector("#modal-root .overlay")) return;   // 다른 창이 열려 있으면 다음에
+  if (document.querySelector("#modal-root .overlay") || ui.lightEdit) return;   // 다른 창이 열려 있거나 조명 편집 중이면 다음에
   const { m, current, next, ended } = nowInfo(), today = todayStr(), ann = annLoad(), nowTs = Date.now();
   // 1) 지금 시작된(진행 중인) 일정: 처음 한 번 + 앱을 다시 열면 1시간마다
   const cur = current.find(x => { const k = `s:${today}:${x.p.id}`; return !ann[k] || (opening && nowTs - ann[k] > 60 * 60000); });
