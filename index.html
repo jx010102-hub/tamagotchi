@@ -399,6 +399,29 @@
   .chk-s.on { background: var(--sage); border-style: solid; }
   .rc-detail { max-height: calc(100vh - 420px); max-height: calc(100dvh - 420px); min-height: 220px; }
 
+  /* 아래쪽 독 (탭 바로 위) */
+  .dock { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(max(14px, env(safe-area-inset-bottom)) + 74px); z-index: 5; display: flex; flex-direction: column; align-items: center; gap: 8px; width: max-content; max-width: calc(100vw - 24px); pointer-events: none; }
+  .dock > *, .dock .cards > * { pointer-events: auto; }
+  .dock .timer-pill { position: static; transform: none; }
+  .dock .cards { flex-direction: column-reverse; align-items: center; gap: 8px; pointer-events: none; }
+  .dock .pills { flex-wrap: nowrap; justify-content: center; gap: 8px; max-width: calc(100vw - 24px); overflow-x: auto; scrollbar-width: none; padding: 2px 2px 6px; }
+  .dock .pills::-webkit-scrollbar { display: none; }
+  .dock .rc-pill { padding: 6px 16px 6px 6px; font-size: 15px; gap: 7px; flex: none; box-shadow: 0 4px 0 rgba(74,53,41,.25); }
+  .dock .rc-pill img { width: 36px; height: 36px; }
+  .dock .rc-pill.on { background: var(--c-bg); transform: translateY(-3px); box-shadow: 0 7px 0 rgba(74,53,41,.28); }
+  .dock .rc-pill.on::after { content: "▲"; font-size: 9px; margin-left: 2px; color: var(--ink-soft); }
+  .dock .rc { width: min(360px, calc(100vw - 24px)); animation: rcUp .25s ease; box-shadow: 0 5px 0 rgba(74,53,41,.22); }
+  .dock .rc.open { width: min(600px, calc(100vw - 24px)); }
+  .dock .rc-detail { max-height: calc(100dvh - 400px); min-height: 160px; }
+  @keyframes rcUp { from { opacity: 0; transform: translateY(10px); } }
+  @media (max-width: 560px) {
+    .dock { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 70px); }
+    .dock .pills { justify-content: flex-start; }
+    .dock .rc-pill { font-size: 14px; padding: 4px 12px 4px 4px; }
+    .dock .rc-pill img { width: 30px; height: 30px; }
+  }
+  .light-editing .dock { display: none !important; }
+
 
   /* ===== 마을 배경: 사계절 × 낮/저녁 ===== */
   .scene { container-type: size; }
@@ -1035,15 +1058,18 @@ function viewHome(){
     </div>
     <div class="hud-right">
       <div class="row" style="gap:6px;justify-content:flex-end"><button class="btn-sm hud-btn" id="btn-talk" aria-label="친구들 이야기 다시 듣기">💬</button><button class="btn-sm hud-btn" id="btn-summary">📋 결산</button></div>
-      ${cardsHTML()}
     </div>
   </div>
   ${!state.records.length && !t ? `<div class="hint">친구를 눌러 오늘 기록을 확인해요 👆</div>` : ""}
-  ${t ? `<div class="timer-pill" style="${charStyle(tc)}">
-    <img src="${SP(tc.id, "focus")}" alt="">
-    <div><div class="muted" style="font-size:12px">${esc(callName(tc.name))}랑 ${esc(tc.skill)} ${tc.verb} 중</div><div class="clock" data-timer>${fmtClock(Date.now() - t.startedAt)}</div></div>
-    <button class="btn-pink btn-sm" id="stop-main">■ 끝내기</button>
-  </div>` : ""}`;
+  <!-- 아래쪽 독: 탭 바로 위에 스킬 알약, 누르면 미리보기 카드가 위로 열림 -->
+  <div class="dock">
+    ${t ? `<div class="timer-pill" style="${charStyle(tc)}">
+      <img src="${SP(tc.id, "focus")}" alt="">
+      <div><div class="muted" style="font-size:12px">${esc(callName(tc.name))}랑 ${esc(tc.skill)} ${tc.verb} 중</div><div class="clock" data-timer>${fmtClock(Date.now() - t.startedAt)}</div></div>
+      <button class="btn-pink btn-sm" id="stop-main">■ 끝내기</button>
+    </div>` : ""}
+    ${cardsHTML()}
+  </div>`;
 }
 function bindHome(){
   ui.tod = curTod(); ui.season = curSeason();
@@ -2482,11 +2508,12 @@ function cardHTML(id){
 function cardsHTML(){
   // 닫힌 카드는 위쪽 한 줄 알약으로, 열린 카드 하나는 그 아래
   const act = cardState().active;
-  return `<div class="cards"><div class="pills">${CARD_ORDER.filter(id => id !== act).map(pillHTML).join("")}</div>${act ? cardHTML(act) : ""}</div>`;
+  // 알약 4개는 늘 같은 자리에, 열린 카드의 알약은 표시만 (다시 누르면 닫힘)
+  return `<div class="cards"><div class="pills">${CARD_ORDER.map(id => pillHTML(id).replace('class="rc-pill"', `class="rc-pill${id === act ? " on" : ""}"`)).join("")}</div>${act ? cardHTML(act) : ""}</div>`;
 }
 function bindCards(){
   const st = cardState();
-  document.querySelectorAll("[data-card-open]").forEach(b => b.onclick = () => { setCard(b.dataset.cardOpen, "preview"); ui.rcScroll = 0; render(); });
+  document.querySelectorAll("[data-card-open]").forEach(b => b.onclick = () => { if (cardState().active === b.dataset.cardOpen) setCard(null); else setCard(b.dataset.cardOpen, "preview"); ui.rcScroll = 0; render(); });
   document.querySelectorAll("[data-card-close]").forEach(b => b.onclick = e => { e.stopPropagation(); setCard(null); render(); });
   document.querySelectorAll("[data-card-toggle]").forEach(b => b.onclick = () => { setCard(b.dataset.cardToggle, st.mode === "open" ? "preview" : "open"); ui.rcScroll = 0; render(); });
   document.querySelectorAll("[data-card-sum]").forEach(sum => { if (st.mode !== "preview") return; sum.style.cursor = "pointer";
@@ -3283,7 +3310,7 @@ function hideTalk(){
 }
 // 말풍선이 결산·카드·탭 같은 버튼을 가리거나 그 밑에 숨지 않게 옆으로 비켜 세우기
 function placeTalk(){
-  const obs = [...document.querySelectorAll(".hud-card, .hud-right > *, .tabbar, .fab, .quick, .timer-pill, .hint")].map(e => e.getBoundingClientRect()).filter(r => r.width);
+  const obs = [...document.querySelectorAll(".hud-card, .hud-right > *, .dock .rc, .dock .rc-pill, .tabbar, .fab, .quick, .timer-pill, .hint")].map(e => e.getBoundingClientRect()).filter(r => r.width);
   document.querySelectorAll(".talk").forEach(el => {
     el.style.setProperty("--tk-dx", "0px");
     el.style.animationName = "none";   // 튀어나오는 중(작게 줄어든 상태)이 아닌 실제 크기로 재기
