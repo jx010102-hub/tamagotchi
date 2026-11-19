@@ -34,15 +34,29 @@ function* walk(o, key){
 const text = t => t ? (t.simpleText ?? (t.runs || []).map(r => r.text).join("")) : "";
 
 async function getHtml(url){
-  const r = await fetch(url, { headers: HEADERS });
-  if (!r.ok) throw new Error(`${r.status} ${url}`);
-  return r.text();
+  for (let i = 0; ; i++) {
+    const r = await fetch(url, { headers: HEADERS });
+    if (r.ok) return r.text();
+    if (r.status !== 429 || i >= 2) throw new Error(`${r.status} ${url}`);
+    await sleep(8000 * (i + 1));   // 너무 빨리 물어봤다고 하면 잠깐 쉬었다가
+  }
+}
+let CTX = null, KEY = null;   // 채널 페이지에서 얻은 유튜브 내부 API 정보
+async function api(path, body){
+  const r = await fetch(`https://www.youtube.com/youtubei/v1/${path}?key=${KEY}&prettyPrint=false`, {
+    method: "POST", headers: { ...HEADERS, "Content-Type": "application/json", "X-YouTube-Client-Name": "1", "X-YouTube-Client-Version": CTX.client.clientVersion, "Origin": "https://www.youtube.com" },
+    body: JSON.stringify({ context: CTX, ...body }),
+  });
+  if (!r.ok) throw new Error(`${path} ${r.status}`);
+  return r.json();
 }
 
 async function listVideos(){
   const html = await getHtml(`https://www.youtube.com/${HANDLE}/videos?hl=ko&gl=KR`);
-  const key = (html.match(/"INNERTUBE_API_KEY":"([^"]+)"/) || [])[1];
+  KEY = (html.match(/"INNERTUBE_API_KEY":"([^"]+)"/) || [])[1];
   const ver = (html.match(/"INNERTUBE_CLIENT_VERSION":"([^"]+)"/) || [])[1] || "2.20240601.00.00";
+  CTX = jsonAfter(html, '"INNERTUBE_CONTEXT":') || { client: { clientName: "WEB", clientVersion: ver, hl: "ko", gl: "KR" } };
+  CTX.client = { ...CTX.client, hl: "ko", gl: "KR" };
   let data = jsonAfter(html, "var ytInitialData"), vids = [], page = 0;
   if (!data) throw new Error("ytInitialData 없음 (YouTube가 페이지를 막았을 수 있어요)");
   while (data && page < MAX_PAGES) {
@@ -53,14 +67,11 @@ async function listVideos(){
       if (id && t) vids.push({ id, title: t, ago: "" });
     }
     const tok = [...walk(data, "continuationCommand")].map(c => c.token).filter(Boolean).pop();
-    if (!tok || !key) { console.log(`  페이지 ${page + 1}에서 끝 (token:${!!tok}, key:${!!key})`); break; }
-    page++; await sleep(400);
-    const r = await fetch(`https://www.youtube.com/youtubei/v1/browse?key=${key}&prettyPrint=false`, {
-      method: "POST", headers: { ...HEADERS, "Content-Type": "application/json" },
-      body: JSON.stringify({ context: { client: { clientName: "WEB", clientVersion: ver, hl: "ko", gl: "KR" } }, continuation: tok }),
-    });
-    data = r.ok ? await r.json() : null;
-    if (!r.ok) console.log(`  다음 페이지 실패: ${r.status}`);
+    if (!tok || !KEY) { console.log(`  목록 ${page + 1}페이지에서 끝 (다음 페이지 표시 없음)`); break; }
+    page++; await sleep(600);
+    try { data = await api("browse", { continuation: tok }); }
+    catch (e) { console.log(`  다음 페이지 실패: ${e.message}`); break; }
+    if (page === 1) console.log(`  2페이지 응답 키: ${Object.keys(data).join(",")}`);
   }
   const seen = new Set();
   return vids.filter(v => v.id && !seen.has(v.id) && seen.add(v.id));
@@ -82,19 +93,27 @@ function chaptersFromDescription(desc){
   return out;
 }
 async function videoDetail(id){
-  const html = await getHtml(`https://www.youtube.com/watch?v=${id}&hl=ko&gl=KR`);
-  const init = jsonAfter(html, "var ytInitialData"), player = jsonAfter(html, "var ytInitialPlayerResponse");
+  let init = null, player = null;
+  try {
+    const html = await getHtml(`https://www.youtube.com/watch?v=${id}&hl=ko&gl=KR`);
+    init = jsonAfter(html, "var ytInitialData"); player = jsonAfter(html, "var ytInitialPlayerResponse");
+  } catch (e) {
+    console.log(`  영상 페이지 실패(${e.message}) → 내부 API로 시도`);
+    init = await api("next", { videoId: id });
+    try { player = await api("player", { videoId: id }); } catch (e2) { player = null; }
+  }
   let chapters = [];
   for (const c of walk(init, "chapterRenderer")) chapters.push({ t: Math.round((c.timeRangeStartMillis || 0) / 1000), title: text(c.title) });
   if (!chapters.length) for (const m of walk(init, "macroMarkersListItemRenderer")) {
     const t = m.onTap?.watchEndpoint?.startTimeSeconds; if (t != null) chapters.push({ t, title: text(m.title) });
   }
-  const desc = player?.videoDetails?.shortDescription || "";
+  const desc = player?.videoDetails?.shortDescription || [...walk(init, "attributedDescriptionBodyText")].map(x => x.content).join("\n") || "";
   if (!chapters.length) chapters = chaptersFromDescription(desc);
   const seen = new Set(); chapters = chapters.filter(c => c.title && !seen.has(c.t + c.title) && seen.add(c.t + c.title)).sort((a, b) => a.t - b.t);
   const mf = player?.microformat?.playerMicroformatRenderer || {};
-  const dm = String(mf.publishDate || mf.uploadDate || "").match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
-  return { date: dm ? `${dm[1]}-${dm[2].padStart(2, "0")}-${dm[3].padStart(2, "0")}` : "", title: player?.videoDetails?.title, chapters };
+  const dateText = mf.publishDate || mf.uploadDate || [...walk(init, "dateText")].map(text)[0] || "";
+  const dm = String(dateText).match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+  return { date: dm ? `${dm[1]}-${dm[2].padStart(2, "0")}-${dm[3].padStart(2, "0")}` : "", title: player?.videoDetails?.title || [...walk(init, "videoPrimaryInfoRenderer")].map(x => text(x.title))[0], chapters };
 }
 
 const old = fs.existsSync(OUT) ? JSON.parse(fs.readFileSync(OUT, "utf8")) : { videos: [] };
@@ -107,7 +126,7 @@ for (const v of hits.slice(0, KEEP)) {
   const k = known.get(v.id);
   if (k && k.chapters?.length && /^\d{4}-\d{2}-\d{2}$/.test(k.date || "")) { videos.push({ ...k, title: v.title || k.title }); continue; }
   try {
-    await sleep(500);
+    await sleep(2500);
     const d = await videoDetail(v.id);
     videos.push({ id: v.id, title: d.title || v.title, date: d.date, chapters: d.chapters });
     console.log(`  ${d.date} ${v.title} — 챕터 ${d.chapters.length}개: ${d.chapters.slice(0, 4).map(c => c.title).join(" | ")}`);
@@ -117,6 +136,9 @@ for (const v of hits.slice(0, KEEP)) {
 for (const k of known.values()) if (!videos.some(v => v.id === k.id)) videos.push(k);
 videos.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 const out = { channel: HANDLE, titleKey: "[예수사랑교회 성금요일 총체적 치유 찬양기도회]", videos: videos.slice(0, KEEP) };
+const total = out.videos.reduce((a, v) => a + (v.chapters?.length || 0), 0);
+if (!total) { console.error("챕터를 하나도 못 가져와서 이번엔 저장하지 않아요"); process.exit(known.size ? 0 : 1); }
+out.videos = out.videos.filter(v => v.chapters?.length);
 const prev = JSON.stringify({ ...old, updated: undefined });
 if (JSON.stringify({ ...out, updated: undefined }) !== prev || !old.updated) {
   out.updated = new Date().toISOString();
