@@ -307,6 +307,27 @@
     .rc-detail { max-height: calc(100dvh - 300px); }
   }
 
+
+  .cards { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .pills { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; max-width: min(460px, calc(100vw - 24px)); }
+  .pills:empty { display: none; }
+  .rc-alert.static { cursor: default; }
+  .wbars { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; height: 46px; margin-top: 2px; }
+  .wbars.big { height: 110px; margin-top: 8px; }
+  .wbars:has(.wb:nth-child(6):last-child) { grid-template-columns: repeat(6, 1fr); }
+  .wb { position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; background: #F7F0E3; border-radius: 6px; padding-bottom: 14px; }
+  .wb i { display: block; width: 70%; min-height: 2px; border-radius: 4px 4px 2px 2px; border: 1.2px solid var(--ink); border-bottom: 0; }
+  .wb span { position: absolute; bottom: 0; font-size: 10px; color: var(--ink-soft); }
+  .wb em { font-style: normal; font-size: 10px; margin-bottom: 2px; }
+  .wb.today { background: var(--c-bg); outline: 1.5px solid var(--c-main); }
+  .stat4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
+  .stat4 div { background: #fff; border: 1.5px solid var(--line); border-radius: 12px; padding: 6px 4px; text-align: center; }
+  .stat4 b { display: block; font-family: var(--hand); font-size: 18px; }
+  .stat4 span { font-size: 10.5px; color: var(--ink-soft); }
+  .chk-s { width: 20px; height: 20px; border-radius: 50%; border: 1.5px dashed var(--ink); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+  .chk-s.on { background: var(--sage); border-style: solid; }
+  .rc-detail { max-height: calc(100vh - 420px); max-height: calc(100dvh - 420px); min-height: 220px; }
+
   /* 탭바 */
   .tabbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: max(14px, env(safe-area-inset-bottom)); display: flex; gap: 4px; background: var(--paper); border: 2px solid var(--ink); border-radius: 999px; padding: 6px; box-shadow: 0 5px 0 var(--shadow); z-index: 5; }
   .tabbar button { border: 0; box-shadow: none; background: transparent; padding: 8px 18px; font-family: var(--hand); font-size: 19px; font-weight: 700; color: var(--ink-soft); white-space: nowrap; }
@@ -776,7 +797,7 @@ function viewHome(){
     </div>
     <div class="hud-right">
       <button class="btn-sm hud-btn" id="btn-summary">📋 결산</button>
-      ${reelsCardHTML()}
+      ${cardsHTML()}
     </div>
   </div>
   ${!state.records.length && !t ? `<div class="hint">친구를 눌러 오늘 기록을 확인해요 👆</div>` : ""}
@@ -790,7 +811,7 @@ function bindHome(){
   document.querySelectorAll("[data-char]").forEach(el => el.onclick = () => openCharPopup(el.dataset.char));
   const s = document.getElementById("stop-main"); if (s) s.onclick = stopTimer;
   document.getElementById("btn-summary").onclick = showSummary;
-  bindReelsCard();
+  bindCards();
   const w = document.getElementById("scene-wrap");
   if (ui.scroll) { w.scrollLeft = ui.scroll[0]; w.scrollTop = ui.scroll[1]; }
   else requestAnimationFrame(() => { w.scrollLeft = (w.scrollWidth - w.clientWidth) / 2; w.scrollTop = (w.scrollHeight - w.clientHeight) / 2; });
@@ -850,7 +871,7 @@ function openCharPopup(id){
     </div>`;
   };
   const duo = id === "reels";
-  if (duo && reelsCardState() === "open") { ui.reelsCard = "preview"; render(); }
+  if (duo && reelsCardState() === "open") { ui.cards = { active: "reels", mode: "preview" }; render(); }
   const wrap = () => duo ? `<div class="duo"><div class="duo-l">${draw()}</div><div class="duo-r" id="reels-panel">${viewReels(true)}</div></div>` : draw();
   const close = openModal(wrap(), { bare: true, wide: duo });
   const box = duo ? lastModal().querySelector(".duo-l") : lastModal();
@@ -2051,14 +2072,20 @@ function openPostForm(id, preset = {}){
 }
 
 
-/* ============ 홈: 릴스 진행도 카드 (닫힘 · 미리보기 · 펼침) ============ */
-const RC_KEY = "tg-reels-card";
-function reelsCardState(){
-  if (ui.reelsCard) return ui.reelsCard;
-  let v = null; try { v = localStorage.getItem(RC_KEY); } catch(e) {}
-  return ui.reelsCard = v || (window.innerWidth < 600 ? "closed" : "preview");
+/* ============ 홈: 스킬 진행도 카드 (닫힘 · 미리보기 · 펼침, 한 번에 하나만 열림) ============ */
+const CARD_KEY = "tg-cards", CARD_ORDER = ["reels", "jp", "drum", "toon"];
+function cardState(){
+  if (ui.cards) return ui.cards;
+  let v = null; try { v = JSON.parse(localStorage.getItem(CARD_KEY) || "null"); } catch(e) {}
+  if (!v) { let old = null; try { old = localStorage.getItem("tg-reels-card"); } catch(e) {}   // 예전 릴스 카드 상태 이어받기
+    v = old && old !== "closed" ? { active: "reels", mode: old } : (old === "closed" || window.innerWidth < 600 ? { active: null, mode: "preview" } : { active: "reels", mode: "preview" }); }
+  return ui.cards = v;
 }
-function setReelsCard(v){ ui.reelsCard = v; try { localStorage.setItem(RC_KEY, v); } catch(e) {} }
+function setCard(active, mode = "preview"){ ui.cards = { active, mode }; try { localStorage.setItem(CARD_KEY, JSON.stringify(ui.cards)); } catch(e) {} }
+const cardMode = id => { const c = cardState(); return c.active === id ? c.mode : "closed"; };
+function reelsCardState(){ return cardMode("reels"); }
+
+/* --- 릴스 카드용 --- */
 function nextBoardCard(){
   const order = { edit: 0, shoot: 1, idea: 2 };
   return R().board.filter(b => b.stage !== "done").sort((a, b) => (a.due || "9999") < (b.due || "9999") ? -1 : (a.due || "9999") > (b.due || "9999") ? 1 : order[a.stage] - order[b.stage] || a.ts - b.ts)[0] || null;
@@ -2069,42 +2096,117 @@ function reelsAlerts(){
   if (!R().followers.some(f => f.date >= thisMon)) out.push({ k: "fw", t: "📌 이번 주 팔로워 수 기록하기" });
   return out;
 }
-function reelsCardHTML(){
-  const st = reelsCardState(), c = ch("reels"), rh = rhythm();
-  const counts = STAGES.map(x => ({ ...x, n: R().board.filter(b => b.stage === x.k && !(x.k === "done" && b.archived)).length }));
-  const icon = { idea: "💡", shoot: "🎥", edit: "✂️", done: "✅" };
-  if (st === "closed") return `<button class="rc-pill" id="rc-open" style="${charStyle(c)}" aria-label="릴스 진행도 열기">
-    <img src="${SP("reels", "idle")}" alt="">🎬 ${rh.thisN}/${rh.target}${counts[0].n ? ` · 💡${counts[0].n}` : ""}${reelsAlerts().length ? ` <span class="rc-dot">${reelsAlerts().length}</span>` : ""}</button>`;
-  const nb = nextBoardCard(), al = reelsAlerts(), open = st === "open";
-  return `<div class="rc ${open ? "open" : ""}" id="rc" style="${charStyle(c)}">
-    <div class="rc-head" id="rc-toggle" role="button" aria-expanded="${open}">
-      <img src="${SP("reels", rh.thisN >= rh.target ? "done2" : "idle")}" alt="">
-      <b class="hand">릴스 진행도</b>
-      <span class="rc-tog">${open ? "접기 ▴" : "자세히 ▾"}</span>
-      <button class="rc-x" id="rc-close" aria-label="닫기">－</button>
-    </div>
-    <div class="rc-sum" id="rc-sum">
-      <div class="row between"><span>이번 주 업로드 <b>${rh.thisN} / ${rh.target}</b></span><span class="muted">🔥 ${rh.streak}주${rh.sinceLast != null ? ` · ${rh.sinceLast === 0 ? "오늘" : rh.sinceLast + "일 전"}` : ""}</span></div>
+
+/* --- 다른 스킬 카드용 --- */
+function streakDays(id){
+  const has = new Set(recsOf(id).map(r => r.date)); let d = new Date(), n = 0;
+  if (!has.has(ymd(d))) d.setDate(d.getDate() - 1);
+  while (has.has(ymd(d))) { n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+function nextPlanFor(id){
+  const today = todayStr(), now = new Date(), m = now.getHours() * 60 + now.getMinutes();
+  return state.plans.filter(p => p.charId === id && p.status === "planned" && (p.date > today || (p.date === today && (!p.start || (ttSpan(p) || [0, 9999])[1] > m))))
+    .sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (toMin(a.start) ?? 9999) - (toMin(b.start) ?? 9999))[0] || null;
+}
+function skillAlerts(c){
+  const out = [], last = recsOf(c.id).reduce((m, r) => r.date > m ? r.date : m, ""), gap = last ? daysBetween(last, todayStr()) : null;
+  if (gap != null && gap >= 3) out.push(`😢 ${gap}일째 쉬는 중이에요`);
+  const due = state.plans.filter(p => p.charId === c.id && p.status === "planned" && p.date < todayStr() && p.date >= ymd(mondayOf(new Date())));
+  if (due.length) out.push(`📋 이번 주 지난 일정 ${due.length}개 완료 체크 안 함`);
+  return out;
+}
+function weekBars(id, monday, big){
+  const days = weekDays(monday), vals = days.map(d => minOn(id, d)), max = Math.max(30, ...vals), c = ch(id), today = todayStr();
+  return `<div class="wbars ${big ? "big" : ""}">${days.map((d, i) => `<div class="wb ${d === today ? "today" : ""}"><i style="height:${Math.round(vals[i] / max * 100)}%;background:${c.main}" title="${fmtDur(vals[i])}"></i>${big && vals[i] ? `<em>${fmtShort(vals[i])}</em>` : ""}<span>${DOW[i]}</span></div>`).join("")}</div>`;
+}
+function skillPreviewHTML(c){
+  const gn = goalNow(c), ag = ageOf(c), run = timerOf(c.id), wk = minWeek(c.id, mondayOf(new Date())), np = nextPlanFor(c.id), al = skillAlerts(c), sk = streakDays(c.id);
+  if (!ag && !recsOf(c.id).length) return `<p class="rc-next">🥚 아직 태어나지 않았어요. 첫 ${esc(c.skill)} 기록을 남기면 태어나요!</p>
+    <div class="row" style="margin-top:6px"><button class="btn-sm" data-card-act="timer" data-id="${c.id}">▶ 타이머</button><button class="btn-sm" data-card-act="manual" data-id="${c.id}">✎ 시간 입력</button></div>`;
+  return `
+    <div class="row between"><span>${gn.count ? gn.label : `오늘 <b>${fmtDur(gn.n)}</b> / ${fmtDur(gn.t)}`}</span><span class="muted">${sk ? `🔥 ${sk}일 연속` : ""}</span></div>
+    <div class="bar thin" style="margin:5px 0 6px"><i style="width:${gn.pct * 100}%;background:${c.main}"></i></div>
+    ${weekBars(c.id, mondayOf(new Date()))}
+    <p class="muted" style="margin-top:4px">이번 주 ${fmtDur(wk)}${gn.count ? "" : ` / ${fmtDur(c.weeklyGoal)}`}${ag ? ` · ${esc(c.skill)} ${ag.label}` : ""}</p>
+    ${np ? `<p class="rc-next">▶ 다음: <b>${esc(np.name)}</b> <span class="muted">${np.date === todayStr() ? "오늘" : `${fmtMD(np.date)}(${DOW[dowOf(np.date)]})`} ${np.start || ""}</span></p>` : ""}
+    ${al.map(t => `<div class="rc-alert static">${esc(t)}</div>`).join("")}
+    <div class="row" style="margin-top:7px">
+      ${run ? `<span class="running" data-timer>${fmtClock(Date.now() - run.startedAt)}</span><button class="btn-sm btn-pink" data-card-act="stop" data-id="${c.id}">■ 끝내기</button>`
+            : `<button class="btn-sm" data-card-act="timer" data-id="${c.id}" style="background:${c.bg}">▶ 타이머</button>`}
+      <button class="btn-sm" data-card-act="manual" data-id="${c.id}">✎ 시간 입력</button>
+    </div>`;
+}
+function skillDetailHTML(c){
+  const li = levelInfo(xpOf(c.id)), st = stageOf(li.level), recs = recsOf(c.id), total = recs.reduce((a, r) => a + r.minutes, 0);
+  const n = new Date(), mStart = ymd(new Date(n.getFullYear(), n.getMonth(), 1));
+  const month = recs.filter(r => r.date >= mStart).reduce((a, r) => a + r.minutes, 0);
+  const byDay = {}; recs.forEach(r => byDay[r.date] = (byDay[r.date] || 0) + r.minutes);
+  const best = Object.entries(byDay).sort((a, b) => b[1] - a[1])[0];
+  const weeks = Array.from({ length: 6 }, (_, i) => { const m = mondayOf(new Date()); m.setDate(m.getDate() - (5 - i) * 7); return { m, v: minWeek(c.id, m) }; });
+  const wmax = Math.max(60, ...weeks.map(w => w.v));
+  const plans = state.plans.filter(p => p.charId === c.id && weekDays(mondayOf(new Date())).includes(p.date)).sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (toMin(a.start) ?? 0) - (toMin(b.start) ?? 0));
+  const recent = [...recs].sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : b.ts - a.ts).slice(0, 5);
+  return `
+    <div class="card"><div class="row between"><h3>🌱 ${st.label} · Lv.${li.level}</h3><span class="muted">${li.cur}/${li.need} XP</span></div>
+      <div class="bar thin" style="margin-top:6px"><i style="width:${li.cur / li.need * 100}%;background:${c.main}"></i></div>
+      <div class="stat4"><div><b>${fmtDur(total)}</b><span>누적</span></div><div><b>${fmtDur(month)}</b><span>이번 달</span></div><div><b>${best ? fmtDur(best[1]) : "—"}</b><span>최고 하루${best ? ` (${fmtMD(best[0])})` : ""}</span></div><div><b>${new Set(recs.map(r => r.date)).size}일</b><span>기록한 날</span></div></div></div>
+    <div class="card"><h3>📅 이번 주</h3>${weekBars(c.id, mondayOf(new Date()), true)}</div>
+    <div class="card"><h3>📈 최근 6주</h3><div class="wbars big">${weeks.map((w, i) => `<div class="wb ${i === 5 ? "today" : ""}"><i style="height:${Math.round(w.v / wmax * 100)}%;background:${c.main}"></i>${w.v ? `<em>${fmtShort(w.v)}</em>` : ""}<span>${w.m.getMonth() + 1}/${w.m.getDate()}</span></div>`).join("")}</div></div>
+    ${plans.length ? `<div class="card"><h3>🗓 이번 주 시간표</h3>${plans.map(p => `<div class="list-item"><span class="chk-s ${p.status === "done" ? "on" : ""}">${p.status === "done" ? "✓" : ""}</span><div class="grow">${esc(p.name)} <span class="muted">${fmtMD(p.date)}(${DOW[dowOf(p.date)]}) ${esc(planTime(p))}</span></div></div>`).join("")}</div>` : ""}
+    <div class="card"><h3>✍️ 최근 기록</h3>${recent.length ? recent.map(r => `<div class="list-item"><div class="grow">${fmtMD(r.date)} <span class="muted">${r.source === "timer" ? "⏱ 타이머" : r.planId ? "📋 일정" : "직접 입력"}${r.memo ? ` · ${esc(r.memo)}` : ""}</span></div><span class="amt">${fmtDur(r.minutes)}</span></div>`).join("") : `<p class="muted">아직 기록이 없어요</p>`}</div>`;
+}
+
+function pillHTML(id){
+  const c = ch(id);
+  if (id === "reels") { const rh = rhythm(), idea = R().board.filter(b => b.stage === "idea").length, al = reelsAlerts().length;
+    return `<button class="rc-pill" data-card-open="reels" style="${charStyle(c)}" aria-label="릴스 진행도 열기"><img src="${SP("reels", "idle")}" alt="">🎬 ${rh.thisN}/${rh.target}${idea ? ` · 💡${idea}` : ""}${al ? ` <span class="rc-dot">${al}</span>` : ""}</button>`; }
+  const gn = goalNow(c), run = timerOf(id), al = skillAlerts(c).length, ag = ageOf(c);
+  return `<button class="rc-pill" data-card-open="${id}" style="${charStyle(c)}" aria-label="${esc(c.skill)} 진행도 열기"><img src="${SP(id, run ? "focus" : "idle")}" alt="">${c.prop} ${run ? `<span data-timer>${fmtClock(Date.now() - run.startedAt)}</span>` : !ag && !recsOf(id).length ? "🥚" : gn.short}${al ? ` <span class="rc-dot">${al}</span>` : ""}</button>`;
+}
+function cardHTML(id){
+  const mode = cardMode(id); if (mode === "closed") return pillHTML(id);
+  const c = ch(id), open = mode === "open", isR = id === "reels";
+  let sum, face;
+  if (isR) {
+    const rh = rhythm(), nb = nextBoardCard(), al = reelsAlerts(), icon = { idea: "💡", shoot: "🎥", edit: "✂️", done: "✅" };
+    const counts = STAGES.map(x => ({ ...x, n: R().board.filter(b => b.stage === x.k && !(x.k === "done" && b.archived)).length }));
+    face = rh.thisN >= rh.target ? "done2" : "idle";
+    sum = `<div class="row between"><span>이번 주 업로드 <b>${rh.thisN} / ${rh.target}</b></span><span class="muted">🔥 ${rh.streak}주${rh.sinceLast != null ? ` · ${rh.sinceLast === 0 ? "오늘" : rh.sinceLast + "일 전"}` : ""}</span></div>
       <div class="bar thin" style="margin:5px 0 7px"><i style="width:${Math.min(100, rh.thisN / rh.target * 100)}%;background:${c.main}"></i></div>
       <div class="rc-stages">${counts.map(x => `<span class="${x.n ? "" : "zero"}">${icon[x.k]} ${x.n}</span>`).join("")}</div>
       ${nb ? `<p class="rc-next">▶ 다음: <b>${esc(nb.title)}</b> <span class="muted">— ${STAGES.find(x => x.k === nb.stage).label.replace(/^\S+\s/, "")}${nb.due ? ` · ${fmtMD(nb.due)}까지` : ""}</span></p>` : ""}
-      ${al.map((a, i) => `<button class="rc-alert" data-rc-alert="${i}">${esc(a.t)} ›</button>`).join("")}
+      ${al.map((a, i) => `<button class="rc-alert" data-rc-alert="${i}">${esc(a.t)} ›</button>`).join("")}`;
+  } else { face = timerOf(id) ? "focus" : goalNow(c).done ? "done1" : "idle"; sum = skillPreviewHTML(c); }
+  return `<div class="rc ${open ? "open" : ""}" data-card="${id}" style="${charStyle(c)}">
+    <div class="rc-head" data-card-toggle="${id}" role="button" aria-expanded="${open}">
+      <img src="${SP(id, face)}" alt="">
+      <b class="hand">${isR ? "릴스" : esc(c.skill)} 진행도</b>
+      <span class="rc-tog">${open ? "접기 ▴" : "자세히 ▾"}</span>
+      <button class="rc-x" data-card-close="${id}" aria-label="닫기">－</button>
     </div>
-    ${open ? `<div class="rc-detail" id="rc-detail">${viewReels(true)}</div>` : ""}
+    <div class="rc-sum" data-card-sum="${id}">${sum}</div>
+    ${open ? `<div class="rc-detail" id="rc-detail">${isR ? viewReels(true) : skillDetailHTML(c)}</div>` : ""}
   </div>`;
 }
-function bindReelsCard(){
-  const st = reelsCardState();
-  const o = document.getElementById("rc-open"); if (o) o.onclick = () => { setReelsCard("preview"); render(); };
-  if (st === "closed") return;
-  document.getElementById("rc-close").onclick = e => { e.stopPropagation(); setReelsCard("closed"); render(); };
-  document.getElementById("rc-toggle").onclick = () => { setReelsCard(st === "open" ? "preview" : "open"); render(); };
-  const sum = document.getElementById("rc-sum");
-  if (st === "preview") { sum.onclick = () => { setReelsCard("open"); render(); }; sum.style.cursor = "pointer"; }
+function cardsHTML(){
+  // 닫힌 카드는 위쪽 한 줄 알약으로, 열린 카드 하나는 그 아래
+  const act = cardState().active;
+  return `<div class="cards"><div class="pills">${CARD_ORDER.filter(id => id !== act).map(pillHTML).join("")}</div>${act ? cardHTML(act) : ""}</div>`;
+}
+function bindCards(){
+  const st = cardState();
+  document.querySelectorAll("[data-card-open]").forEach(b => b.onclick = () => { setCard(b.dataset.cardOpen, "preview"); ui.rcScroll = 0; render(); });
+  document.querySelectorAll("[data-card-close]").forEach(b => b.onclick = e => { e.stopPropagation(); setCard(null); render(); });
+  document.querySelectorAll("[data-card-toggle]").forEach(b => b.onclick = () => { setCard(b.dataset.cardToggle, st.mode === "open" ? "preview" : "open"); ui.rcScroll = 0; render(); });
+  document.querySelectorAll("[data-card-sum]").forEach(sum => { if (st.mode !== "preview") return; sum.style.cursor = "pointer";
+    sum.onclick = e => { if (e.target.closest("button")) return; setCard(sum.dataset.cardSum, "open"); ui.rcScroll = 0; render(); }; });
   const al = reelsAlerts();
   document.querySelectorAll("[data-rc-alert]").forEach(b => b.onclick = e => { e.stopPropagation(); const a = al[+b.dataset.rcAlert]; if (!a) return; a.k === "post" ? openPostForm(a.id) : openFollowerForm(); });
+  document.querySelectorAll("[data-card-act]").forEach(b => b.onclick = e => { e.stopPropagation(); const id = b.dataset.id, act = b.dataset.cardAct;
+    if (act === "timer") startTimer(id); else if (act === "stop") stopTimer(); else openManualSheet(id); });
   const det = document.getElementById("rc-detail");
-  if (det) { if (ui.rcScroll) det.scrollTop = ui.rcScroll; det.onscroll = () => { ui.rcScroll = det.scrollTop; }; bindReels(); }
+  if (det) { if (ui.rcScroll) det.scrollTop = ui.rcScroll; det.onscroll = () => { ui.rcScroll = det.scrollTop; }; if (st.active === "reels") bindReels(); }
 }
 
 /* ============ 공통 ============ */
