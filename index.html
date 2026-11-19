@@ -583,20 +583,22 @@
   }
 
   /* ===== 새 홈 화면 (시안) ===== */
+  .npc .prop-ic { position: absolute; top: -8%; right: -18%; width: clamp(26px, 2.7vw, 42px); height: auto; z-index: 1; filter: drop-shadow(0 2px 0 rgba(94,69,53,.15)); pointer-events: none; }
   .hud { top: max(14px, env(safe-area-inset-top)); left: 16px; right: 16px; }
   .hud-card { background: #FFF9EC; border: 2.5px solid #5E4535; border-radius: 24px; padding: 10px 20px 10px 14px; box-shadow: 0 5px 0 rgba(94,69,53,.18); position: relative; }
   .hc-title { font-family: var(--hand); font-weight: 700; font-size: 27px; line-height: 1.05; display: flex; align-items: center; gap: 6px; }
   .hc-sprout { font-size: 26px; }
-  .hc-spark { color: #F2C14E; font-size: 18px; margin-left: 2px; }
+  .hc-spark { width: 20px; height: auto; margin-left: 2px; }
   .hc-date { font-size: 15px; color: var(--ink-soft); margin: 4px 0 0 36px; }
   .hc-date b { color: var(--ink); }
   .hud-right { flex-direction: row; align-items: center; gap: 10px; }
   .hud-btn { height: 50px; padding: 0 20px; border-radius: 999px; background: #FFF9EC; border: 2.5px solid #5E4535; box-shadow: 0 4px 0 rgba(94,69,53,.2); font-family: var(--hand); font-weight: 700; font-size: 21px; display: inline-flex; align-items: center; gap: 6px; color: var(--ink); }
-  .hud-btn span { font-size: 18px; }
+  .hud-btn img { width: 26px; height: 26px; object-fit: contain; }
+  .hud-round img { width: 32px; height: 32px; }
   .hud-round { width: 56px; padding: 0; justify-content: center; font-size: 22px; }
   .guide { position: fixed; left: 50%; transform: translateX(-50%); top: calc(max(14px, env(safe-area-inset-top)) + 70px); z-index: 4; background: #FFF9EC; border: 2.5px solid #5E4535; border-radius: 999px; padding: 10px 26px 10px 24px; font-family: var(--hand); font-size: 20px; font-weight: 700; color: var(--ink); white-space: nowrap; box-shadow: 0 4px 0 rgba(94,69,53,.18); max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; }
   .guide b { background: linear-gradient(transparent 60%, #FFE08A 60%); }
-  .guide .g-spark { color: #F2C14E; margin-left: 8px; font-size: 16px; }
+  .guide .g-spark { width: 18px; height: auto; margin-left: 8px; vertical-align: -2px; }
   .guide::after { content: ""; position: absolute; bottom: -9px; right: 22%; width: 14px; height: 14px; background: #FFF9EC; border-right: 2.5px solid #5E4535; border-bottom: 2.5px solid #5E4535; transform: rotate(45deg); }
   .tagline { background: #FFF9EC; border-width: 2.5px; border-radius: 16px; padding: 3px 12px 4px; }
   .tagline::after { background: #FFF9EC; }
@@ -607,11 +609,12 @@
   .dock .timer-pill { margin-bottom: 18px; }
   .growth-panel { pointer-events: auto; position: relative; width: 100%; background: rgba(255,249,236,.97); border: 2.5px solid #5E4535; border-radius: 32px; padding: 30px 16px 16px; box-shadow: 0 6px 0 rgba(94,69,53,.18); }
   .gp-title { position: absolute; top: -22px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; background: #FFF9EC; border: 2.5px solid #5E4535; border-bottom: 0; border-radius: 22px 22px 0 0; padding: 6px 22px 2px; font-family: var(--hand); font-weight: 700; font-size: 23px; white-space: nowrap; }
-  .gp-title .gp-s { color: #F2C14E; font-size: 15px; }
+  .gp-title .gp-s { width: 18px; height: auto; }
+  .gp-title .gp-ti { width: 26px; height: auto; margin-right: 2px; }
   .gp-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
   .gp-card { position: relative; display: flex; align-items: center; gap: 10px; min-height: 96px; padding: 12px 8px 12px 12px; background: var(--gp-bg); border: 2.5px solid var(--gp-bd); border-radius: 24px; box-shadow: 0 4px 0 rgba(94,69,53,.08); text-align: left; color: var(--ink); }
   .gp-card:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(94,69,53,.08); }
-  .gp-ic { flex: none; width: 54px; height: 54px; border-radius: 16px; background: rgba(255,255,255,.75); display: grid; place-items: center; font-size: 32px; }
+  .gp-ic { flex: none; width: 60px; height: 60px; object-fit: contain; filter: drop-shadow(0 2px 0 rgba(94,69,53,.12)); }
   .gp-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
   .gp-txt b { font-family: var(--hand); font-size: 22px; line-height: 1; white-space: nowrap; }
   .gp-v { font-size: 13.5px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -625,10 +628,10 @@
 
   .tabbar { background: #FFF9EC; border: 2.5px solid #5E4535; padding: 7px; gap: 2px; box-shadow: 0 5px 0 rgba(94,69,53,.2); }
   .tabbar button { position: relative; padding: 10px 26px; font-size: 22px; color: var(--ink); display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; }
-  .tabbar button .tb-i { font-size: 22px; }
+  .tabbar button .tb-i { width: 32px; height: 32px; object-fit: contain; }
   .tabbar button + button::before { content: ""; position: absolute; left: -2px; top: 28%; height: 44%; width: 1.5px; background: rgba(94,69,53,.3); }
   .tabbar button.on + button::before, .tabbar button.on::before { display: none; }
-  .tabbar button.on { background: #B9D69C; box-shadow: inset 0 -3px 0 rgba(94,69,53,.12); }
+  .tabbar button.on { background: #D8ECA6; box-shadow: inset 0 -3px 0 rgba(94,69,53,.12); }
   .fab { width: 100px; height: 100px; right: 18px; bottom: max(16px, env(safe-area-inset-bottom)); background: radial-gradient(circle at 35% 30%, #F9A8AE, #EE7F8A); border: 4px solid #FFF9EC; box-shadow: 0 0 0 2.5px #E0707C, 0 6px 0 rgba(94,69,53,.2); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; }
   .fab-p { font-size: 46px; line-height: .9; font-weight: 700; }
   .fab-l { font-family: var(--hand); font-size: 17px; font-weight: 700; }
@@ -636,7 +639,7 @@
   @media (max-height: 860px) and (min-width: 901px) {
     .growth-panel { padding: 26px 12px 12px; border-radius: 28px; }
     .gp-card { min-height: 78px; padding: 9px 6px 9px 10px; }
-    .gp-ic { width: 46px; height: 46px; font-size: 28px; }
+    .gp-ic { width: 52px; height: 52px; }
     .gp-title { font-size: 21px; top: -20px; }
     .tabbar button { padding: 8px 22px; }
     .dock { bottom: calc(max(12px, env(safe-area-inset-bottom)) + 80px); }
@@ -647,7 +650,7 @@
     .guide { top: calc(max(14px, env(safe-area-inset-top)) + 96px); font-size: 17px; padding: 8px 18px; }
     .gp-cards { gap: 8px; }
     .gp-card { min-height: 84px; padding: 10px 6px 10px 8px; gap: 6px; }
-    .gp-ic { width: 40px; height: 40px; font-size: 24px; border-radius: 12px; }
+    .gp-ic { width: 42px; height: 42px; }
     .gp-txt b { font-size: 18px; }
     .gp-v { font-size: 12px; }
     .gp-arrow { display: none; }
@@ -662,10 +665,11 @@
     .gp-card { min-height: 70px; }
     .gp-title { font-size: 18px; padding: 5px 14px 2px; }
     .growth-panel { padding: 24px 10px 10px; border-radius: 24px; }
-    .tabbar button { padding: 8px 9px; font-size: 16px; gap: 3px; } .tabbar button .tb-i { font-size: 16px; }
+    .tabbar button { padding: 8px 9px; font-size: 16px; gap: 3px; } .tabbar button .tb-i { width: 20px; height: 20px; }
     .fab { width: 60px; height: 60px; border-width: 3px; } .fab-l { display: none; } .fab-p { font-size: 32px; }
     .dock { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 70px); }
     .tabbar { max-width: calc(100vw - 84px); }
+    .tabbar .tb-sub { display: none; }
   }
   .light-editing .guide, .light-editing .dock { display: none !important; }
 </style>
@@ -1100,7 +1104,7 @@ function render(){
     clearTimeout(ui.slideT); ui.slideT = setTimeout(() => app.classList.remove(cls), 400); }
   app.innerHTML = ui.tab === "home" ? viewHome() : ui.tab === "tt" ? viewTimetable() : ui.tab === "cal" ? viewCalendar() : ui.tab === "reels" ? viewReels() : viewSettings();
   document.getElementById("nav-root").innerHTML = `<nav class="tabbar">
-    ${[["home","🏡","마을"],["tt","🗓️","시간표"],["cal","📅","달력"],["set","⚙️","설정"]].map(([k,i,l]) => `<button data-tab="${k}" class="${ui.tab===k?"on":""}"><span class="tb-i">${i}</span>${l}</button>`).join("")}
+    ${[["home","tab-home","마을<span class=\"tb-sub\">(홈)</span>"],["tt","tab-tt","시간표"],["cal","tab-cal","달력"],["set","tab-set","설정"]].map(([k,i,l]) => `<button data-tab="${k}" class="${ui.tab===k?"on":""}"><img class="tb-i" src="icons/${i}.webp" alt="">${l}</button>`).join("")}
   </nav><button class="fab" id="fab" aria-label="기록하기"><span class="fab-p">＋</span><span class="fab-l">기록하기</span></button>`;
   document.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => { ui.lightEdit = false; document.body.classList.remove("light-editing"); ui.tab = b.dataset.tab; window.scrollTo(0,0); render(); });
   document.getElementById("fab").onclick = () => openManualSheet();
@@ -1129,7 +1133,7 @@ function viewHome(){
           <span class="nm">${esc(c.name)}</span>
           ${run ? `<span class="run" data-timer>${fmtClock(Date.now() - run.startedAt)}</span>` : `<span class="tm">${esc(c.skill)} · ${!ageOf(c) && !recsOf(c.id).length ? "🥚" : `Lv.${li.level}`}${ageOf(c)?.birthday ? " 🎂" : ""}</span>`}
         </div>
-        <div class="body"><span class="prop">${c.prop}</span><img class="sprite" src="${SP(c.id, m.pose)}" alt="${esc(c.name)}"></div>
+        <div class="body"><img class="prop-ic" src="icons/${PROP_IC[c.id] || "pr-dots"}.webp" alt=""><img class="sprite" src="${SP(c.id, m.pose)}" alt="${esc(c.name)}"></div>
         <div class="mini"><i style="width:${goalNow(c).pct * 100}%"></i></div>
       </div>`;
     }).join("")}
@@ -1139,12 +1143,12 @@ function viewHome(){
   <div class="quick">${allChars().map(c => `<button data-jump="${c.id}" style="${charStyle(c)}" aria-label="${esc(c.name)}에게 가기"><img src="${SP(c.id, "idle")}" alt="">${talkOf(c.id) ? `<span class="tk-dot">💬</span>` : ""}</button>`).join("")}</div>
   <div class="hud">
     <div class="hud-card">
-      <div class="hc-title"><span class="hc-sprout">🌱</span>오늘의 성장<span class="hc-spark">✦</span></div>
+      <div class="hc-title"><span class="hc-sprout">🌱</span>오늘의 성장<img class="hc-spark" src="icons/ui-star.webp" alt=""></div>
       <div class="hc-date">${fmtMD(today)} (${DOW[(new Date().getDay()+6)%7]})${total ? ` · 총 <b>${fmtDur(total)}</b>` : ""}</div>
     </div>
     <div class="hud-right">
-      <button class="hud-btn hud-round" id="btn-talk" aria-label="친구들 이야기 다시 듣기">💬</button>
-      <button class="hud-btn" id="btn-summary"><span>📋</span> 결산</button>
+      <button class="hud-btn hud-round" id="btn-talk" aria-label="친구들 이야기 다시 듣기"><img src="icons/ui-chat.webp" alt=""></button>
+      <button class="hud-btn" id="btn-summary"><img src="icons/ui-sum.webp" alt=""> 결산</button>
     </div>
   </div>
   ${guideHTML()}
@@ -1158,21 +1162,23 @@ function viewHome(){
     ${growthPanelHTML()}
   </div>`;
 }
+// 마을 캐릭터 옆 소품 말풍선 아이콘
+const PROP_IC = { drum: "pr-music", toon: "pr-alert", reels: "pr-heart", jp: "pr-jp" };
 // 상단 가운데 안내 말풍선: 지금 일정 > 다음 일정 > 기본 안내 (실제 시간표에서)
 function guideHTML(){
   const ni = nowInfo(), c0 = ni.current[0];
   const txt = c0 ? `⏰ 지금은 <b>${esc(c0.p.name)}</b> 시간이에요${c0.p.end ? ` · ~${esc(c0.p.end)}` : ""}`
     : ni.next ? `🌿 다음 일정은 <b>${esc(ni.next.p.name)}</b> · ${esc(ni.next.p.start)}`
     : `친구들을 눌러 오늘 할 일을 확인해요!`;
-  return `<button class="guide" id="guide" aria-label="오늘의 안내">${txt}<span class="g-spark">✦</span></button>`;
+  return `<button class="guide" id="guide" aria-label="오늘의 안내">${txt}<img class="g-spark" src="icons/ui-star.webp" alt=""></button>`;
 }
 // 하단 '오늘의 할 일 & 성장 현황': 스킬 카드 4개 (누르면 그 친구의 상세 기록)
-const GP = { drum: { ic: "🥁", bg: "#FFF1CC", bd: "#EFD07A", bar: "#F2C14E" }, toon: { ic: "✍️", bg: "#DDEEFB", bd: "#9DC6EA", bar: "#7FB3E3" },
-             reels: { ic: "💄", bg: "#FCE1E7", bd: "#F0AFC0", bar: "#EC8FA8" }, jp: { ic: "📖", bg: "#FFF6E2", bd: "#E8CF9C", bar: "#E2B866" } };
+const GP = { drum: { ic: "sk-drum", bg: "#FFF1CC", bd: "#EFD07A", bar: "#F2C14E" }, toon: { ic: "sk-toon", bg: "#DDEEFB", bd: "#9DC6EA", bar: "#7FB3E3" },
+             reels: { ic: "sk-reels", bg: "#FCE1E7", bd: "#F0AFC0", bar: "#EC8FA8" }, jp: { ic: "sk-jp", bg: "#FFF6E2", bd: "#E8CF9C", bar: "#E2B866" } };
 function growthPanelHTML(){
   const today = todayStr();
   return `<section class="growth-panel" aria-label="오늘의 할 일과 성장 현황">
-    <div class="gp-title"><span class="gp-s">✦</span><span>📋</span>오늘의 할 일 &amp; 성장 현황<span class="gp-s">✦</span></div>
+    <div class="gp-title"><img class="gp-s" src="icons/ui-star.webp" alt=""><img class="gp-ti" src="icons/ui-sum.webp" alt="">오늘의 할 일 &amp; 성장 현황<img class="gp-s" src="icons/ui-star.webp" alt=""></div>
     <div class="gp-cards">${["drum", "toon", "reels", "jp"].map(id => {
       const c = ch(id), g = GP[id], gn = goalNow(c), run = timerOf(id), egg = !ageOf(c) && !recsOf(id).length;
       const plans = plansOn(today).filter(p => p.charId === id), done = plans.filter(p => p.status === "done").length;
@@ -1181,7 +1187,7 @@ function growthPanelHTML(){
         : egg ? "🥚 첫 기록 전"
         : gn.count ? `주 ${gn.n} / ${gn.t}회` : `${gn.n ? fmtDur(gn.n) : "0분"} / ${fmtDur(gn.t)}`;
       return `<button class="gp-card ${gn.done ? "done" : ""}" data-gp="${id}" style="--gp-bg:${g.bg};--gp-bd:${g.bd};--gp-bar:${g.bar}" aria-label="${esc(c.skill)} 상세 기록 보기">
-        <span class="gp-ic">${g.ic}</span>
+        <img class="gp-ic" src="icons/${g.ic}.webp" alt="">
         <span class="gp-txt"><b>${esc(c.skill)}</b><span class="gp-v">${val}</span>
           <i class="gp-bar"><i style="width:${Math.round(gn.pct * 100)}%"></i></i>
           ${plans.length ? `<span class="gp-plan">할 일 ${done}/${plans.length}</span>` : ""}</span>
