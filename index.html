@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#FDF7E8">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -135,6 +135,10 @@
   .ws-go { background: #FFE9A8; text-decoration: none; color: var(--ink); white-space: nowrap; }
   .ws-row a.btn-sm { text-decoration: none; color: var(--ink); white-space: nowrap; }
   .ws-del { padding: 4px 8px; background: transparent; box-shadow: none; border: none; color: var(--ink-soft); }
+  /* 아이패드: 빠르게 두 번 누르면 화면이 확대되는 것 막기(두 손가락 확대는 그대로) */
+  *, *::before, *::after { touch-action: manipulation; }
+  /* 아이패드: 글자가 16px보다 작은 입력칸을 누르면 화면이 확대돼서, 입력칸만 16px로 */
+  @supports (-webkit-touch-callout: none) { input, select, textarea { font-size: max(16px, 1em) !important; } }
   .ws-bpm { font-size: 12.5px; margin-top: 2px; }
   .ws-bpm b { font-size: 15px; }
   .ws-bpm.unsure b { color: #B4782A; }
@@ -151,7 +155,9 @@
   .mt-bpm { display: flex; align-items: center; justify-content: center; gap: 18px; }
   .mt-bpm b { display: block; font-family: var(--hand); font-size: 64px; line-height: 1; }
   .mt-bpm span { font-size: 13px; color: var(--ink-soft); }
-  .mt-pm { width: 52px; height: 52px; border-radius: 50%; font-size: 26px; padding: 0; }
+  .mt-pm { width: 60px; height: 60px; border-radius: 50%; font-size: 28px; padding: 0; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  .mt-pm.holding { background: #FFE9A8; transform: scale(.94); }
+  .metro-modal button, .metro-modal .chip { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   #mt-range { width: 100%; margin: 10px 0 6px; accent-color: #E0A93A; }
   .mt-dots { display: flex; justify-content: center; gap: 10px; margin: 6px 0 4px; }
   .mt-dots i { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--ink); background: #FFFDF7; transition: background .05s; }
@@ -2838,7 +2844,7 @@ function openMetronome(opts = {}){
       ${opts.video ? `<div class="row mt-row"><button class="btn-sm" id="mt-vid">${videoOn ? "📺 영상 닫기" : "📺 여기서 영상 틀기"}</button>${opts.link ? `<a class="btn-sm" href="${opts.link}" target="_blank" rel="noopener" style="text-decoration:none;color:var(--ink)">↗ 유튜브에서 열기</a>` : ""}</div>` : ""}
       <div class="mt-stage">
         <img class="mt-dd" id="mt-dd" src="${SP("drum", playing ? "focus" : "hi")}" alt="">
-        <div class="mt-bpm"><button class="mt-pm" data-mt-d="-1">−</button><div><b id="mt-num">${cfg.bpm}</b><span>BPM</span></div><button class="mt-pm" data-mt-d="1">＋</button></div>
+        <div class="mt-bpm"><button class="mt-pm" data-mt-hold="-1" aria-label="느리게 (길게 누르면 10씩)">−</button><div><b id="mt-num">${cfg.bpm}</b><span>BPM</span></div><button class="mt-pm" data-mt-hold="1" aria-label="빠르게 (길게 누르면 10씩)">＋</button></div>
         <input type="range" id="mt-range" min="40" max="240" value="${cfg.bpm}">
         <div class="mt-dots">${Array.from({ length: cfg.beats }, (_, i) => `<i data-dot="${i}" class="${i === 0 && cfg.accent ? "acc" : ""}"></i>`).join("")}</div>
       </div>
@@ -2872,6 +2878,15 @@ function openMetronome(opts = {}){
       draw();
     };
     box.querySelectorAll("[data-mt-d]").forEach(b => b.onclick = () => setBpm(cfg.bpm + +b.dataset.mtD));
+    // ＋/− : 톡 누르면 1씩, 길게 누르고 있으면 10씩 계속 (1초쯤 지나면 두 배 빠르게)
+    box.querySelectorAll("[data-mt-hold]").forEach(b => {
+      const dir = +b.dataset.mtHold; let t = null, n = 0;
+      const stop = () => { clearTimeout(t); t = null; b.classList.remove("holding"); };
+      const rep = () => { setBpm(cfg.bpm + dir * 10); n++; t = setTimeout(rep, n < 5 ? 260 : 130); };
+      b.onpointerdown = e => { e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch(_) {} n = 0; b.classList.add("holding"); setBpm(cfg.bpm + dir); t = setTimeout(rep, 450); };
+      b.onpointerup = b.onpointercancel = b.onlostpointercapture = stop;
+      b.oncontextmenu = e => e.preventDefault();
+    });
     box.querySelectorAll("[data-mt-x]").forEach(b => b.onclick = () => setBpm(cfg.bpm * +b.dataset.mtX));
     box.querySelector("#mt-range").oninput = e => setBpm(+e.target.value);
     box.querySelectorAll("[data-mt-beats]").forEach(b => b.onclick = () => { cfg.beats = +b.dataset.mtBeats; draw(); });
