@@ -24,7 +24,7 @@
     --body: "Gowun Dodum", -apple-system, "Apple SD Gothic Neo", sans-serif;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; background: var(--cream); color: var(--ink); font-family: var(--body); }
+  html, body { margin: 0; background: var(--cream); color: var(--ink); font-family: var(--body); overscroll-behavior: none; }
   body { background-image: radial-gradient(circle at 12% 8%, #fff8e0 0, transparent 40%), radial-gradient(circle at 90% 30%, #fbeee6 0, transparent 35%); min-height: 100vh; }
   .wrap { max-width: 720px; margin: 0 auto; padding: 18px 16px 110px; }
   h1, h2, h3, .hand { font-family: var(--hand); font-weight: 700; }
@@ -100,7 +100,8 @@
 
 
   /* 마을 장면 */
-  .scene-wrap { position: fixed; inset: 0; overflow: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; background: #CFE8F5; }
+  .scene-wrap { position: fixed; inset: 0; overflow: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; overscroll-behavior: none; background: #F3E7D3 center / cover no-repeat; }
+  .scene-wrap::before { content: ""; position: fixed; inset: -20px; background: inherit; filter: blur(14px) saturate(1.05); z-index: -1; }
   .scene-wrap::-webkit-scrollbar { display: none; }
   .scene { position: relative; width: max(100vw, calc(100vh * 1.3333)); aspect-ratio: 1448 / 1086; }
   @supports (height: 100dvh) { .scene { width: max(100vw, calc(100dvh * 1.3333)); } }
@@ -383,6 +384,18 @@
   .scene.editing .glow.lamp { outline-color: #FFE38A; }
   .scene.editing .star { outline-color: #CFC4FF; width: 1.6%; }
   .le-bar { position: fixed; bottom: max(12px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); z-index: 6; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 12px; background: rgba(255,253,247,.96); border: 2px solid var(--ink); border-radius: 18px; padding: 8px 14px; box-shadow: 0 4px 0 rgba(74,53,41,.2); width: max-content; max-width: calc(100vw - 20px); }
+
+
+  /* 페이지 넘김 */
+  #app.slide-l > * { animation: slideL .32s ease both; }
+  #app.slide-r > * { animation: slideR .32s ease both; }
+  @keyframes slideL { from { opacity: 0; transform: translateX(46px); } }
+  @keyframes slideR { from { opacity: 0; transform: translateX(-46px); } }
+  #app.bump-l > * { animation: bumpL .3s ease; } #app.bump-r > * { animation: bumpR .3s ease; }
+  @keyframes bumpL { 40% { transform: translateX(-12px); } } @keyframes bumpR { 40% { transform: translateX(12px); } }
+  #app.slide-l > .scene-wrap, #app.slide-r > .scene-wrap, #app.bump-l > .scene-wrap, #app.bump-r > .scene-wrap { animation-name: fadeOnly; }
+  @keyframes fadeOnly { from { opacity: .4; } }
+  @media (prefers-reduced-motion: reduce) { #app > * { animation: none !important; } }
 
   /* 탭바 */
   .tabbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: max(14px, env(safe-area-inset-bottom)); display: flex; gap: 4px; background: var(--paper); border: 2px solid var(--ink); border-radius: 999px; padding: 6px; box-shadow: 0 5px 0 var(--shadow); z-index: 5; }
@@ -890,6 +903,8 @@ function render(){
   ch1 = fillFromTemplate([...weekDays(mondayOf(new Date())), ...ttWeek()]) || ch1;
   if (ch1) Store.save();
   const app = document.getElementById("app");
+  if (ui.slide) { const cls = ui.slide; app.classList.remove("slide-l", "slide-r", "bump-l", "bump-r"); void app.offsetWidth; app.classList.add(cls); ui.slide = null;
+    clearTimeout(ui.slideT); ui.slideT = setTimeout(() => app.classList.remove(cls), 400); }
   app.innerHTML = ui.tab === "home" ? viewHome() : ui.tab === "tt" ? viewTimetable() : ui.tab === "cal" ? viewCalendar() : ui.tab === "reels" ? viewReels() : viewSettings();
   document.getElementById("nav-root").innerHTML = `<nav class="tabbar">
     ${[["home","🏡 마을"],["tt","🗓 시간표"],["cal","📅 달력"],["set","⚙️ 설정"]].map(([k,l]) => `<button data-tab="${k}" class="${ui.tab===k?"on":""}">${l}</button>`).join("")}
@@ -910,7 +925,7 @@ function viewHome(){
   const total = CHARS.reduce((a,c) => a + minOn(c.id, today), 0);
   const t = state.timer, tc = t ? ch(t.charId) : null;
   return `
-  <div class="scene-wrap" id="scene-wrap"><div class="scene ${sceneClass()}" id="scene">
+  <div class="scene-wrap" id="scene-wrap" style="background-image:url(${curSeason()}.webp)"><div class="scene ${sceneClass()}" id="scene">
     <img class="village" src="${curSeason()}.webp" alt="${SEASONS[curSeason()].slice(3)} 마을">
     ${sceneLayersHTML()}
     ${allChars().map(c => {
@@ -2366,6 +2381,40 @@ function bindCards(){
   const det = document.getElementById("rc-detail");
   if (det) { if (ui.rcScroll) det.scrollTop = ui.rcScroll; det.onscroll = () => { ui.rcScroll = det.scrollTop; }; if (st.active === "reels") bindReels(); }
 }
+
+
+/* ============ 손가락으로 옆으로 밀어 페이지 넘기기: 마을 → 시간표 → 달력 → 설정 ============ */
+const PAGES = ["home", "tt", "cal", "set"];
+function goPage(dir){
+  const cur = ui.tab === "reels" ? 0 : PAGES.indexOf(ui.tab), next = cur + dir;
+  if (cur < 0 || next < 0 || next >= PAGES.length) { const app = document.getElementById("app"); app.classList.remove("bump-l", "bump-r"); void app.offsetWidth; const cls = dir > 0 ? "bump-l" : "bump-r"; app.classList.add(cls); setTimeout(() => app.classList.remove(cls), 350); return; }
+  ui.lightEdit = false; document.body.classList.remove("light-editing");
+  ui.tab = PAGES[next]; ui.slide = dir > 0 ? "slide-l" : "slide-r";
+  window.scrollTo(0, 0); render();
+}
+(() => {
+  let st = null;
+  // 옆으로 스크롤되는 영역(마을, 시간표, 진행 보드 등)은 먼저 그 안에서 움직이고, 끝에 닿은 상태에서 더 밀면 페이지가 넘어가요
+  const hScroller = el => { for (; el && el !== document.body; el = el.parentElement) { if (el.scrollWidth > el.clientWidth + 2) { const ox = getComputedStyle(el).overflowX; if (ox === "auto" || ox === "scroll") return el; } } return null; };
+  document.addEventListener("touchstart", e => {
+    if (e.touches.length !== 1 || ui.lightEdit || document.querySelector("#modal-root .overlay")) { st = null; return; }
+    if (e.target.closest("input, textarea, select, .le-bar")) { st = null; return; }
+    const t = e.touches[0], sc = hScroller(e.target);
+    st = { x: t.clientX, y: t.clientY, t: Date.now(), sc, sl: sc ? sc.scrollLeft : 0, max: sc ? sc.scrollWidth - sc.clientWidth : 0 };
+  }, { passive: true });
+  document.addEventListener("touchend", e => {
+    if (!st) return; const s0 = st; st = null;
+    const t = e.changedTouches[0], dx = t.clientX - s0.x, dy = t.clientY - s0.y;
+    if (Date.now() - s0.t > 800 || Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
+    if (s0.sc) {
+      const moved = Math.abs(s0.sc.scrollLeft - s0.sl) > 2;
+      const atEdge = dx < 0 ? s0.sl >= s0.max - 2 : s0.sl <= 2;   // 밀기 시작할 때 이미 끝에 있었는지
+      if (moved || !atEdge) return;
+    }
+    goPage(dx < 0 ? 1 : -1);
+  }, { passive: true });
+  document.addEventListener("touchcancel", () => { st = null; }, { passive: true });
+})();
 
 /* ============ 공통 ============ */
 function openModal(html, opts = {}){
