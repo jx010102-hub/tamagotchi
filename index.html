@@ -123,7 +123,8 @@
   /* 찬양 콘티 */
   .ws-modal { width: min(640px, 100%); }
   .ws-modal > div { min-width: 0; }
-  .ws-modal textarea { width: 100%; min-height: 160px; font-size: 15px; line-height: 1.5; }
+  .ws-panel textarea, .ws-modal textarea { width: 100%; min-height: 160px; font-size: 15px; line-height: 1.5; }
+  .ws-panel .ws-list { max-height: none; }
   .ws-list { display: flex; flex-direction: column; gap: 8px; max-height: min(52vh, 460px); overflow: auto; padding: 2px; }
   .ws-row { display: flex; align-items: center; gap: 8px; background: #FFFDF7; border: 2px solid var(--ink); border-radius: 14px; padding: 8px 10px; }
   .ws-row.miss { background: #FBF3EA; border-style: dashed; }
@@ -1074,12 +1075,12 @@ function openCharPopup(id){
         <button id="cp-manual">✎ 시간 입력</button>
       </div>
       ${id === "reels" ? `<button class="btn-block btn-ghost" id="cp-studio" style="margin-top:10px">↗ 릴스 스튜디오 크게 보기</button>` : ""}
-      ${id === "drum" ? `<button class="btn-block btn-ghost" id="cp-worship" style="margin-top:10px">🎵 찬양 콘티 찾기${wsWeekSet() ? ` · 이번 주 ${wsWeekSet().songs.length}곡` : ""}</button>` : ""}
     </div>`;
   };
-  const duo = id === "reels";
-  if (duo && reelsCardState() === "open") { ui.cards = { active: "reels", mode: "preview" }; render(); }
-  const wrap = () => duo ? `<div class="duo"><div class="duo-l">${draw()}</div><div class="duo-r" id="reels-panel">${viewReels(true)}</div></div>` : draw();
+  const duo = id === "reels" || id === "drum";
+  if (id === "reels" && reelsCardState() === "open") { ui.cards = { active: "reels", mode: "preview" }; render(); }
+  const right = () => id === "reels" ? `<div class="duo-r" id="reels-panel">${viewReels(true)}</div>` : `<div class="duo-r ws-panel" id="drum-panel"></div>`;
+  const wrap = () => duo ? `<div class="duo"><div class="duo-l">${draw()}</div>${right()}</div>` : draw();
   const close = openModal(wrap(), { bare: true, wide: duo });
   const box = duo ? lastModal().querySelector(".duo-l") : lastModal();
   const bind = () => {
@@ -1088,11 +1089,11 @@ function openCharPopup(id){
     if (st) st.onclick = () => startTimer(id, () => { box.innerHTML = draw(); bind(); floaties(box.querySelector(".hero"), "🔥"); tick(); });
     if (sp) sp.onclick = () => { close(); stopTimer(); };
     box.querySelector("#cp-manual").onclick = () => { close(); openManualSheet(id); };
-    const wsb = box.querySelector("#cp-worship"); if (wsb) wsb.onclick = () => openWorship();
     const studio = box.querySelector("#cp-studio"); if (studio) studio.onclick = () => { close(); ui.tab = "reels"; window.scrollTo(0, 0); render(); };
-    if (duo) bindReels();
+    if (id === "reels") bindReels();
   };
   bind();
+  if (id === "drum") mountWorship(lastModal().querySelector("#drum-panel"));
   floaties(box.querySelector(".hero"), "✨");
 }
 
@@ -2598,9 +2599,14 @@ function wsParse(raw){
 function wsWeekSet(){ const mon = ymd(mondayOf(new Date())); return W().sets.find(s => s.weekOf === mon) || null; }
 
 function openWorship(setId){
-  let set = setId ? W().sets.find(s => s.id === setId) : wsWeekSet(), editing = !set, msg = "";
   const close = openModal("", { sheet: true });
   const box = lastModal(); box.classList.add("ws-modal");
+  mountWorship(box, { setId, close });
+}
+// 콘티 화면을 box 안에 그림: 따로 뜨는 창(close 있음) 또는 둥둥이 옆 패널(close 없음)
+function mountWorship(box, opts = {}){
+  let set = opts.setId ? W().sets.find(s => s.id === opts.setId) : wsWeekSet(), editing = !set, msg = "";
+  const close = opts.close, panel = !close;
   const c = ch("drum");
   const rowHTML = (s, i) => {
     const f = wsFind(s.q), own = s.pick && wsIndex ? wsIndex.songs.find(x => x.v.id === s.pick.v && x.t === s.pick.t) : null, p = own || f.pick;
@@ -2620,10 +2626,10 @@ function openWorship(setId){
   const draw = () => {
     const recent = W().sets.filter(s => !set || s.id !== set.id).slice(0, 4);
     box.innerHTML = `<div style="${charStyle(c)}">
-      <button class="close-x" data-close aria-label="닫기">✕</button>
+      ${close ? `<button class="close-x" data-close aria-label="닫기">✕</button>` : ""}
       <div class="row" style="gap:10px;align-items:center;margin-bottom:6px">
-        <img src="${SP("drum", editing ? "think" : "hi")}" alt="" style="width:64px;height:64px;object-fit:contain">
-        <div><div class="hand" style="font-size:24px">🥁 둥둥이의 찬양 콘티 찾기</div>
+        ${panel ? "" : `<img src="${SP("drum", editing ? "think" : "hi")}" alt="" style="width:64px;height:64px;object-fit:contain">`}
+        <div><div class="hand ${panel ? "duo-title" : ""}" style="font-size:24px;${panel ? "margin:0" : ""}">🎵 찬양 콘티 찾기</div>
         <p class="muted" style="font-size:12.5px">찬양기도회 영상 ${wsIndex ? `${wsIndex.videos.length}개 · 곡 ${wsIndex.songs.length}개${wsIndex.updated ? ` · ${fmtMD(ymd(new Date(wsIndex.updated)))} 업데이트` : ""}` : "불러오는 중…"}</p></div>
       </div>
       ${editing ? `
@@ -2644,7 +2650,7 @@ function openWorship(setId){
     bind();
   };
   const bind = () => {
-    box.querySelector("[data-close]").onclick = close;
+    const cx = box.querySelector("[data-close]"); if (cx && close) cx.onclick = close;
     const go = box.querySelector("#ws-go");
     if (go) go.onclick = async () => {
       const raw = box.querySelector("#ws-raw").value; await wsLoad();
@@ -2656,7 +2662,7 @@ function openWorship(setId){
         if (set) { set.raw = raw; set.songs = qs.map(q => ({ q })); set.ts = Date.now(); }
         else { set = { id: uid(), weekOf: mon, raw, songs: qs.map(q => ({ q })), ts: Date.now() }; W().sets.unshift(set); } }
       W().sets = W().sets.slice(0, 12); Store.save(); editing = false; msg = ""; draw();
-      floaties(box.querySelector("img"), "🥁");
+      floaties(box.querySelector("img") || box, "🥁");
     };
     const cancel = box.querySelector("#ws-cancel"); if (cancel) cancel.onclick = () => { editing = false; draw(); };
     const edit = box.querySelector("#ws-edit"); if (edit) edit.onclick = () => { editing = true; draw(); };
