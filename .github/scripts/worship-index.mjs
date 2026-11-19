@@ -66,12 +66,14 @@ async function listVideos(){
       const id = l.contentId, t = l.metadata?.lockupMetadataViewModel?.title?.content;
       if (id && t) vids.push({ id, title: t, ago: "" });
     }
-    const tok = [...walk(data, "continuationCommand")].map(c => c.token).filter(Boolean).pop();
+    // 목록 맨 끝의 '더 보기' 칸에서만 다음 페이지 토큰을 가져옴 (정렬 칩의 토큰과 헷갈리지 않게)
+    const tok = [...walk(data, "continuationItemRenderer")].map(c => c.continuationEndpoint?.continuationCommand?.token).filter(Boolean).pop();
+    const before = vids.length;
     if (!tok || !KEY) { console.log(`  목록 ${page + 1}페이지에서 끝 (다음 페이지 표시 없음)`); break; }
     page++; await sleep(600);
     try { data = await api("browse", { continuation: tok }); }
     catch (e) { console.log(`  다음 페이지 실패: ${e.message}`); break; }
-    if (page === 1) console.log(`  2페이지 응답 키: ${Object.keys(data).join(",")}`);
+
   }
   const seen = new Set();
   return vids.filter(v => v.id && !seen.has(v.id) && seen.add(v.id));
