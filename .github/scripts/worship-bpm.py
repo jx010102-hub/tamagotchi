@@ -7,7 +7,7 @@ import numpy as np
 import librosa
 
 SONGS, OUT = "worship/songs.json", "worship/bpm.json"
-PER_RUN = int(os.environ.get("BPM_PER_RUN", "3"))
+PER_RUN = int(os.environ.get("BPM_PER_RUN", "1"))
 SKIP = re.compile(r"^(말씀|밀씀|영상|광고|기도|헌금|축도|오프닝|인트로|엔딩|설교)$")
 
 def norm(s):
@@ -37,9 +37,14 @@ failed = 0
 for v in todo:
     with tempfile.TemporaryDirectory() as d:
         src = os.path.join(d, "a.%(ext)s")
-        r = subprocess.run(["yt-dlp", "-q", "--no-warnings", "-f", "bestaudio[abr<=96]/bestaudio", "-o", src,
-                            f"https://www.youtube.com/watch?v={v['id']}"], capture_output=True, text=True)
-        files = [f for f in os.listdir(d) if f.startswith("a.")]
+        # 유튜브가 서버를 '로봇'으로 의심하면 다른 방식(클라이언트)으로 차례로 시도
+        for client in ["default", "tv", "web_safari", "mweb", "android_vr", "ios", "tv_embedded"]:
+            args = ["yt-dlp", "-q", "--no-warnings", "-f", "bestaudio[abr<=96]/bestaudio/best", "-o", src]
+            if client != "default": args += ["--extractor-args", f"youtube:player_client={client}"]
+            r = subprocess.run(args + [f"https://www.youtube.com/watch?v={v['id']}"], capture_output=True, text=True)
+            files = [f for f in os.listdir(d) if f.startswith("a.")]
+            print(f"    {client}: {'성공' if files and not r.returncode else (r.stderr or '').strip()[:90]}")
+            if files and not r.returncode: break
         if r.returncode or not files:
             print(f"  소리 받기 실패 {v['id']}: {(r.stderr or '').strip()[:200]}"); failed += 1; continue
         wav = os.path.join(d, "a.wav")
