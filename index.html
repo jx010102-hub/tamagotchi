@@ -135,6 +135,31 @@
   .ws-go { background: #FFE9A8; text-decoration: none; color: var(--ink); white-space: nowrap; }
   .ws-row a.btn-sm { text-decoration: none; color: var(--ink); white-space: nowrap; }
   .ws-del { padding: 4px 8px; background: transparent; box-shadow: none; border: none; color: var(--ink-soft); }
+  .ws-bpm { font-size: 12.5px; margin-top: 2px; }
+  .ws-bpm b { font-size: 15px; }
+  .ws-bpm.unsure b { color: #B4782A; }
+  .ws-bpm-s { font-size: 12px; background: #FFE9A8; border-radius: 99px; padding: 0 6px; margin-left: 4px; }
+  .ws-met { background: #FFE9A8; padding: 4px 8px; }
+  .metro-modal { width: min(520px, 100%); text-align: center; }
+  .mt-stage { margin: 8px 0 4px; }
+  .mt-video:empty { display: none; }
+  .mt-video { position: relative; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; border: 2px solid var(--ink); margin-bottom: 10px; background: #000; }
+  .mt-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  .mt-dd { width: 120px; height: 120px; object-fit: contain; transform-origin: bottom center; }
+  .mt-dd.hit { animation: mtHit .16s ease-out; }
+  @keyframes mtHit { 0% { transform: scale(1.12, .9); } 100% { transform: scale(1); } }
+  .mt-bpm { display: flex; align-items: center; justify-content: center; gap: 18px; }
+  .mt-bpm b { display: block; font-family: var(--hand); font-size: 64px; line-height: 1; }
+  .mt-bpm span { font-size: 13px; color: var(--ink-soft); }
+  .mt-pm { width: 52px; height: 52px; border-radius: 50%; font-size: 26px; padding: 0; }
+  #mt-range { width: 100%; margin: 10px 0 6px; accent-color: #E0A93A; }
+  .mt-dots { display: flex; justify-content: center; gap: 10px; margin: 6px 0 4px; }
+  .mt-dots i { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--ink); background: #FFFDF7; transition: background .05s; }
+  .mt-dots i.acc { border-width: 3px; }
+  .mt-dots i.on { background: #F2B544; }
+  .mt-row { justify-content: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .mt-play { margin-top: 12px; font-size: 18px; padding: 12px; }
+  @media (prefers-reduced-motion: reduce) { .mt-dd.hit { animation: none; } }
   .ws-recent { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; padding-top: 10px; border-top: 1.5px dashed rgba(74,53,41,.25); }
   /* 말풍선: 친구들이 할 일 알려주기 */
   .npc.talking { z-index: 3; }
@@ -570,7 +595,7 @@ function fmtClock(ms){ const s = Math.max(0, Math.floor(ms/1000)); return `${pad
 
 /* ============ 상태 ============ */
 let state = emptyState();
-function emptyState(){ return { chars: {}, records: [], timer: null, plans: [], goals: [], goalLogs: [], imports: [], template: [], templateFrom: null, filledDates: [], reels: emptyReels(), worship: { sets: [] }, scene: {}, createdAt: Date.now(), updatedAt: 0 }; }
+function emptyState(){ return { chars: {}, records: [], timer: null, plans: [], goals: [], goalLogs: [], imports: [], template: [], templateFrom: null, filledDates: [], reels: emptyReels(), worship: { sets: [], bpm: {} }, scene: {}, createdAt: Date.now(), updatedAt: 0 }; }
 function emptyReels(){ return { posts: [], followers: [], board: [], weeklyTarget: null }; }
 function normalize(s){
   const e = emptyState();
@@ -580,7 +605,7 @@ function normalize(s){
     plans: arr("plans"), goals: arr("goals"), goalLogs: arr("goalLogs"), imports: arr("imports"),
     template: arr("template"), templateFrom: s.templateFrom || null, filledDates: arr("filledDates"),
     scene: s.scene && typeof s.scene === "object" ? s.scene : {},
-    worship: { sets: s.worship && Array.isArray(s.worship.sets) ? s.worship.sets : [] },
+    worship: { sets: s.worship && Array.isArray(s.worship.sets) ? s.worship.sets : [], bpm: s.worship && s.worship.bpm && typeof s.worship.bpm === "object" ? s.worship.bpm : {} },
     reels: (r => ({ posts: Array.isArray(r.posts) ? r.posts : [], followers: Array.isArray(r.followers) ? r.followers : [], board: Array.isArray(r.board) ? r.board : [], weeklyTarget: r.weeklyTarget || null }))(s.reels || {}),
     createdAt: s.createdAt || e.createdAt, updatedAt: s.updatedAt || 0 };
 }
@@ -1517,7 +1542,7 @@ function openDayDetail(date){
     const wss = wsSetsOn(date);
     const wsHTML = wss.map(set => `<div class="day-ws" style="${charStyle(ch("drum"))}">
       <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:4px"><p class="hand" style="font-size:19px;margin:0">🎵 토요예배 찬양 콘티 ${set.songs.length}곡</p><button class="btn-sm" data-ws-set="${set.id}">콘티 열기 ›</button></div>
-      ${set.songs.map((sg, i) => { const p = wsResolve(sg); return `<div class="ws-li"><span class="ws-n">${i + 1}</span><span class="grow">${esc(sg.q)}${p ? ` <span class="muted" style="font-size:12px">· ${p.v.date ? fmtMD(p.v.date) : ""} 영상 ${wsClock(p.t)}</span>` : ""}</span>
+      ${set.songs.map((sg, i) => { const p = wsResolve(sg); return `<div class="ws-li"><span class="ws-n">${i + 1}</span><span class="grow">${esc(sg.q)}${(b => b ? ` <span class="ws-bpm-s">♩${b.bpm}</span>` : "")(songBpm(sg))}${p ? ` <span class="muted" style="font-size:12px">· ${p.v.date ? fmtMD(p.v.date) : ""} 영상 ${wsClock(p.t)}</span>` : ""}</span>
         ${p ? `<a class="btn-sm ws-go" href="${wsLink(p.v.id, p.t)}" target="_blank" rel="noopener">▶</a>` : `<a class="btn-sm" href="${wsSearch(sg.q)}" target="_blank" rel="noopener">🔍</a>`}</div>`; }).join("")}
     </div>`).join("");
     box.innerHTML = `<button class="close-x" data-close aria-label="닫기">✕</button>
@@ -2540,7 +2565,7 @@ setInterval(tick, 1000);
    "[예수사랑교회 성금요일 총체적 치유 찬양기도회]" 영상들의 챕터(곡 + 시작 시각)를 모아 만든 파일이에요. */
 const WS_CHANNEL = "https://www.youtube.com/@jesuslovechurch6503";
 let wsIndex = null, wsLoading = null;
-const W = () => state.worship || (state.worship = { sets: [] });
+const W = () => { const w = state.worship || (state.worship = { sets: [] }); w.bpm = w.bpm || {}; return w; };
 function wsLoad(force){
   if (wsIndex && !force) return Promise.resolve(wsIndex);
   if (wsLoading) return wsLoading;
@@ -2638,11 +2663,13 @@ function mountWorship(box, opts = {}){
       <span class="ws-n">${i + 1}</span>
       <div class="grow" style="min-width:0">
         <div class="ws-q">${esc(s.q)}</div>
+        ${(b => b ? `<div class="ws-bpm ${b.unsure ? "unsure" : ""}">♩ <b>${b.bpm}</b> BPM <span class="muted">${esc(b.src)}</span></div>` : "")(songBpm(s))}
         ${p ? `<div class="ws-hit">🎵 ${esc(p.title)} <span class="muted">· ${p.v.date ? fmtMD(p.v.date) : ""} 영상 ${wsClock(p.t)}부터</span></div>`
             : `<div class="ws-hit muted">${wsIndex ? "찬양기도회 영상에서 못 찾았어 🥲" : "영상 목록 불러오는 중…"}</div>`}
         ${p && f.cands && f.cands.length > 1 ? `<select class="ws-alt" data-ws-alt="${i}">${f.cands.map(x => `<option value="${x.v.id}|${x.t}" ${x === p ? "selected" : ""}>${esc(x.title)} · ${x.v.date ? fmtMD(x.v.date) : ""} ${wsClock(x.t)}</option>`).join("")}</select>` : ""}
       </div>
       ${p ? `<a class="btn-sm ws-go" href="${wsLink(p.v.id, p.t)}" target="_blank" rel="noopener">▶ 열기</a>` : `<a class="btn-sm" href="${wsSearch(s.q)}" target="_blank" rel="noopener">🔍 검색</a>`}
+      <button class="btn-sm ws-met" data-ws-met="${i}" aria-label="메트로놈">🥁</button>
       <button class="btn-sm ws-del" data-ws-del="${i}" aria-label="빼기">✕</button>
     </div>`;
   };
@@ -2653,7 +2680,7 @@ function mountWorship(box, opts = {}){
       <div class="row" style="gap:10px;align-items:center;margin-bottom:6px">
         ${panel ? "" : `<img src="${SP("drum", editing ? "think" : "hi")}" alt="" style="width:64px;height:64px;object-fit:contain">`}
         <div><div class="hand ${panel ? "duo-title" : ""}" style="font-size:24px;${panel ? "margin:0" : ""}">🎵 찬양 콘티 찾기</div>
-        <p class="muted" style="font-size:12.5px">찬양기도회 영상 ${wsIndex ? `${wsIndex.videos.length}개 · 곡 ${wsIndex.songs.length}개${wsIndex.updated ? ` · ${fmtMD(ymd(new Date(wsIndex.updated)))} 업데이트` : ""}` : "불러오는 중…"}</p></div>
+        <p class="muted" style="font-size:12.5px"><button class="btn-sm" id="ws-metro" style="float:right;margin-left:8px">🥁 메트로놈</button>찬양기도회 영상 ${wsIndex ? `${wsIndex.videos.length}개 · 곡 ${wsIndex.songs.length}개${wsIndex.updated ? ` · ${fmtMD(ymd(new Date(wsIndex.updated)))} 업데이트` : ""}` : "불러오는 중…"}</p></div>
       </div>
       ${editing ? `
         <p style="margin:4px 0 8px">카톡에서 콘티를 <b>그대로 복사해서</b> 붙여넣어!!! 내가 다 찾아줌!!</p>
@@ -2691,6 +2718,12 @@ function mountWorship(box, opts = {}){
     const cancel = box.querySelector("#ws-cancel"); if (cancel) cancel.onclick = () => { editing = false; draw(); };
     const edit = box.querySelector("#ws-edit"); if (edit) edit.onclick = () => { editing = true; draw(); };
     const nw = box.querySelector("#ws-new"); if (nw) nw.onclick = () => { set = null; editing = true; draw(); };
+    box.querySelectorAll("[data-ws-met]").forEach(b => b.onclick = () => {
+      const sg = set.songs[+b.dataset.wsMet], p = wsResolve(sg), bb = songBpm(sg);
+      openMetronome({ title: sg.q, bpm: bb ? bb.bpm : 100, src: bb ? `${bb.bpm} BPM · ${bb.src}` : "아직 템포 모름 · 영상 틀고 🎧나 👆로 찾아줘!!", video: p ? { id: p.v.id, t: p.t } : null, link: p ? wsLink(p.v.id, p.t) : null,
+        onSave: v => { sg.bpm = v; W().bpm[wsNorm(sg.q)] = v; Store.save(); if (box.isConnected) draw(); } });
+    });
+    const fm = box.querySelector("#ws-metro"); if (fm) fm.onclick = () => openMetronome({ bpm: 100 });
     box.querySelectorAll("[data-ws-del]").forEach(b => b.onclick = () => { set.songs.splice(+b.dataset.wsDel, 1); Store.save(); draw(); });
     box.querySelectorAll("[data-ws-alt]").forEach(sel => sel.onchange = () => { const [v, t] = sel.value.split("|"); set.songs[+sel.dataset.wsAlt].pick = { v, t: +t }; Store.save(); draw(); });
     box.querySelectorAll("[data-ws-open]").forEach(b => b.onclick = () => { set = W().sets.find(s => s.id === b.dataset.wsOpen); editing = false; draw(); });
@@ -2705,6 +2738,176 @@ function mountWorship(box, opts = {}){
   };
   draw();
   wsLoad().then(() => { if (box.isConnected) draw(); });
+}
+
+/* ============ 🥁 둥둥이 메트로놈: 곡 템포로 박자 틀고 연습 ============ */
+// 곡 템포: 이 콘티에서 정한 값 > 예전에 같은 곡에 저장한 값
+function songBpm(s){
+  if (s.bpm) return { bpm: s.bpm, src: "이번 콘티" };
+  const saved = W().bpm[wsNorm(s.q)]; return saved ? { bpm: saved, src: "지난번에 저장" } : null;
+}
+let metro = null;   // 지금 울리는 메트로놈 (한 번에 하나)
+function metroStop(){
+  if (!metro) return;
+  clearInterval(metro.timer); metro.timers.forEach(clearTimeout);
+  try { metro.ctx.close(); } catch(e) {}
+  metro = null;
+}
+function metroStart(getCfg, onBeat){
+  metroStop();
+  const AC = window.AudioContext || window.webkitAudioContext;
+  const ctx = new AC(); ctx.resume && ctx.resume();
+  const m = metro = { ctx, timer: null, timers: [], next: ctx.currentTime + .08, idx: 0 };
+  const click = (time, kind) => {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.value = kind === 2 ? 1760 : kind === 1 ? 1100 : 760;
+    g.gain.setValueAtTime(kind === 0 ? .25 : .6, time); g.gain.exponentialRampToValueAtTime(.0008, time + .045);
+    o.connect(g); g.connect(ctx.destination); o.start(time); o.stop(time + .05);
+  };
+  m.timer = setInterval(() => {
+    const c = getCfg(), sub = c.sub, per = 60 / c.bpm / sub;
+    while (m.next < ctx.currentTime + .12) {
+      const beat = Math.floor(m.idx / sub) % c.beats, onBeat0 = m.idx % sub === 0;
+      click(m.next, onBeat0 ? (beat === 0 && c.accent ? 2 : 1) : 0);
+      if (onBeat0) { const at = (m.next - ctx.currentTime) * 1000; m.timers.push(setTimeout(() => onBeat(beat), Math.max(0, at))); if (m.timers.length > 40) m.timers.splice(0, 20); }
+      m.next += per; m.idx++;
+    }
+  }, 25);
+}
+
+/* 마이크로 들어서 템포 찾기 (12초) */
+async function listenBpm(seconds, onProgress){
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+  const AC = window.AudioContext || window.webkitAudioContext, ctx = new AC();
+  await (ctx.resume ? ctx.resume() : null);
+  const src = ctx.createMediaStreamSource(stream), proc = ctx.createScriptProcessor(1024, 1, 1), chunks = [];
+  const mute = ctx.createGain(); mute.gain.value = 0;
+  src.connect(proc); proc.connect(mute); mute.connect(ctx.destination);
+  proc.onaudioprocess = e => chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+  const sr = ctx.sampleRate, t0 = Date.now();
+  await new Promise(res => { const iv = setInterval(() => { const p = (Date.now() - t0) / 1000 / seconds; onProgress && onProgress(Math.min(1, p)); if (p >= 1) { clearInterval(iv); res(); } }, 200); });
+  proc.disconnect(); src.disconnect(); stream.getTracks().forEach(t => t.stop()); ctx.close();
+  const len = chunks.reduce((a, c) => a + c.length, 0), x = new Float32Array(len); let o = 0; chunks.forEach(c => { x.set(c, o); o += c.length; });
+  return estimateBpm(x, sr);
+}
+function estimateBpm(x, sr){
+  // 1) 짧은 구간마다 소리 크기 → 커지는 순간(박)만 남기기
+  const hop = Math.round(sr * .005), win = hop * 4, env = [];
+  let prev = 0, hp = 0, lastX = 0;
+  for (let i = 0; i + win < x.length; i += hop) {
+    let e = 0;
+    for (let k = i; k < i + win; k++) { hp = .9 * (hp + x[k] - lastX); lastX = x[k]; e += hp * hp; }   // 낮은 웅웅거림 줄이기
+    const v = Math.log(1 + 1000 * e / win), d = v - prev; prev = v; env.push(d > 0 ? d : 0);
+  }
+  const n = env.length; if (n < 300) return null;
+  const mean = env.reduce((a, b) => a + b, 0) / n, z = env.map(v => v - mean);
+  // 2) 박 간격 찾기(자기상관), 60~180 BPM, 110 근처를 조금 선호
+  const fps = sr / hop, score = [];
+  for (let bpm = 50; bpm <= 190; bpm += .25) {
+    const lag = fps * 60 / bpm, l0 = Math.floor(lag), f = lag - l0; let s = 0;
+    for (let i = 0; i + l0 + 1 < n; i++) s += z[i] * (z[i + l0] * (1 - f) + z[i + l0 + 1] * f);
+    const w = Math.exp(-.5 * Math.pow(Math.log2(bpm / 110) / 0.9, 2));
+    score.push({ bpm, s: s / (n - l0) * (.6 + .4 * w) });
+  }
+  const at = b => score.reduce((m, x) => Math.abs(x.bpm - b) < Math.abs(m.bpm - b) ? x : m, score[0]);
+  const near = b => { const c = at(b); return score.filter(x => Math.abs(x.bpm - c.bpm) <= 2).reduce((m, x) => x.s > m.s ? x : m, c); };
+  score.sort((a, b) => b.s - a.s);
+  let best = score[0];
+  // 킥이 1·3박에만 있으면 절반 빠르기로 잡히기 쉬워요 → 두 배 쪽도 강하면 두 배로
+  if (best.bpm < 92) { const d = near(best.bpm * 2), r = d.s / best.s; if (d.bpm <= 185 && (best.bpm < 64 ? r > .3 : r > .72)) best = d; }
+  const alt = [near(best.bpm * 2), near(best.bpm / 2)].filter(x => x.bpm >= 50 && x.bpm <= 190 && Math.abs(x.bpm - best.bpm) > 10).sort((a, b) => b.s - a.s)[0];
+  const peak = Math.max(...z), clear = best.s > 0 ? Math.min(1, best.s / (peak * peak / 50 + 1e-9)) : 0;
+  return { bpm: Math.round(best.bpm), alt: alt ? Math.round(alt.bpm) : null, clear };
+}
+
+function openMetronome(opts = {}){
+  const c = ch("drum");
+  const cfg = { bpm: Math.max(40, Math.min(240, Math.round(opts.bpm || 100))), beats: 4, sub: 1, accent: true };
+  let playing = false, taps = [], listenMsg = "", busy = false;
+  const close0 = openModal("", { sheet: true });
+  const modal = lastModal(); modal.classList.add("metro-modal");
+  modal.innerHTML = `<div class="mt-video" id="mt-video"></div><div id="mt-ui"></div>`;
+  const box = modal.querySelector("#mt-ui"), vbox = modal.querySelector("#mt-video");
+  const close = () => { metroStop(); close0(); };
+  let videoOn = false;
+  const draw = () => {
+    box.innerHTML = `<div style="${charStyle(c)}">
+      <button class="close-x" data-close aria-label="닫기">✕</button>
+      <div class="hand" style="font-size:24px">🥁 둥둥이 메트로놈</div>
+      ${opts.title ? `<p style="margin:2px 0 0"><b>${esc(opts.title)}</b> <span class="muted">· ${esc(opts.src || "")}</span></p>` : ""}
+      ${opts.video ? `<div class="row mt-row"><button class="btn-sm" id="mt-vid">${videoOn ? "📺 영상 닫기" : "📺 여기서 영상 틀기"}</button>${opts.link ? `<a class="btn-sm" href="${opts.link}" target="_blank" rel="noopener" style="text-decoration:none;color:var(--ink)">↗ 유튜브에서 열기</a>` : ""}</div>` : ""}
+      <div class="mt-stage">
+        <img class="mt-dd" id="mt-dd" src="${SP("drum", playing ? "focus" : "hi")}" alt="">
+        <div class="mt-bpm"><button class="mt-pm" data-mt-d="-1">−</button><div><b id="mt-num">${cfg.bpm}</b><span>BPM</span></div><button class="mt-pm" data-mt-d="1">＋</button></div>
+        <input type="range" id="mt-range" min="40" max="240" value="${cfg.bpm}">
+        <div class="mt-dots">${Array.from({ length: cfg.beats }, (_, i) => `<i data-dot="${i}" class="${i === 0 && cfg.accent ? "acc" : ""}"></i>`).join("")}</div>
+      </div>
+      <div class="row mt-row"><button class="btn-sm" data-mt-x="0.5">÷2</button><button class="btn-sm" data-mt-d="-5">−5</button><button class="btn-sm" data-mt-d="5">+5</button><button class="btn-sm" data-mt-x="2">×2</button></div>
+      <div class="row mt-row">
+        ${[[4, "4/4"], [3, "3/4"], [6, "6/8"]].map(([b, l]) => `<span class="chip ${cfg.beats === b ? "on" : ""}" data-mt-beats="${b}">${l}</span>`).join("")}
+        <span style="width:8px"></span>
+        ${[[1, "♩"], [2, "♫ 8분"], [4, "16분"]].map(([s2, l]) => `<span class="chip ${cfg.sub === s2 ? "on" : ""}" data-mt-sub="${s2}">${l}</span>`).join("")}
+      </div>
+      <button class="btn-primary btn-block mt-play" id="mt-play">${playing ? "■ 멈추기" : "▶ 박자 틀기"}</button>
+      <div class="row mt-row" style="margin-top:10px">
+        <button class="grow" id="mt-tap">👆 탭해서 템포 (${taps.length > 1 ? `${taps.length}번` : "곡 들으며 박자에 맞춰 톡톡"})</button>
+        <button class="grow" id="mt-listen" ${busy ? "disabled" : ""}>🎧 들려줘서 찾기</button>
+      </div>
+      <p class="muted" id="mt-msg" style="margin-top:6px;font-size:12.5px">${listenMsg || (opts.video ? "📺로 곡을 틀고 🎧를 누르면 12초 듣고 템포를 찾아요. 안 맞으면 👆로 박자에 맞춰 톡톡!" : "🎧: 곡을 틀어놓고 마이크에 들려주면 12초 듣고 템포를 찾아요. 👆: 박자에 맞춰 톡톡!")}</p>
+      ${opts.onSave ? `<button class="btn-block" id="mt-save" style="margin-top:8px;background:#FFE9A8">💾 이 곡 템포로 저장 (${cfg.bpm} BPM)</button>` : ""}
+    </div>`;
+    bind();
+  };
+  const setBpm = v => { cfg.bpm = Math.max(40, Math.min(240, Math.round(v))); const n = box.querySelector("#mt-num"); if (n) n.textContent = cfg.bpm; const r = box.querySelector("#mt-range"); if (r) r.value = cfg.bpm; const sv = box.querySelector("#mt-save"); if (sv) sv.textContent = `💾 이 곡 템포로 저장 (${cfg.bpm} BPM)`; };
+  const onBeat = beat => {
+    box.querySelectorAll("[data-dot]").forEach(d => d.classList.toggle("on", +d.dataset.dot === beat));
+    const dd = box.querySelector("#mt-dd"); if (dd) { dd.classList.remove("hit"); void dd.offsetWidth; dd.classList.add("hit"); }
+  };
+  const bind = () => {
+    box.querySelector("[data-close]").onclick = close;
+    const vb = box.querySelector("#mt-vid");
+    if (vb) vb.onclick = () => {
+      videoOn = !videoOn;
+      vbox.innerHTML = videoOn ? `<iframe src="https://www.youtube.com/embed/${opts.video.id}?start=${opts.video.t}&playsinline=1&rel=0" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen title="찬양 영상"></iframe>` : "";
+      draw();
+    };
+    box.querySelectorAll("[data-mt-d]").forEach(b => b.onclick = () => setBpm(cfg.bpm + +b.dataset.mtD));
+    box.querySelectorAll("[data-mt-x]").forEach(b => b.onclick = () => setBpm(cfg.bpm * +b.dataset.mtX));
+    box.querySelector("#mt-range").oninput = e => setBpm(+e.target.value);
+    box.querySelectorAll("[data-mt-beats]").forEach(b => b.onclick = () => { cfg.beats = +b.dataset.mtBeats; draw(); });
+    box.querySelectorAll("[data-mt-sub]").forEach(b => b.onclick = () => { cfg.sub = +b.dataset.mtSub; draw(); });
+    box.querySelector("#mt-play").onclick = () => {
+      playing = !playing;
+      if (playing) metroStart(() => cfg, onBeat); else metroStop();
+      draw();
+    };
+    box.querySelector("#mt-tap").onclick = () => {
+      const now = performance.now();
+      if (taps.length && now - taps[taps.length - 1] > 2000) taps = [];
+      taps.push(now); taps = taps.slice(-8);
+      if (taps.length >= 3) { const iv = taps.slice(1).map((t, i) => t - taps[i]).sort((a, b) => a - b); setBpm(60000 / iv[Math.floor(iv.length / 2)]); }
+      const tb = box.querySelector("#mt-tap"); tb.textContent = `👆 탭해서 템포 (${taps.length}번)`;
+    };
+    box.querySelector("#mt-listen").onclick = async () => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { listenMsg = "이 기기에선 마이크를 쓸 수 없어요. 👆 탭으로 맞춰줘!!"; draw(); return; }
+      const wasPlaying = playing; if (playing) { playing = false; metroStop(); }
+      busy = true; listenMsg = "🎧 듣는 중… 곡을 크게 틀어줘!!"; draw();
+      try {
+        const r = await listenBpm(12, p => { const m = box.querySelector("#mt-msg"); if (m) m.textContent = `🎧 듣는 중… ${Math.round(p * 12)}/12초`; });
+        if (!r) listenMsg = "소리가 너무 작았어 🥲 다시 해보거나 👆 탭으로 맞춰줘!!";
+        else { setBpm(r.bpm); listenMsg = `찾았다!!! <b>${r.bpm} BPM</b>${r.clear < .2 ? " · 박이 흐릿해서 👆로 한 번 확인해줘" : ""}${r.alt ? `<br>박자 틀고 들어봐!! ${r.alt > r.bpm ? "너무 느리면" : "너무 빠르면"} → <button class="btn-sm" id="mt-alt" data-v="${r.alt}">${r.alt} BPM으로</button>` : ""}`; }
+      } catch(e) { listenMsg = "마이크를 허락해야 들을 수 있어요. (설정 → Safari → 마이크)"; }
+      busy = false; draw();
+      if (wasPlaying) { playing = true; metroStart(() => cfg, onBeat); draw(); }
+    };
+    const alt = box.querySelector("#mt-alt");
+    if (alt) alt.onclick = () => { setBpm(+alt.dataset.v); listenMsg = `${cfg.bpm} BPM으로 바꿨다!! 맞으면 💾 저장!!`; const m = box.querySelector("#mt-msg"); if (m) m.innerHTML = listenMsg; };
+    const sv = box.querySelector("#mt-save");
+    if (sv) sv.onclick = () => { opts.onSave(cfg.bpm); listenMsg = `저장했다!!! 다음에도 이 곡은 ${cfg.bpm} BPM!!`; opts.src = "내가 정함"; draw(); };
+  };
+  draw();
+  // 창이 닫히면(바깥을 눌러도) 소리 끄기
+  const watch = setInterval(() => { if (!box.isConnected) { metroStop(); clearInterval(watch); } }, 400);
 }
 
 /* ============ 말풍선: 친구들이 오늘 일정·기록을 보고 자기 말투로 말을 걸어요 ============

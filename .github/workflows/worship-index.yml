@@ -15,18 +15,11 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       - run: node .github/scripts/worship-index.mjs
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
-      - name: 곡마다 템포(BPM) 재기
-        continue-on-error: true
-        run: |
-          pip install -q yt-dlp librosa soundfile
-          python .github/scripts/worship-bpm.py
       - name: 바뀐 게 있으면 저장
         run: |
           git add worship/
           if git diff --cached --quiet; then echo "변경 없음"; exit 0; fi
           git config user.name "worship-bot"
           git config user.email "worship-bot@users.noreply.github.com"
-          git commit -m "찬양 영상 챕터·템포 업데이트"
+          git commit -m "찬양 영상 챕터 업데이트"
           git push
