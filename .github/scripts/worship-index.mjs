@@ -73,6 +73,7 @@ async function listVideos(){
     page++; await sleep(600);
     try { data = await api("browse", { continuation: tok }); }
     catch (e) { console.log(`  다음 페이지 실패: ${e.message}`); break; }
+    if (page === 1) { const j = JSON.stringify(data); console.log(`  [debug] 2페이지 ${j.length}바이트, videoRenderer ${[...walk(data, "videoRenderer")].length}, lockup ${[...walk(data, "lockupViewModel")].length}, richItem ${[...walk(data, "richItemRenderer")].length}: ${j.slice(0, 300)}`); }
 
   }
   const seen = new Set();
