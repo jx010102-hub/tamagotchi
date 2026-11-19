@@ -8,6 +8,7 @@ const TITLE_KEY = "성금요일총체적치유찬양기도회";      // 공백 �
 const OUT = "worship/songs.json";
 const MAX_PAGES = 40;          // 채널 영상 목록 최대 페이지(페이지당 ~30개)
 const KEEP = 80;               // 최근 영상 몇 개까지 보관
+let CTX = null, KEY = null;   // 유튜브 내부 API 정보 (첫 페이지에서 얻음)
 const HEADERS = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
   "Accept-Language": "ko-KR,ko;q=0.9",
@@ -41,7 +42,6 @@ async function getHtml(url){
     await sleep(8000 * (i + 1));   // 너무 빨리 물어봤다고 하면 잠깐 쉬었다가
   }
 }
-let CTX = null, KEY = null;   // 채널 페이지에서 얻은 유튜브 내부 API 정보
 async function api(path, body){
   const r = await fetch(`https://www.youtube.com/youtubei/v1/${path}?key=${KEY}&prettyPrint=false`, {
     method: "POST", headers: { ...HEADERS, "Content-Type": "application/json", "X-YouTube-Client-Name": "1", "X-YouTube-Client-Version": CTX.client.clientVersion, "Origin": "https://www.youtube.com" },
@@ -51,33 +51,44 @@ async function api(path, body){
   return r.json();
 }
 
-async function listVideos(){
-  const html = await getHtml(`https://www.youtube.com/${HANDLE}/videos?hl=ko&gl=KR`);
-  KEY = (html.match(/"INNERTUBE_API_KEY":"([^"]+)"/) || [])[1];
-  const ver = (html.match(/"INNERTUBE_CLIENT_VERSION":"([^"]+)"/) || [])[1] || "2.20240601.00.00";
-  CTX = jsonAfter(html, '"INNERTUBE_CONTEXT":') || { client: { clientName: "WEB", clientVersion: ver, hl: "ko", gl: "KR" } };
-  CTX.client = { ...CTX.client, hl: "ko", gl: "KR" };
-  let data = jsonAfter(html, "var ytInitialData"), vids = [], page = 0;
-  if (!data) throw new Error("ytInitialData 없음 (YouTube가 페이지를 막았을 수 있어요)");
-  while (data && page < MAX_PAGES) {
-    for (const v of walk(data, "videoRenderer")) vids.push({ id: v.videoId, title: text(v.title), ago: text(v.publishedTimeText) });
-    // 새 레이아웃(lockupViewModel)도 대비
-    for (const l of walk(data, "lockupViewModel")) {
-      const id = l.contentId, t = l.metadata?.lockupMetadataViewModel?.title?.content;
-      if (id && t) vids.push({ id, title: t, ago: "" });
+function collect(data, vids){
+  for (const v of walk(data, "videoRenderer")) vids.push({ id: v.videoId, title: text(v.title) });
+  for (const v of walk(data, "playlistVideoRenderer")) vids.push({ id: v.videoId, title: text(v.title) });
+  for (const l of walk(data, "lockupViewModel")) { const t = l.metadata?.lockupMetadataViewModel?.title?.content; if (l.contentId && t) vids.push({ id: l.contentId, title: t }); }
+}
+const nextToken = data => [...walk(data, "continuationItemRenderer")].map(c => c.continuationEndpoint?.continuationCommand?.token).filter(Boolean).pop();
+// 한 페이지(HTML) + '더 보기'로 이어지는 페이지들 읽기
+async function crawl(label, url, maxPages){
+  const vids = [];
+  try {
+    const html = await getHtml(url);
+    if (!KEY) {
+      KEY = (html.match(/"INNERTUBE_API_KEY":"([^"]+)"/) || [])[1];
+      const ver = (html.match(/"INNERTUBE_CLIENT_VERSION":"([^"]+)"/) || [])[1] || "2.20240601.00.00";
+      CTX = jsonAfter(html, '"INNERTUBE_CONTEXT":') || { client: { clientName: "WEB", clientVersion: ver } };
+      CTX.client = { ...CTX.client, hl: "ko", gl: "KR" };
     }
-    // 목록 맨 끝의 '더 보기' 칸에서만 다음 페이지 토큰을 가져옴 (정렬 칩의 토큰과 헷갈리지 않게)
-    const tok = [...walk(data, "continuationItemRenderer")].map(c => c.continuationEndpoint?.continuationCommand?.token).filter(Boolean).pop();
-    const before = vids.length;
-    if (!tok || !KEY) { console.log(`  목록 ${page + 1}페이지에서 끝 (다음 페이지 표시 없음)`); break; }
-    page++; await sleep(600);
-    try { data = await api("browse", { continuation: tok }); }
-    catch (e) { console.log(`  다음 페이지 실패: ${e.message}`); break; }
-    if (page === 1) { const j = JSON.stringify(data); console.log(`  [debug] 2페이지 ${j.length}바이트, videoRenderer ${[...walk(data, "videoRenderer")].length}, lockup ${[...walk(data, "lockupViewModel")].length}, richItem ${[...walk(data, "richItemRenderer")].length}: ${j.slice(0, 300)}`); }
-
-  }
+    let data = jsonAfter(html, "var ytInitialData"), page = 1;
+    if (!data) throw new Error("ytInitialData 없음");
+    collect(data, vids);
+    for (let tok = nextToken(data); tok && KEY && page < maxPages; tok = nextToken(data)) {
+      await sleep(700); page++;
+      data = await api("browse", { continuation: tok });
+      const n = vids.length; collect(data, vids);
+      if (vids.length === n) break;
+    }
+    console.log(`  ${label}: ${page}페이지, 영상 ${vids.length}개`);
+  } catch (e) { console.log(`  ${label} 실패: ${e.message}`); }
+  return vids;
+}
+async function listVideos(){
+  const latest = await crawl("최신 영상", `https://www.youtube.com/${HANDLE}/videos?hl=ko&gl=KR`, 1);
+  const found = await crawl("채널 안 검색", `https://www.youtube.com/${HANDLE}/search?query=${encodeURIComponent("성금요일 총체적 치유 찬양기도회")}&hl=ko&gl=KR`, 8);
+  let uploads = [];
+  const cid = CTX && (await getHtml(`https://www.youtube.com/${HANDLE}?hl=ko`).then(h => (h.match(/"externalId":"(UC[\w-]{22})"/) || h.match(/"channelId":"(UC[\w-]{22})"/) || [])[1]).catch(() => null));
+  if (cid) uploads = await crawl("전체 업로드", `https://www.youtube.com/playlist?list=UU${cid.slice(2)}&hl=ko&gl=KR`, 6);
   const seen = new Set();
-  return vids.filter(v => v.id && !seen.has(v.id) && seen.add(v.id));
+  return [...latest, ...found, ...uploads].filter(v => v.id && !seen.has(v.id) && seen.add(v.id));
 }
 
 function parseTime(s){
