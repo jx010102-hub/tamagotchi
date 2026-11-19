@@ -930,10 +930,22 @@ function fixReelsStart(){
   state.imports.push("reels-start-2026");
   return true;
 }
+// 매주 수요일 15:30~17:00 찬양 연습 (토요예배 준비). 드럼 기록은 완료 체크 때 직접 고른 경우만
+function ensurePraisePractice(){
+  if (!state.templateFrom || state.imports.includes("praise-practice-wed")) return false;
+  const slot = state.template.find(t => t.dow === 2 && t.start === "15:30");
+  const data = { name: "찬양 연습", category: "음악", start: "15:30", end: "17:00", durationMin: 90, charId: null, needsReview: false };
+  let t = slot;
+  if (t) Object.assign(t, data); else { t = { id: uid(), dow: 2, ...data }; state.template.push(t); }
+  syncTemplate(t);
+  state.imports.push("praise-practice-wed");
+  return true;
+}
 function render(){
   let ch1 = ensureSeed();
   ch1 = fixReelsStart() || ch1;
   ch1 = ensureTemplate() || ch1;
+  ch1 = ensurePraisePractice() || ch1;
   ch1 = fillFromTemplate([...weekDays(mondayOf(new Date())), ...ttWeek()]) || ch1;
   if (ch1) Store.save();
   const app = document.getElementById("app");
@@ -2703,6 +2715,8 @@ const TALK_LINES = {
     empty: ["오늘 일정 텅텅!!! 그럼 드럼 10분 어때?! 어때!!", "일정 없음 = 자유!!! 마지막 드럼이 {last}였다!!"],
     emptyNo: ["오늘 일정 텅텅!!! 뭐 하고 놀 거야? 드럼? 드럼?!"],
     conti: ["콘티 왔지?!!! 카톡 거 그대로 붙여넣어!! 내가 다 찾아줌!!", "이번 주 콘티 아직이다!!! 붙여넣기만 해!! 유튜브는 내가 뒤짐!!"],
+    contiBefore: ["{p} {m}분 전!!! 콘티 {n}곡 링크 여기 있다!! 들으면서 가!!", "{m}분 뒤 {p}!!! 콘티 {n}곡 미리 듣고 손 풀자!!"],
+    contiMissing: ["{m}분 뒤 {p}!!! 근데 콘티 아직 안 붙여넣었다!! 지금!!"],
     contiReady: ["이번 주 콘티 {n}곡 링크 대기 중!!! 들으면서 손 풀자!!", "콘티 {n}곡 다 찾아놨다!!! 이어폰 끼고 쿵짝!!"],
     react: ["{m}분 쳤다고?!! 손목이 이제 너 기억하겠네!!", "{m}분!!! 와 오늘 좀 치는데?? 박수!!"],
     reactDay: ["오늘 목표 달성!!! 무대 조명 켜!!! 앵콜!!"],
@@ -2822,6 +2836,13 @@ function planSpeaker(p){
   const s = suggestChar(p); if (s) return s;
   const ids = ["toon", "reels", "jp", "drum"]; return ids[hstr(p.name || p.id) % ids.length];
 }
+// 찬양 연습·합주 전에는 둥둥이가 이번 주 콘티 링크를 챙겨줌
+function musicBefore(id, p, m){
+  if (id !== "drum" || !isMusicPlan(p)) return null;
+  const ws = wsWeekSet(), msg = ws && ws.songs.length ? say(id, "contiBefore", { p: p.name, m, n: ws.songs.length }) : say(id, "contiMissing", { p: p.name, m });
+  if (msg) msg.act = tAct("worship");
+  return msg;
+}
 // 스킬 일정이면 스킬 말투, 그 밖의 일정(알바·예배 등)은 '다녀와' 말투(…x)
 const planKey = (id, p, base) => isMusicPlan(p) && id === "drum" && base !== "sched" ? "music" : (p.charId || suggestChar(p)) ? base : base + "x";
 const isMusicPlan = p => !p.charId && /합주|찬양|드럼|밴드|공연/.test(p.name || "");
@@ -2850,7 +2871,8 @@ function talkMessages(id, opts = {}){
   if (run) add(1, say(id, "running", {}));
   if (cur && !run) add(1, say(id, planKey(id, cur.p, "now"), { p: cur.p.name, t: cur.p.start }), cur.p.charId && !state.timer ? tAct("timer", id) : tAct("tt"));
   const soon = mine.find(p => { const d = toMin(p.start) - ni.m; return d > 0 && d <= 60; });
-  if (soon && (!cur || cur.p.id !== soon.id)) add(2, say(id, planKey(id, soon, "before"), { p: soon.name, t: soon.start, m: toMin(soon.start) - ni.m }, { planId: soon.id }), tAct("tt"));
+  if (soon && (!cur || cur.p.id !== soon.id) && toMin(soon.start) - ni.m <= 30 && musicBefore(id, soon, toMin(soon.start) - ni.m)) { const mb = musicBefore(id, soon, toMin(soon.start) - ni.m); add(2, mb, mb.act); }
+  else if (soon && (!cur || cur.p.id !== soon.id)) add(2, say(id, planKey(id, soon, "before"), { p: soon.name, t: soon.start, m: toMin(soon.start) - ni.m }, { planId: soon.id }), tAct("tt"));
   const later = mine.find(p => toMin(p.start) - ni.m > 60);
   if (later) add(6, say(id, isMusicPlan(later) && id === "drum" ? "music" : "sched", { p: later.name, t: later.start }), tAct("tt"));
   // 못 한 일정 (놀리고 다시 하게)
@@ -3070,9 +3092,9 @@ function checkBefore(){
   const p = plansOn(today).find(p => p.start && p.status === "planned" && !ann[`b:${today}:${p.id}`] && (d => d > 0 && d <= 30)(toMin(p.start) - ni.m));
   if (!p) return false;
   ann[`b:${today}:${p.id}`] = nowTs; ann[`b:${today}:last`] = nowTs; annSave(ann);
-  const id = planSpeaker(p), msg = say(id, planKey(id, p, "before"), { p: p.name, t: p.start, m: toMin(p.start) - ni.m });
+  const id = planSpeaker(p), mb = musicBefore(id, p, toMin(p.start) - ni.m), msg = mb || say(id, planKey(id, p, "before"), { p: p.name, t: p.start, m: toMin(p.start) - ni.m });
   if (!msg) return false;
-  msg.act = tAct("tt");
+  if (!mb) msg.act = tAct("tt");
   if (ui.tab === "home" && !ui.talk && !talkBusy) showTalk(true, { id, msg });
   else toast(`<img src="${SP(id, "hi")}" alt="" style="width:26px;height:26px;vertical-align:middle;margin-right:4px">${msg.t}`);
   return true;
