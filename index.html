@@ -308,6 +308,11 @@
   .ocr-hit { background: linear-gradient(transparent 60%, var(--butter) 60%); display: inline-block; }
   .ins-line { font-size: 12.5px; color: var(--ink-soft); margin-top: 4px; }
   .mchip.up { background: var(--blush-pale); border: 1.5px dashed #E8A9A0; }
+  .mchip.ws { background: #FFF1C9; border: 1.5px dashed #E0BE6A; }
+  .day-ws { background: #FFF8E3; border: 2px dashed #E0BE6A; border-radius: 16px; padding: 10px 12px; margin-top: 10px; }
+  .day-ws .ws-li { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px dashed rgba(74,53,41,.15); }
+  .day-ws .ws-li:last-of-type { border-bottom: 0; }
+  .day-ws a { text-decoration: none; color: var(--ink); white-space: nowrap; }
   .day-ups { background: var(--c-bg); border: 2px solid var(--ink); border-radius: 16px; padding: 10px 12px; margin: 10px 0; }
 
   /* 홈 릴스 진행도 카드 */
@@ -1472,9 +1477,10 @@ function viewCalendar(){
       ${DOW.map((d, i) => `<div class="mdow ${i >= 5 ? "wk" : ""}">${d}</div>`).join("")}
       ${days.map(d => {
         const ents = allChars().map(c => ({ c, n: minOn(c.id, d) })).filter(x => x.n > 0);
-        const ups = R().posts.filter(p => p.date === d).length;
+        const ups = R().posts.filter(p => p.date === d).length, wsn = wsSetsOn(d).reduce((a, s) => a + s.songs.length, 0);
         return `<button class="mday ${inMonth(d) ? "" : "out"} ${d === today ? "today" : ""}" data-mday="${d}" aria-label="${fmtMD(d)} 기록 보기">
           <span class="mdn">${parseYmd(d).getDate()}</span>
+          ${wsn ? `<span class="mchip ws"><span>🎵</span><span class="mlbl">콘티</span> ${wsn}곡</span>` : ""}
           ${ups ? `<span class="mchip up"><span>🎬</span><span class="mlbl">릴스 업로드</span>${ups > 1 ? ` ${ups}` : ""}</span>` : ""}
           ${ents.map(x => `<span class="mchip" style="background:${x.c.bg}"><i style="background:${x.c.main}"></i><span class="mlbl">${esc(x.c.skill)} </span>${fmtShort(x.n)}</span>`).join("")}
         </button>`;
@@ -1508,9 +1514,16 @@ function openDayDetail(date){
         <div class="grow"><strong>${esc(p.title)}</strong>${p.type ? ` <span class="cat" style="background:${rc.bg}">${esc(p.type)}</span>` : ""}
         ${st.basis ? `<br><span class="muted">👁 ${fmtN(st.views)} · ♥ ${fmtN(st.likes)} · 🔖 ${fmtN(st.saves)} (${st.basis})</span>` : `<br><span class="muted">성과는 아직 없어요</span>`}</div>
         <span class="muted">›</span></div>`; }).join("")}</div>` : "";
+    const wss = wsSetsOn(date);
+    const wsHTML = wss.map(set => `<div class="day-ws" style="${charStyle(ch("drum"))}">
+      <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:4px"><p class="hand" style="font-size:19px;margin:0">🎵 토요예배 찬양 콘티 ${set.songs.length}곡</p><button class="btn-sm" data-ws-set="${set.id}">콘티 열기 ›</button></div>
+      ${set.songs.map((sg, i) => { const p = wsResolve(sg); return `<div class="ws-li"><span class="ws-n">${i + 1}</span><span class="grow">${esc(sg.q)}${p ? ` <span class="muted" style="font-size:12px">· ${p.v.date ? fmtMD(p.v.date) : ""} 영상 ${wsClock(p.t)}</span>` : ""}</span>
+        ${p ? `<a class="btn-sm ws-go" href="${wsLink(p.v.id, p.t)}" target="_blank" rel="noopener">▶</a>` : `<a class="btn-sm" href="${wsSearch(sg.q)}" target="_blank" rel="noopener">🔍</a>`}</div>`; }).join("")}
+    </div>`).join("");
     box.innerHTML = `<button class="close-x" data-close aria-label="닫기">✕</button>
       <h2 style="margin-bottom:2px">${fmtMD(date)} (${DOW[(dd.getDay() + 6) % 7]})</h2>
       <p class="muted">${recs.length ? `총 ${fmtDur(total)} 기록했어요` : ""}</p>
+      ${wsHTML}
       ${upHTML}
       ${recs.length ? `
       <div class="row" style="margin:10px 0 4px">${sum.map(x => `<span class="dchip" style="background:${x.c.bg}"><img src="${SP(x.c.id, "idle")}" alt="">${esc(x.c.skill)} <b>${fmtDur(x.n)}</b></span>`).join("")}</div>
@@ -1527,11 +1540,13 @@ function openDayDetail(date){
       ${untimed.length ? `<p class="muted" style="margin:12px 0 2px">시간이 기록되지 않은 활동</p>` : ""}
       <div>${untimed.map(r => recRow(r)).join("")}</div>
       <details class="dtl-list"><summary>기록 목록 · 지우기</summary>${recs.map(r => recRow(r, true)).join("")}</details>`
-      : ups.length ? "" : `<div class="empty"><img src="${SP("toon", date > todayStr() ? "think" : "empty")}" alt=""><p class="muted">${date > todayStr() ? "아직 오지 않은 날이에요" : "이 날은 기록한 스킬이 없어요"}</p></div>`}
+      : ups.length || wss.length ? "" : `<div class="empty"><img src="${SP("toon", date > todayStr() ? "think" : "empty")}" alt=""><p class="muted">${date > todayStr() ? "아직 오지 않은 날이에요" : "이 날은 기록한 스킬이 없어요"}</p></div>`}
       ${date <= todayStr() ? `<button class="btn-block" id="dd-add" style="margin-top:14px;background:var(--sage-pale)">＋ 이 날 기록 추가</button>` : ""}`;
     box.querySelector("[data-close]").onclick = close;
     const add = box.querySelector("#dd-add"); if (add) add.onclick = () => { close(); openManualSheet(null, date); };
     box.querySelectorAll("[data-open-post]").forEach(el => el.onclick = () => openPostForm(el.dataset.openPost));
+    box.querySelectorAll("[data-ws-set]").forEach(el => el.onclick = () => openWorship(el.dataset.wsSet));
+    if (wss.length && !wsIndex) wsLoad().then(() => { if (box.isConnected) draw(); });
     box._redraw = draw;
     box.querySelectorAll("[data-delrec]").forEach(b => b.onclick = () => {
       const r = state.records.find(x => x.id === b.dataset.delrec);
@@ -2596,6 +2611,14 @@ function wsParse(raw){
   const seen = new Set();
   return songs.map(x => x.q).filter(q => { const k = wsNorm(q); if (!k || seen.has(k)) return false; seen.add(k); return true; });
 }
+// 콘티는 그 주 토요일(토요예배)에 달력에 기록돼요
+function wsSatOf(set){ const d = parseYmd(set.weekOf); d.setDate(d.getDate() + 5); return ymd(d); }
+function wsSetsOn(date){ return W().sets.filter(s => wsSatOf(s) === date && s.songs.length); }
+function wsResolve(song){
+  if (!wsIndex) return null;
+  const own = song.pick ? wsIndex.songs.find(x => x.v.id === song.pick.v && x.t === song.pick.t) : null;
+  return own || wsFind(song.q).pick;
+}
 function wsWeekSet(){ const mon = ymd(mondayOf(new Date())); return W().sets.find(s => s.weekOf === mon) || null; }
 
 function openWorship(setId){
@@ -2639,7 +2662,7 @@ function mountWorship(box, opts = {}){
         <div class="row" style="margin-top:8px">${set ? `<button id="ws-cancel">취소</button>` : ""}<button class="btn-primary grow" id="ws-go">🔍 찾아줘!!</button></div>`
       : `
         <div class="row" style="justify-content:space-between;align-items:center;margin:4px 0 6px">
-          <b>${fmtMD(set.weekOf)} 주 콘티 · ${set.songs.length}곡</b>
+          <span><b>${fmtMD(set.weekOf)} 주 콘티 · ${set.songs.length}곡</b><br><span class="muted" style="font-size:12.5px">📅 ${fmtMD(wsSatOf(set))}(토) 토요예배로 달력에 기록돼요</span></span>
           <button class="btn-sm" id="ws-edit">✎ 다시 붙여넣기</button>
         </div>
         <div class="ws-list">${set.songs.map(rowHTML).join("") || `<p class="muted">곡이 없어요.</p>`}</div>
@@ -2662,6 +2685,7 @@ function mountWorship(box, opts = {}){
         if (set) { set.raw = raw; set.songs = qs.map(q => ({ q })); set.ts = Date.now(); }
         else { set = { id: uid(), weekOf: mon, raw, songs: qs.map(q => ({ q })), ts: Date.now() }; W().sets.unshift(set); } }
       W().sets = W().sets.slice(0, 12); Store.save(); editing = false; msg = ""; draw();
+      if (ui.tab === "cal") render();   // 달력 토요일 칸에 바로 보이게
       floaties(box.querySelector("img") || box, "🥁");
     };
     const cancel = box.querySelector("#ws-cancel"); if (cancel) cancel.onclick = () => { editing = false; draw(); };
