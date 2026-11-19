@@ -53,13 +53,14 @@ async function listVideos(){
       if (id && t) vids.push({ id, title: t, ago: "" });
     }
     const tok = [...walk(data, "continuationCommand")].map(c => c.token).filter(Boolean).pop();
-    if (!tok || !key) break;
+    if (!tok || !key) { console.log(`  페이지 ${page + 1}에서 끝 (token:${!!tok}, key:${!!key})`); break; }
     page++; await sleep(400);
     const r = await fetch(`https://www.youtube.com/youtubei/v1/browse?key=${key}&prettyPrint=false`, {
       method: "POST", headers: { ...HEADERS, "Content-Type": "application/json" },
       body: JSON.stringify({ context: { client: { clientName: "WEB", clientVersion: ver, hl: "ko", gl: "KR" } }, continuation: tok }),
     });
     data = r.ok ? await r.json() : null;
+    if (!r.ok) console.log(`  다음 페이지 실패: ${r.status}`);
   }
   const seen = new Set();
   return vids.filter(v => v.id && !seen.has(v.id) && seen.add(v.id));
@@ -92,7 +93,8 @@ async function videoDetail(id){
   if (!chapters.length) chapters = chaptersFromDescription(desc);
   const seen = new Set(); chapters = chapters.filter(c => c.title && !seen.has(c.t + c.title) && seen.add(c.t + c.title)).sort((a, b) => a.t - b.t);
   const mf = player?.microformat?.playerMicroformatRenderer || {};
-  return { date: (mf.publishDate || mf.uploadDate || "").slice(0, 10), title: player?.videoDetails?.title, chapters };
+  const dm = String(mf.publishDate || mf.uploadDate || "").match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+  return { date: dm ? `${dm[1]}-${dm[2].padStart(2, "0")}-${dm[3].padStart(2, "0")}` : "", title: player?.videoDetails?.title, chapters };
 }
 
 const old = fs.existsSync(OUT) ? JSON.parse(fs.readFileSync(OUT, "utf8")) : { videos: [] };
@@ -103,12 +105,12 @@ console.log(`채널 영상 ${all.length}개 중 찬양기도회 ${hits.length}�
 const videos = [];
 for (const v of hits.slice(0, KEEP)) {
   const k = known.get(v.id);
-  if (k && k.chapters?.length) { videos.push({ ...k, title: v.title || k.title }); continue; }
+  if (k && k.chapters?.length && /^\d{4}-\d{2}-\d{2}$/.test(k.date || "")) { videos.push({ ...k, title: v.title || k.title }); continue; }
   try {
     await sleep(500);
     const d = await videoDetail(v.id);
     videos.push({ id: v.id, title: d.title || v.title, date: d.date, chapters: d.chapters });
-    console.log(`  ${d.date} ${v.title} — 챕터 ${d.chapters.length}개`);
+    console.log(`  ${d.date} ${v.title} — 챕터 ${d.chapters.length}개: ${d.chapters.slice(0, 4).map(c => c.title).join(" | ")}`);
   } catch (e) { console.log(`  실패 ${v.id}: ${e.message}`); if (k) videos.push(k); }
 }
 // 목록에서 사라진(오래된) 것도 기존 데이터는 남겨둠
