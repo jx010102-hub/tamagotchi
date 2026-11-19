@@ -120,6 +120,21 @@
   .tagline .run { font-family: var(--hand); font-weight: 700; font-size: clamp(13px, 1.2vw, 17px); color: #C4473A; line-height: 1.1; }
   .npc .mini { width: 70%; height: 7px; margin-top: 3px; background: rgba(255,253,247,.9); border: 1.5px solid var(--ink); border-radius: 99px; overflow: hidden; }
   .npc .mini i { display: block; height: 100%; background: var(--c-main); }
+  /* 찬양 콘티 */
+  .ws-modal { width: min(640px, 100%); }
+  .ws-modal > div { min-width: 0; }
+  .ws-modal textarea { width: 100%; min-height: 160px; font-size: 15px; line-height: 1.5; }
+  .ws-list { display: flex; flex-direction: column; gap: 8px; max-height: min(52vh, 460px); overflow: auto; padding: 2px; }
+  .ws-row { display: flex; align-items: center; gap: 8px; background: #FFFDF7; border: 2px solid var(--ink); border-radius: 14px; padding: 8px 10px; }
+  .ws-row.miss { background: #FBF3EA; border-style: dashed; }
+  .ws-n { width: 26px; height: 26px; border-radius: 50%; background: var(--c-main); border: 1.5px solid var(--ink); display: grid; place-items: center; font-weight: 700; flex: none; font-size: 13px; }
+  .ws-q { font-weight: 700; }
+  .ws-hit { font-size: 13px; margin-top: 2px; overflow-wrap: anywhere; }
+  .ws-alt { margin-top: 4px; font-size: 12.5px; padding: 3px 6px; max-width: 100%; border-radius: 8px; }
+  .ws-go { background: #FFE9A8; text-decoration: none; color: var(--ink); white-space: nowrap; }
+  .ws-row a.btn-sm { text-decoration: none; color: var(--ink); white-space: nowrap; }
+  .ws-del { padding: 4px 8px; background: transparent; box-shadow: none; border: none; color: var(--ink-soft); }
+  .ws-recent { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; padding-top: 10px; border-top: 1.5px dashed rgba(74,53,41,.25); }
   /* 말풍선: 친구들이 할 일 알려주기 */
   .npc.talking { z-index: 3; }
   .talk { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); margin-left: var(--tk-dx, 0px); width: max-content; max-width: min(230px, 60vw); background: var(--tk-bg, #FFFDF7); border: 2px solid var(--ink); border-radius: 20px; padding: 8px 13px 7px; box-shadow: 0 4px 0 rgba(74,53,41,.22); text-align: left; cursor: pointer; z-index: 3; }
@@ -549,7 +564,7 @@ function fmtClock(ms){ const s = Math.max(0, Math.floor(ms/1000)); return `${pad
 
 /* ============ 상태 ============ */
 let state = emptyState();
-function emptyState(){ return { chars: {}, records: [], timer: null, plans: [], goals: [], goalLogs: [], imports: [], template: [], templateFrom: null, filledDates: [], reels: emptyReels(), scene: {}, createdAt: Date.now(), updatedAt: 0 }; }
+function emptyState(){ return { chars: {}, records: [], timer: null, plans: [], goals: [], goalLogs: [], imports: [], template: [], templateFrom: null, filledDates: [], reels: emptyReels(), worship: { sets: [] }, scene: {}, createdAt: Date.now(), updatedAt: 0 }; }
 function emptyReels(){ return { posts: [], followers: [], board: [], weeklyTarget: null }; }
 function normalize(s){
   const e = emptyState();
@@ -559,6 +574,7 @@ function normalize(s){
     plans: arr("plans"), goals: arr("goals"), goalLogs: arr("goalLogs"), imports: arr("imports"),
     template: arr("template"), templateFrom: s.templateFrom || null, filledDates: arr("filledDates"),
     scene: s.scene && typeof s.scene === "object" ? s.scene : {},
+    worship: { sets: s.worship && Array.isArray(s.worship.sets) ? s.worship.sets : [] },
     reels: (r => ({ posts: Array.isArray(r.posts) ? r.posts : [], followers: Array.isArray(r.followers) ? r.followers : [], board: Array.isArray(r.board) ? r.board : [], weeklyTarget: r.weeklyTarget || null }))(s.reels || {}),
     createdAt: s.createdAt || e.createdAt, updatedAt: s.updatedAt || 0 };
 }
@@ -1046,6 +1062,7 @@ function openCharPopup(id){
         <button id="cp-manual">✎ 시간 입력</button>
       </div>
       ${id === "reels" ? `<button class="btn-block btn-ghost" id="cp-studio" style="margin-top:10px">↗ 릴스 스튜디오 크게 보기</button>` : ""}
+      ${id === "drum" ? `<button class="btn-block btn-ghost" id="cp-worship" style="margin-top:10px">🎵 찬양 콘티 찾기${wsWeekSet() ? ` · 이번 주 ${wsWeekSet().songs.length}곡` : ""}</button>` : ""}
     </div>`;
   };
   const duo = id === "reels";
@@ -1059,6 +1076,7 @@ function openCharPopup(id){
     if (st) st.onclick = () => startTimer(id, () => { box.innerHTML = draw(); bind(); floaties(box.querySelector(".hero"), "🔥"); tick(); });
     if (sp) sp.onclick = () => { close(); stopTimer(); };
     box.querySelector("#cp-manual").onclick = () => { close(); openManualSheet(id); };
+    const wsb = box.querySelector("#cp-worship"); if (wsb) wsb.onclick = () => openWorship();
     const studio = box.querySelector("#cp-studio"); if (studio) studio.onclick = () => { close(); ui.tab = "reels"; window.scrollTo(0, 0); render(); };
     if (duo) bindReels();
   };
@@ -2347,6 +2365,7 @@ function skillPreviewHTML(c){
       ${run ? `<span class="running" data-timer>${fmtClock(Date.now() - run.startedAt)}</span><button class="btn-sm btn-pink" data-card-act="stop" data-id="${c.id}">■ 끝내기</button>`
             : `<button class="btn-sm" data-card-act="timer" data-id="${c.id}" style="background:${c.bg}">▶ 타이머</button>`}
       <button class="btn-sm" data-card-act="manual" data-id="${c.id}">✎ 시간 입력</button>
+      ${c.id === "drum" ? `<button class="btn-sm" data-worship>🎵 콘티</button>` : ""}
     </div>`;
 }
 function skillDetailHTML(c){
@@ -2415,6 +2434,7 @@ function bindCards(){
     sum.onclick = e => { if (e.target.closest("button")) return; setCard(sum.dataset.cardSum, "open"); ui.rcScroll = 0; render(); }; });
   const al = reelsAlerts();
   document.querySelectorAll("[data-rc-alert]").forEach(b => b.onclick = e => { e.stopPropagation(); const a = al[+b.dataset.rcAlert]; if (!a) return; a.k === "post" ? openPostForm(a.id) : openFollowerForm(); });
+  document.querySelectorAll("[data-worship]").forEach(b => b.onclick = e => { e.stopPropagation(); openWorship(); });
   document.querySelectorAll("[data-card-act]").forEach(b => b.onclick = e => { e.stopPropagation(); const id = b.dataset.id, act = b.dataset.cardAct;
     if (act === "timer") startTimer(id); else if (act === "stop") stopTimer(); else openManualSheet(id); });
   const det = document.getElementById("rc-detail");
@@ -2487,6 +2507,164 @@ function floaties(el, chr){
 }
 function tick(){ if (!state.timer) return; const t = fmtClock(Date.now() - state.timer.startedAt); document.querySelectorAll("[data-timer]").forEach(e => e.textContent = t); }
 setInterval(tick, 1000);
+/* ============ 🥁 둥둥이: 찬양 콘티 → 유튜브 찬양기도회 영상 챕터 링크 ============
+   worship/songs.json 은 GitHub Actions가 매일 예수사랑교회 채널에서
+   "[예수사랑교회 성금요일 총체적 치유 찬양기도회]" 영상들의 챕터(곡 + 시작 시각)를 모아 만든 파일이에요. */
+const WS_CHANNEL = "https://www.youtube.com/@jesuslovechurch6503";
+let wsIndex = null, wsLoading = null;
+const W = () => state.worship || (state.worship = { sets: [] });
+function wsLoad(force){
+  if (wsIndex && !force) return Promise.resolve(wsIndex);
+  if (wsLoading) return wsLoading;
+  wsLoading = fetch("worship/songs.json", { cache: "no-cache" }).then(r => r.ok ? r.json() : null).catch(() => null).then(d => {
+    wsLoading = null;
+    if (!d || !Array.isArray(d.videos)) return wsIndex;
+    const songs = [];
+    d.videos.forEach((v, vi) => (v.chapters || []).forEach(c => { if (!wsSkip(c.title)) songs.push({ v, vi, t: c.t, title: c.title.replace(/^[^\p{L}\p{N}(]+/u, "").trim(), n: wsNorm(c.title), nf: wsNormFull(c.title) }); }));
+    wsIndex = { videos: d.videos, songs, updated: d.updated };
+    return wsIndex;
+  });
+  return wsLoading;
+}
+// 찬양이 아닌 챕터(말씀·영상 등)는 빼기
+function wsSkip(title){ const n = wsNorm(title); if (/^\W*\(?\s*영상\s*\)/.test(title)) return true; return !n || /^(말씀|밀씀|영상|광고|기도|헌금|축도|오프닝|인트로|엔딩|광고영상|설교)$/.test(n); }
+function wsNorm(s){ return String(s || "").normalize("NFC").toLowerCase().replace(/\(.*?\)|\[.*?\]/g, " ").replace(/new\s*ver\.?/g, "").replace(/[^0-9a-z가-힣]/g, ""); }
+function wsNormFull(s){ return String(s || "").normalize("NFC").toLowerCase().replace(/[^0-9a-z가-힣]/g, ""); }
+function wsSim(a, b){
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  const s = a.length <= b.length ? a : b, l = a.length <= b.length ? b : a;
+  if (s.length >= 3 && l.includes(s)) return .82 + .16 * s.length / l.length;
+  const bg = x => { const m = new Map(); for (let i = 0; i < x.length - 1; i++) { const k = x.slice(i, i + 2); m.set(k, (m.get(k) || 0) + 1); } return m; };
+  const A = bg(a), B = bg(b); let inter = 0, tot = 0;
+  A.forEach((n, k) => { inter += Math.min(n, B.get(k) || 0); tot += n; }); B.forEach(n => tot += n);
+  return tot ? 2 * inter / tot : 0;
+}
+// 가장 비슷한 곡 → 그중 가장 최근 영상
+function wsFind(q){
+  if (!wsIndex) return { pick: null, cands: [] };
+  const qn = wsNorm(q), qf = wsNormFull(q);
+  const scored = wsIndex.songs.map(s => ({ s, score: Math.max(wsSim(qn, s.n), wsSim(qf, s.nf) - .02) })).filter(x => x.score >= .5);
+  if (!scored.length) return { pick: null, cands: [] };
+  const best = Math.max(...scored.map(x => x.score));
+  const near = scored.filter(x => x.score >= best - .06).sort((a, b) => a.s.vi - b.s.vi || a.s.t - b.s.t);
+  const cands = [], seen = new Set();
+  [...near, ...scored.sort((a, b) => b.score - a.score || a.s.vi - b.s.vi)].forEach(x => { const k = x.s.v.id + ":" + x.s.t; if (!seen.has(k) && cands.length < 6) { seen.add(k); cands.push(x.s); } });
+  return { pick: near[0].s, cands, score: best };
+}
+const wsLink = (id, t) => `https://youtu.be/${id}${t ? `?t=${t}` : ""}`;
+const wsClock = t => t >= 3600 ? `${Math.floor(t / 3600)}:${pad(Math.floor(t % 3600 / 60))}:${pad(t % 60)}` : `${Math.floor(t / 60)}:${pad(t % 60)}`;
+const wsSearch = q => `${WS_CHANNEL}/search?query=${encodeURIComponent(q)}`;
+
+/* 카톡에서 복사한 글 → 곡 제목들 */
+function wsParse(raw){
+  const lines = [];
+  String(raw || "").split(/\r?\n/).forEach(line0 => {
+    let line = line0.replace(/^\s*\[[^\]]*\]\s*\[[^\]]*\]\s*/, "");          // [찬양팀장] [오후 3:21]
+    const numbered = /^\s*(?:\d{1,2}\s*[.)．、:]|[①-⑳]|\(\d{1,2}\))/.test(line);
+    line = line.replace(/^\s*(?:\d{1,2}\s*[.)．、:]|[①-⑳]|\(\d{1,2}\)|[-•·*▪▶>]+)\s*/, "");
+    line.split(/\s+[\/+]\s+|\s*→\s*(?=[가-힣])/).forEach(part => {
+      let t = part
+        .replace(/\(\s*[A-G][#b♭♯]?m?\s*(?:(?:→|->|-|~)\s*[A-G][#b♭♯]?m?)*\s*(?:key|키|코드)?\s*\)/gi, " ")   // (G) (G→A)
+        .replace(/\[\s*[A-G][#b♭♯]?m?\s*(?:key|키)?\s*\]/gi, " ")
+        .replace(/(?:key|키|코드)\s*[:：]?\s*[A-G][#b♭♯]?m?\b/gi, " ")
+        .replace(/\s[-–]\s*[A-G][#b♭♯]?m?\s*(?:key|키)?\s*$/i, " ")
+        .replace(/\s[A-G][#b♭♯]?m?\s*(?:key|키)\s*$/i, " ")
+        .replace(/[\u{1F300}-\u{1FAFF}☀-➿️]/gu, "")
+        .replace(/\s+/g, " ").trim();
+      if (!t || t.length < 2 || t.length > 40) return;
+      if (/^(콘티|찬양\s*(리스트|콘티|목록|곡)|이번\s*주\s*(콘티|찬양)?|사진|이모티콘|동영상|삭제된 메시지)/.test(t)) return;
+      if (/^\d{4}\s*년|\d{1,2}\s*월\s*\d{1,2}\s*일|^(오전|오후)\s*\d|https?:\/\//.test(t)) return;
+      lines.push({ q: t, numbered });
+    });
+  });
+  // 번호 붙은 줄이 있으면 그것만 곡으로 봐요
+  const songs = lines.some(x => x.numbered) ? lines.filter(x => x.numbered) : lines.filter(x => !/[.?!~]$|(습니다|해요|세요|드려요|할게요|합시다|입니다)$/.test(x.q) || (wsIndex && wsFind(x.q).score >= .82));
+  const seen = new Set();
+  return songs.map(x => x.q).filter(q => { const k = wsNorm(q); if (!k || seen.has(k)) return false; seen.add(k); return true; });
+}
+function wsWeekSet(){ const mon = ymd(mondayOf(new Date())); return W().sets.find(s => s.weekOf === mon) || null; }
+
+function openWorship(setId){
+  let set = setId ? W().sets.find(s => s.id === setId) : wsWeekSet(), editing = !set, msg = "";
+  const close = openModal("", { sheet: true });
+  const box = lastModal(); box.classList.add("ws-modal");
+  const c = ch("drum");
+  const rowHTML = (s, i) => {
+    const f = wsFind(s.q), own = s.pick && wsIndex ? wsIndex.songs.find(x => x.v.id === s.pick.v && x.t === s.pick.t) : null, p = own || f.pick;
+    if (own && !f.cands.includes(own)) f.cands.unshift(own);
+    return `<div class="ws-row ${p ? "" : "miss"}">
+      <span class="ws-n">${i + 1}</span>
+      <div class="grow" style="min-width:0">
+        <div class="ws-q">${esc(s.q)}</div>
+        ${p ? `<div class="ws-hit">🎵 ${esc(p.title)} <span class="muted">· ${p.v.date ? fmtMD(p.v.date) : ""} 영상 ${wsClock(p.t)}부터</span></div>`
+            : `<div class="ws-hit muted">${wsIndex ? "찬양기도회 영상에서 못 찾았어 🥲" : "영상 목록 불러오는 중…"}</div>`}
+        ${p && f.cands && f.cands.length > 1 ? `<select class="ws-alt" data-ws-alt="${i}">${f.cands.map(x => `<option value="${x.v.id}|${x.t}" ${x === p ? "selected" : ""}>${esc(x.title)} · ${x.v.date ? fmtMD(x.v.date) : ""} ${wsClock(x.t)}</option>`).join("")}</select>` : ""}
+      </div>
+      ${p ? `<a class="btn-sm ws-go" href="${wsLink(p.v.id, p.t)}" target="_blank" rel="noopener">▶ 열기</a>` : `<a class="btn-sm" href="${wsSearch(s.q)}" target="_blank" rel="noopener">🔍 검색</a>`}
+      <button class="btn-sm ws-del" data-ws-del="${i}" aria-label="빼기">✕</button>
+    </div>`;
+  };
+  const draw = () => {
+    const recent = W().sets.filter(s => !set || s.id !== set.id).slice(0, 4);
+    box.innerHTML = `<div style="${charStyle(c)}">
+      <button class="close-x" data-close aria-label="닫기">✕</button>
+      <div class="row" style="gap:10px;align-items:center;margin-bottom:6px">
+        <img src="${SP("drum", editing ? "think" : "hi")}" alt="" style="width:64px;height:64px;object-fit:contain">
+        <div><div class="hand" style="font-size:24px">🥁 둥둥이의 찬양 콘티 찾기</div>
+        <p class="muted" style="font-size:12.5px">찬양기도회 영상 ${wsIndex ? `${wsIndex.videos.length}개 · 곡 ${wsIndex.songs.length}개${wsIndex.updated ? ` · ${fmtMD(ymd(new Date(wsIndex.updated)))} 업데이트` : ""}` : "불러오는 중…"}</p></div>
+      </div>
+      ${editing ? `
+        <p style="margin:4px 0 8px">카톡에서 콘티를 <b>그대로 복사해서</b> 붙여넣어!!! 내가 다 찾아줌!!</p>
+        <textarea id="ws-raw" rows="8" placeholder="예)\n이번 주 토요예배 콘티입니다🙏\n1. 예수는 그리스도 (G)\n2. 감사 감사 감사합니다 (A)\n3. 나는 하나님 자녀다!">${esc(set ? set.raw : "")}</textarea>
+        <div class="err" id="ws-err">${esc(msg)}</div>
+        <div class="row" style="margin-top:8px">${set ? `<button id="ws-cancel">취소</button>` : ""}<button class="btn-primary grow" id="ws-go">🔍 찾아줘!!</button></div>`
+      : `
+        <div class="row" style="justify-content:space-between;align-items:center;margin:4px 0 6px">
+          <b>${fmtMD(set.weekOf)} 주 콘티 · ${set.songs.length}곡</b>
+          <button class="btn-sm" id="ws-edit">✎ 다시 붙여넣기</button>
+        </div>
+        <div class="ws-list">${set.songs.map(rowHTML).join("") || `<p class="muted">곡이 없어요.</p>`}</div>
+        <div class="row" style="margin-top:10px"><button class="btn-primary grow" id="ws-copy">📋 링크 전체 복사</button><button id="ws-new">＋ 새 콘티</button></div>
+        <p class="muted" id="ws-msg" style="margin-top:6px;font-size:12.5px">가장 비슷한 곡이 여러 영상에 있으면 <b>최근 영상</b>으로 골라요. 다른 영상은 목록에서 바꿀 수 있어요.</p>`}
+      ${recent.length ? `<div class="ws-recent"><span class="muted">지난 콘티</span>${recent.map(s => `<button class="chip" data-ws-open="${s.id}">${fmtMD(s.weekOf)} 주 · ${s.songs.length}곡</button>`).join("")}</div>` : ""}
+    </div>`;
+    bind();
+  };
+  const bind = () => {
+    box.querySelector("[data-close]").onclick = close;
+    const go = box.querySelector("#ws-go");
+    if (go) go.onclick = async () => {
+      const raw = box.querySelector("#ws-raw").value; await wsLoad();
+      const qs = wsParse(raw);
+      if (!qs.length) { msg = "곡 제목을 못 찾았어!! 콘티 부분을 붙여넣어줘!!"; set = set || null; editing = true; draw(); box.querySelector("#ws-raw").value = raw; return; }
+      const mon = ymd(mondayOf(new Date()));
+      if (set) { set.raw = raw; set.songs = qs.map(q => ({ q })); set.ts = Date.now(); }
+      else { set = W().sets.find(s => s.weekOf === mon) || null;
+        if (set) { set.raw = raw; set.songs = qs.map(q => ({ q })); set.ts = Date.now(); }
+        else { set = { id: uid(), weekOf: mon, raw, songs: qs.map(q => ({ q })), ts: Date.now() }; W().sets.unshift(set); } }
+      W().sets = W().sets.slice(0, 12); Store.save(); editing = false; msg = ""; draw();
+      floaties(box.querySelector("img"), "🥁");
+    };
+    const cancel = box.querySelector("#ws-cancel"); if (cancel) cancel.onclick = () => { editing = false; draw(); };
+    const edit = box.querySelector("#ws-edit"); if (edit) edit.onclick = () => { editing = true; draw(); };
+    const nw = box.querySelector("#ws-new"); if (nw) nw.onclick = () => { set = null; editing = true; draw(); };
+    box.querySelectorAll("[data-ws-del]").forEach(b => b.onclick = () => { set.songs.splice(+b.dataset.wsDel, 1); Store.save(); draw(); });
+    box.querySelectorAll("[data-ws-alt]").forEach(sel => sel.onchange = () => { const [v, t] = sel.value.split("|"); set.songs[+sel.dataset.wsAlt].pick = { v, t: +t }; Store.save(); draw(); });
+    box.querySelectorAll("[data-ws-open]").forEach(b => b.onclick = () => { set = W().sets.find(s => s.id === b.dataset.wsOpen); editing = false; draw(); });
+    const cp = box.querySelector("#ws-copy");
+    if (cp) cp.onclick = async () => {
+      const lines = set.songs.map((s, i) => { const r = s.pick && wsIndex ? wsIndex.songs.find(x => x.v.id === s.pick.v && x.t === s.pick.t) : null, p = r || wsFind(s.q).pick; return `${i + 1}. ${s.q}\n${p ? wsLink(p.v.id, p.t) : "(못 찾음) " + wsSearch(s.q)}`; });
+      const txt = `🥁 ${fmtMD(set.weekOf)} 주 찬양 콘티\n\n${lines.join("\n\n")}`;
+      const m = box.querySelector("#ws-msg");
+      try { await navigator.clipboard.writeText(txt); m.textContent = "복사했다!!! 카톡에 붙여넣으면 끝!! 🥁"; }
+      catch(e) { const ta = document.createElement("textarea"); ta.value = txt; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); m.textContent = "복사했다!!! 🥁"; } catch(e2) { m.textContent = "복사가 안 됐어… 길게 눌러서 복사해줘"; } ta.remove(); }
+    };
+  };
+  draw();
+  wsLoad().then(() => { if (box.isConnected) draw(); });
+}
+
 /* ============ 말풍선: 친구들이 오늘 일정·기록을 보고 자기 말투로 말을 걸어요 ============
    기본은 아래 준비된 대사(TALK_LINES)로 동작하고,
    설정에서 AI 대사 서버 주소를 넣으면 같은 상황 정보를 서버로 보내 새 대사를 받아와요.
@@ -2524,6 +2702,8 @@ const TALK_LINES = {
     running: ["치는 중이지?! 들린다 들려!!! 쿵짝쿵짝!!", "타이머 돌아간다!!! 지금 너 락스타임!!"],
     empty: ["오늘 일정 텅텅!!! 그럼 드럼 10분 어때?! 어때!!", "일정 없음 = 자유!!! 마지막 드럼이 {last}였다!!"],
     emptyNo: ["오늘 일정 텅텅!!! 뭐 하고 놀 거야? 드럼? 드럼?!"],
+    conti: ["콘티 왔지?!!! 카톡 거 그대로 붙여넣어!! 내가 다 찾아줌!!", "이번 주 콘티 아직이다!!! 붙여넣기만 해!! 유튜브는 내가 뒤짐!!"],
+    contiReady: ["이번 주 콘티 {n}곡 링크 대기 중!!! 들으면서 손 풀자!!", "콘티 {n}곡 다 찾아놨다!!! 이어폰 끼고 쿵짝!!"],
     react: ["{m}분 쳤다고?!! 손목이 이제 너 기억하겠네!!", "{m}분!!! 와 오늘 좀 치는데?? 박수!!"],
     reactDay: ["오늘 목표 달성!!! 무대 조명 켜!!! 앵콜!!"],
     reactWeek: ["주간 목표까지 깼다!!! 이건 레전드 공연이다!!"],
@@ -2611,7 +2791,7 @@ const TALK_CHATS_DONE = [
   [["toon", "우리 오늘 목표 다 했대."], ["drum", "축제다!!! 드럼롤!!! 두구두구!!!"], ["jp", "시끄러. …근데 잘했네."], ["reels", "기념 셀카 찍자. 내 쪽이 잘 나오게."]],
 ];
 const STAGE_KO = { idea: "아이디어", shoot: "촬영", edit: "편집" };
-const TALK_ACT = { timer: "▶ 같이 하기", plan: "○ 완료 체크", tt: "🗓 일정 보기", post: "📊 성과 입력", postNew: "＋ 업로드 기록", fw: "📈 기록하기", board: "📋 보드 보기" };
+const TALK_ACT = { worship: "🎵 콘티 열기", timer: "▶ 같이 하기", plan: "○ 완료 체크", tt: "🗓 일정 보기", post: "📊 성과 입력", postNew: "＋ 업로드 기록", fw: "📈 기록하기", board: "📋 보드 보기" };
 const tAct = (k, id) => ({ k, id, l: TALK_ACT[k] });
 
 /* 대사 고르기: 최근에 한 말은 피해서 매번 새롭게 */
@@ -2678,6 +2858,13 @@ function talkMessages(id, opts = {}){
   if (un.length === 1) add(3, say(id, "unchecked", { p: un[0].name }), tAct("plan", un[0].id));
   else if (un.length > 1) add(3, say(id, "uncheckedN", { n: un.length }), tAct("tt"));
   if (id === "toon" && !ag && !recs.length) { add(4, say(id, "egg", {}), tAct("timer", id)); return finish(out); }
+  if (id === "drum") {
+    // 월요일 낮(콘티 오는 날)~수요일 연습 전: 이번 주 콘티 챙기기
+    const dw = new Date().getDay(), h = new Date().getHours(), ws = wsWeekSet();
+    const musicSoon = todays.some(p => isMusicPlan(p) || p.charId === "drum");
+    if (!ws && ((dw === 1 && h >= 12) || dw === 2 || dw === 3)) add(dw === 3 ? 2 : 4, say(id, "conti", {}), tAct("worship"));
+    else if (ws && ws.songs.length && (musicSoon || dw === 3 || dw === 6)) add(4, say(id, "contiReady", { n: ws.songs.length }), tAct("worship"));
+  }
   if (id === "reels") {
     const due = R().posts.filter(statsDue).sort((a, b) => a.date < b.date ? -1 : 1)[0];
     if (due) add(4, say(id, "stats", { p: due.title || "지난 릴스", slot: statsDue(due) }), tAct("post", due.id));
@@ -2858,6 +3045,7 @@ function bindTalk(){
     e.stopPropagation(); const m = talkOf(b.dataset.talkAct); if (!m || !m.act) return;
     const a = m.act; hideTalk();
     if (a.k === "timer") startTimer(a.id);
+    else if (a.k === "worship") openWorship();
     else if (a.k === "plan") togglePlan(a.id);
     else if (a.k === "tt") { ui.tab = "tt"; ui.ttMode = "week"; ui.weekOffset = 0; render(); }
     else if (a.k === "post") openPostForm(a.id);
