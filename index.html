@@ -120,6 +120,24 @@
   .tagline .run { font-family: var(--hand); font-weight: 700; font-size: clamp(13px, 1.2vw, 17px); color: #C4473A; line-height: 1.1; }
   .npc .mini { width: 70%; height: 7px; margin-top: 3px; background: rgba(255,253,247,.9); border: 1.5px solid var(--ink); border-radius: 99px; overflow: hidden; }
   .npc .mini i { display: block; height: 100%; background: var(--c-main); }
+  /* 말풍선: 친구들이 할 일 알려주기 */
+  .npc.talking { z-index: 3; }
+  .talk { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); width: max-content; max-width: min(250px, 62vw); background: #FFFDF7; border: 2px solid var(--ink); border-radius: 18px; padding: 8px 12px 7px; box-shadow: 0 4px 0 rgba(74,53,41,.22); text-align: left; cursor: pointer; z-index: 3; }
+  .talk::before { content: ""; position: absolute; inset: 0; border-radius: 16px; background: var(--c-bg); opacity: .45; pointer-events: none; }
+  .talk::after { content: ""; position: absolute; bottom: -8px; left: 50%; width: 12px; height: 12px; background: #FFFDF7; border-right: 2px solid var(--ink); border-bottom: 2px solid var(--ink); transform: translateX(-50%) rotate(45deg); }
+  .talk > * { position: relative; }
+  .talk .tx { font-size: clamp(13px, 1.15vw, 15px); line-height: 1.4; white-space: normal; word-break: keep-all; color: var(--ink); }
+  .talk .tx b { color: var(--ink); background: linear-gradient(transparent 58%, var(--c-main) 58%); }
+  .talk .tk-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
+  .talk .tk-act { font-size: 12.5px; padding: 4px 10px; border-radius: 99px; background: var(--c-bg); border: 1.5px solid var(--ink); box-shadow: 0 2px 0 var(--ink); white-space: nowrap; }
+  .talk .tk-n { font-size: 11px; color: var(--ink-soft); white-space: nowrap; margin-left: auto; }
+  .talk.pop { animation: talkPop .45s cubic-bezier(.3,1.5,.5,1) both; }
+  .talk.out { animation: talkOut .3s ease forwards; }
+  @keyframes talkPop { from { opacity: 0; transform: translateX(-50%) translateY(8px) scale(.6); } to { opacity: 1; transform: translateX(-50%) scale(1); } }
+  @keyframes talkOut { to { opacity: 0; transform: translateX(-50%) translateY(6px) scale(.85); } }
+  @media (prefers-reduced-motion: reduce) { .talk.pop, .talk.out { animation-duration: .01s; animation-delay: 0s !important; } }
+  .quick button { position: relative; }
+  .quick .tk-dot { position: absolute; top: -6px; right: -6px; font-size: 15px; line-height: 1; filter: drop-shadow(0 1px 0 #fff); }
   .hud { position: fixed; top: max(12px, env(safe-area-inset-top)); left: 12px; right: 12px; display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; z-index: 4; }
   .hud > * { pointer-events: auto; }
   .hud-card { background: rgba(255,253,247,.93); border: 2px solid var(--ink); border-radius: 18px; padding: 8px 14px; box-shadow: 0 4px 0 rgba(74,53,41,.2); }
@@ -930,7 +948,8 @@ function viewHome(){
     ${sceneLayersHTML()}
     ${allChars().map(c => {
       const li = levelInfo(xpOf(c.id)), st = stageOf(li.level), m = moodOf(c.id), mins = minOn(c.id, today), run = timerOf(c.id);
-      return `<div class="npc" data-char="${c.id}" style="left:${c.x}%;top:${c.y}%;width:${(c.w*(.82+.18*st.scale)).toFixed(2)}%;${charStyle(c)}" role="button" aria-label="${esc(c.name)} 오늘 기록 보기">
+      return `<div class="npc ${talkOf(c.id) ? "talking" : ""}" data-char="${c.id}" style="left:${c.x}%;top:${c.y}%;width:${(c.w*(.82+.18*st.scale)).toFixed(2)}%;${charStyle(c)}" role="button" aria-label="${esc(c.name)} 오늘 기록 보기">
+        ${talkHTML(c)}
         <div class="tagline">
           <span class="nm">${esc(c.name)}</span>
           ${run ? `<span class="run" data-timer>${fmtClock(Date.now() - run.startedAt)}</span>` : `<span class="tm">${mins ? fmtDur(mins) : (() => { const ag = ageOf(c); return ag ? `${esc(c.skill)} · ${ag.short}${ag.birthday ? " 🎂" : ""}` : `${esc(c.skill)} · 🥚`; })()}</span>`}
@@ -942,7 +961,7 @@ function viewHome(){
   </div></div>
 
   ${ui.lightEdit ? lightEditBarHTML() : ""}
-  <div class="quick">${allChars().map(c => `<button data-jump="${c.id}" style="${charStyle(c)}" aria-label="${esc(c.name)}에게 가기"><img src="${SP(c.id, "idle")}" alt=""></button>`).join("")}</div>
+  <div class="quick">${allChars().map(c => `<button data-jump="${c.id}" style="${charStyle(c)}" aria-label="${esc(c.name)}에게 가기"><img src="${SP(c.id, "idle")}" alt="">${talkOf(c.id) ? `<span class="tk-dot">💬</span>` : ""}</button>`).join("")}</div>
   <div class="hud">
     <div class="hud-card">
       <div class="hand" style="font-size:22px;line-height:1">🌱 오늘의 성장</div>
@@ -950,7 +969,7 @@ function viewHome(){
       ${(() => { const ni = nowInfo(), c0 = ni.current[0]; return c0 ? `<div class="now-line">⏰ 지금: <b>${esc(c0.p.name)}</b> ~${esc(c0.p.end || "")}</div>` : ni.next ? `<div class="now-line">🌿 다음: ${esc(ni.next.p.name)} ${ni.next.p.start}</div>` : ""; })()}
     </div>
     <div class="hud-right">
-      <button class="btn-sm hud-btn" id="btn-summary">📋 결산</button>
+      <div class="row" style="gap:6px;justify-content:flex-end"><button class="btn-sm hud-btn" id="btn-talk" aria-label="친구들 이야기 다시 듣기">💬</button><button class="btn-sm hud-btn" id="btn-summary">📋 결산</button></div>
       ${cardsHTML()}
     </div>
   </div>
@@ -968,6 +987,8 @@ function bindHome(){
   document.querySelectorAll("[data-char]").forEach(el => el.onclick = () => openCharPopup(el.dataset.char));
   const s = document.getElementById("stop-main"); if (s) s.onclick = stopTimer;
   document.getElementById("btn-summary").onclick = showSummary;
+  document.getElementById("btn-talk").onclick = () => ui.talk ? hideTalk() : showTalk(true);
+  bindTalk();
   bindCards();
   const w = document.getElementById("scene-wrap");
   if (ui.scroll) { w.scrollLeft = ui.scroll[0]; w.scrollTop = ui.scroll[1]; }
@@ -1656,6 +1677,8 @@ function viewSettings(){
     <div class="row">${[["auto", `🗓 자동 (지금 ${SEASONS[getSeason()].slice(3)})`], ...Object.entries(SEASONS)].map(([k, l]) => { const on = (SEASONS[scenePref().season] ? scenePref().season : "auto") === k; return `<span class="chip ${on ? "on" : ""}" data-scene-season="${k}" style="${on ? "background:var(--butter-pale)" : ""}">${l}</span>`; }).join("")}</div>
     <label>움직임 효과 <span class="muted">(꽃잎·반짝임·낙엽·눈송이, 창문 불빛·별 반짝임)</span></label>
     <div class="row">${[[true, "켜기"], [false, "끄기"]].map(([v, l]) => { const on = (scenePref().anim !== false) === v; return `<span class="chip ${on ? "on" : ""}" data-scene-anim="${v}" style="${on ? "background:var(--butter-pale)" : ""}">${l}</span>`; }).join("")}</div>
+    <label>친구들 말풍선 <span class="muted">(앱을 열면 오늘 할 일을 말해줘요)</span></label>
+    <div class="row">${[[true, "켜기"], [false, "끄기"]].map(([v, l]) => { const on = (scenePref().talk !== false) === v; return `<span class="chip ${on ? "on" : ""}" data-scene-talk="${v}" style="${on ? "background:var(--butter-pale)" : ""}">${l}</span>`; }).join("")}</div>
     ${reduceMotion() ? `<p class="muted" style="margin-top:6px">기기에서 '동작 줄이기'가 켜져 있어서 움직임 효과는 꺼져 있어요.</p>` : ""}
     <button class="btn-sm" id="light-edit" style="margin-top:12px;background:var(--lilac,#ECE8F8)">💡 저녁 창문·가로등·별 위치 편집</button>
   </div>
@@ -1673,6 +1696,7 @@ function viewSettings(){
 function bindSettings(){
   document.querySelectorAll("[data-scene-time]").forEach(x => x.onclick = () => { const v = x.dataset.sceneTime; if (v === "auto") delete scenePref().time; else scenePref().time = v; Store.save(); render(); });
   document.querySelectorAll("[data-scene-season]").forEach(x => x.onclick = () => { const v = x.dataset.sceneSeason; if (v === "auto") delete scenePref().season; else scenePref().season = v; Store.save(); render(); });
+  document.querySelectorAll("[data-scene-talk]").forEach(x => x.onclick = () => { scenePref().talk = x.dataset.sceneTalk === "true"; Store.save(); render(); });
   document.querySelectorAll("[data-scene-anim]").forEach(x => x.onclick = () => { scenePref().anim = x.dataset.sceneAnim === "true"; Store.save(); render(); });
   document.getElementById("light-edit").onclick = () => { ui.lightEdit = true; ui.lightEditMode = "w"; ui.tab = "home"; window.scrollTo(0, 0); render(); };
   document.querySelectorAll("[data-gt]").forEach(x => x.onclick = () => {
@@ -2448,6 +2472,174 @@ function floaties(el, chr){
 }
 function tick(){ if (!state.timer) return; const t = fmtClock(Date.now() - state.timer.startedAt); document.querySelectorAll("[data-timer]").forEach(e => e.textContent = t); }
 setInterval(tick, 1000);
+/* ============ 말풍선: 앱을 열면 친구들이 오늘 할 일을 자기 말투로 알려줘요 ============ */
+function hstr(s){ let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; }
+function dpick(arr, salt){ return arr[Math.floor(rng(hstr(todayStr() + salt))() * arr.length)]; }   // 하루 동안은 같은 말, 날마다 바뀜
+const JP_WORDS = [["少しずつ", "조금씩"], ["一歩ずつ", "한 걸음씩"], ["頑張ろう", "힘내자"], ["今日も", "오늘도"], ["大丈夫", "괜찮아"], ["継続は力なり", "꾸준함이 힘"], ["一緒に", "같이"], ["ゆっくり", "천천히"]];
+const jw = salt => { const [a, b] = dpick(JP_WORDS, salt); return `${a}(${b})`; };
+const STAGE_KO = { idea: "아이디어", shoot: "촬영", edit: "편집" };
+// 성격별 말투. 인자는 이미 esc() 된 문자열
+const VOICE = {
+  jp: {   // 🐱 모찌: 차분한 책벌레, ~냥 + 일본어 한마디
+    run: () => dpick([`지금 같이 공부하는 중이다냥. ${jw("r")} 집중이다냥 📖`, `쉿… 책 읽는 중이다냥. 끝나면 ■ 꼭 눌러달라냥 🐾`], "jr"),
+    now: p => `지금은 <b>${p}</b> 시간이다냥. 책 펴자냥 📖`,
+    next: (p, t) => `${t}에 <b>${p}</b> 있다냥. 잊지 말라냥 🐾`,
+    chk: p => `<b>${p}</b>, 했으면 체크해 달라냥. 경험치 받고 싶다냥 ✨`,
+    chkN: n => `체크 안 한 일정이 ${n}개 있다냥… 시간표에서 표시해 달라냥 📋`,
+    gap: n => `${n}일째 책을 못 펼쳤다냥… 5분만 같이 읽자냥 🥺`,
+    left: (s, started) => started ? `오늘 일본어 <b>${s}</b>만 더 하면 된다냥. ${jw("l")}, 가자냥 📖` : dpick([`오늘 일본어 <b>${s}</b> 남았다냥. ${jw("l2")} 해보자냥 📖`, `오늘도 <b>${s}</b> 같이 공부하자냥. ${jw("l3")} 🍵`], "jl"),
+    done: () => dpick([`오늘 일본어 목표 다 했다냥! よくできました(참 잘했어요) ✨`, `오늘 공부 끝이다냥! お疲れ様(수고했어) 🍵`], "jd"),
+    bday: a => `오늘은 일본어 시작한 지 <b>${a}</b> 되는 날이다냥! おめでとう(축하해) 🎂`,
+  },
+  reels: {   // 🐰 릴리: 발랄한 인플루언서, 이모지 가득
+    run: () => `지금 촬영 중이지? 완전 기대돼 🎬✨`,
+    now: p => `지금은 <b>${p}</b> 시간이야! 조명 켜고 시작~ 💡🎬`,
+    next: (p, t) => `${t}에 <b>${p}</b> 있어! 미리 아이디어 메모해 둘까? 📝✨`,
+    chk: p => `<b>${p}</b> 했어? 했으면 체크 꾹! 💖`,
+    chkN: n => `체크 안 한 일정이 ${n}개야! 싹 정리하고 가자 ✨`,
+    gap: n => `마지막 업로드가 <b>${n}일 전</b>이야… 팔로워들이 기다리고 있어 🥺💌`,
+    left: s => dpick([`이번 주 릴스 <b>${s}</b> 더 올리면 목표 달성이야! 오늘 찍어볼까? 🎬✨`, `이번 주 업로드 <b>${s}</b> 남았어! 우리 오늘 하나 뽑아보자 💄📱✨`], "rl"),
+    done: () => dpick([`이번 주 업로드 목표 달성! 우리 완전 잘나가 💖✨`, `목표 클리어~! 오늘은 댓글 답장하면서 쉬자 💬💕`], "rd"),
+    stats: (t, slot) => `'<b>${t}</b>' ${slot} 성과 볼 시간이야! 조회수 궁금해 📊👀`,
+    fw: () => `이번 주 팔로워 수 아직 안 적었어! 얼마나 늘었는지 보자 📈💕`,
+    board: (t, st, due) => `보드에 '<b>${t}</b>' ${st} 단계가 기다리는 중이야${due ? ` (${due}까지!)` : ""} 📋✨`,
+    bday: a => `릴스 시작한 지 <b>${a}</b>! 우리 생일 파티하자 🎂🎉`,
+  },
+  drum: {   // 🐹 둥둥이: 에너지 폭발, 둥둥! 쿵짝!
+    run: () => `둥둥! 지금 연습 중! 리듬 타는 중이야 🥁🔥`,
+    now: p => `둥둥! 지금은 <b>${p}</b> 시간이다! 스틱 잡자 🥁`,
+    next: (p, t) => `${t}에 <b>${p}</b>! 쿵짝 준비 됐지? 🥁`,
+    chk: p => `<b>${p}</b> 했어? 했으면 체크! 쿵! 짝! ✅`,
+    chkN: n => `체크 안 한 일정 ${n}개! 한 번에 정리하자 둥둥!`,
+    gap: n => `${n}일째 스틱이 심심해해… 오늘 10분만 쿵짝하자! 🥺🥁`,
+    left: (s, started) => started ? `좋아 좋아! <b>${s}</b>만 더 치면 오늘 목표 쾅! 🥁💥` : dpick([`둥둥! 오늘 드럼 <b>${s}</b> 남았다! 스틱 잡자 🥁`, `쿵짝쿵짝~ 오늘 <b>${s}</b> 같이 두드리자! 🔥🥁`], "dl"),
+    done: () => dpick([`쿵짝쿵짝! 오늘 목표 클리어! 우리 리듬 최고야 🎉🥁`, `둥둥둥! 오늘 연습 끝! 박수 짝짝짝 👏🥁`], "dd"),
+    bday: a => `드럼 친 지 <b>${a}</b>! 생일 축하 둥둥둥~ 🎂🥁`,
+  },
+  toon: {   // 🌱 콩이: 수줍고 다정한 존댓말 + 마을 일정 안내
+    run: () => `지금 같이 그리고 있어요… 조용히 응원할게요 ✏️🌿`,
+    now: p => `저기… 지금은 <b>${p}</b> 시간이에요. 같이 그려요 ✏️`,
+    next: (p, t) => `${t}에 <b>${p}</b> 있어요. 잊지 마세요 🌱`,
+    chk: p => `<b>${p}</b>, 하셨으면 체크해 주실래요…? 🌿`,
+    chkN: n => `체크 안 한 일정이 ${n}개 있어요… 시간표에서 살짝 표시해 주세요 🌿`,
+    gap: n => `${n}일째 못 그렸어요… 오늘 한 컷만 그려볼까요? 🥺✏️`,
+    left: (s, started) => started ? `벌써 많이 했어요! <b>${s}</b>만 더 하면 돼요 🌸` : `오늘 인스타툰 <b>${s}</b> 남았어요. 천천히 해도 괜찮아요 🌿`,
+    done: () => `오늘 목표 다 했어요…! 정말 멋져요 🌸`,
+    egg: () => dpick([`저… 아직 알 속이에요. 첫 컷을 그려주시면 태어날 수 있어요 🥚✏️`, `언젠가 같이 그림 그리고 싶어요… 낙서 한 컷도 좋아요 🥚🌱`], "te"),
+    sched: p => dpick([`지금은 <b>${p}</b> 시간이에요. 잘 다녀와요 🌿`, `지금은 <b>${p}</b> 시간이에요. 다녀오면 쉬어요 🍀`], "ts" + p),
+    schedNext: (p, t) => `오늘 ${t}에 <b>${p}</b> 있어요. 미리 챙겨요 🌱`,
+    bday: a => `오늘 인스타툰 시작한 지 <b>${a}</b>예요… 축하해요 🎂`,
+  },
+};
+const TALK_ACT = { timer: "▶ 같이 하기", plan: "○ 완료 체크", tt: "🗓 시간표", post: "📊 성과 입력", postNew: "＋ 업로드 기록", fw: "📈 기록하기", board: "📋 보드 보기" };
+const act = (k, id) => ({ k, id, l: TALK_ACT[k] });
+function uncheckedPlans(id){
+  const today = todayStr(), m = nowInfo().m, mon = ymd(mondayOf(new Date()));
+  return state.plans.filter(p => p.charId === id && p.status === "planned" && p.date >= mon && (p.date < today || (p.date === today && p.start && (ttSpan(p) || [0, 9999])[1] <= m)))
+    .sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (toMin(a.start) ?? 0) - (toMin(b.start) ?? 0));
+}
+function talkMessages(id){
+  const c = ch(id), v = VOICE[id]; if (!c || !v) return [];
+  const today = todayStr(), ni = nowInfo(), out = [], push = (pri, t, a) => out.push({ pri, t, act: a || null });
+  const recs = recsOf(id), run = timerOf(id), ag = ageOf(c);
+  // 콩이는 스킬이 아닌 일정(알바·예배 등)도 알려줘요
+  if (id === "toon") {
+    const other = ni.current.find(x => !x.p.charId);
+    if (other) push(1, v.sched(esc(other.p.name)), act("tt"));
+    else { const nx = plansOn(today).filter(p => !p.charId && p.start && p.status === "planned" && toMin(p.start) > ni.m)[0]; if (nx) push(7, v.schedNext(esc(nx.name), esc(nx.start))); }
+  }
+  if (ag && ag.birthday && v.bday) push(0, v.bday(esc(ag.label)));
+  if (id === "toon" && !ag && !recs.length) { push(5, v.egg(), act("timer", id)); return out.sort((a, b) => a.pri - b.pri).slice(0, 3); }
+  if (run) push(1, v.run());
+  const cur = ni.current.find(x => x.p.charId === id);
+  if (cur && !run) push(2, v.now(esc(cur.p.name)), state.timer ? null : act("timer", id));
+  const un = uncheckedPlans(id);
+  if (un.length === 1) push(3, v.chk(esc(un[0].name)), act("plan", un[0].id));
+  else if (un.length > 1) push(3, v.chkN(un.length), act("tt"));
+  if (id === "reels") {
+    const due = R().posts.filter(statsDue).sort((a, b) => a.date < b.date ? -1 : 1)[0];
+    if (due) push(4, v.stats(esc(due.title || "지난 릴스"), statsDue(due)), act("post", due.id));
+  }
+  const gn = goalNow(c);
+  let gap = null;
+  if (id === "reels") gap = rhythm().sinceLast;
+  else { const last = recs.reduce((mm, r) => r.date > mm ? r.date : mm, ""); gap = last ? daysBetween(last, today) : null; }
+  const gapLimit = id === "reels" ? 5 : 2;
+  if (!gn.done && gap != null && gap >= gapLimit && !run) push(5, v.gap(gap), id === "reels" ? act("postNew") : act("timer", id));
+  else if (!gn.done) {
+    const s = gn.count ? `${gn.t - gn.n}개` : fmtDur(gn.t - gn.n);
+    if (!(run && !gn.count)) push(5, v.left(s, gn.n > 0), gn.count ? act("postNew") : (state.timer ? null : act("timer", id)));
+  } else push(9, v.done());
+  if (id === "reels") {
+    const thisMon = ymd(mondayOf(new Date()));
+    if (R().posts.length && !R().followers.some(f => f.date >= thisMon)) push(6, v.fw(), act("fw"));
+    const b = nextBoardCard();
+    if (b) push(8, v.board(esc(b.title), STAGE_KO[b.stage] || "", b.due ? fmtMD(b.due) : ""), act("board"));
+  }
+  const np = nextPlanFor(id);
+  if (np && np.date === today && (!cur || cur.p.id !== np.id)) push(7, v.next(esc(np.name), esc(np.start || "오늘")));
+  return out.sort((a, b) => a.pri - b.pri).slice(0, 3);
+}
+
+let talkDay = null, talkTimer = null;
+function talkOf(id){ const t = ui.talk; if (!t || t.closed[id] || !t.msgs[id]) return null; return t.msgs[id][t.idx[id] || 0] || null; }
+function talkHTML(c){
+  const m = talkOf(c.id); if (!m) return "";
+  const t = ui.talk, list = t.msgs[c.id], i = t.idx[c.id] || 0, order = Object.keys(t.msgs).indexOf(c.id);
+  return `<div class="talk ${t.pop ? "pop" : ""}" data-talk="${c.id}" style="${t.pop ? `animation-delay:${(.15 + order * .4).toFixed(2)}s` : ""}" role="button" aria-label="${esc(c.name)}의 말풍선, 누르면 다음 말">
+    <div class="tx">${m.t}</div>
+    <div class="tk-row">${m.act ? `<button class="tk-act" data-talk-act="${c.id}">${m.act.l}</button>` : ""}<span class="tk-n">${list.length > 1 ? `${i + 1}/${list.length} ▸` : "✕"}</span></div>
+  </div>`;
+}
+function showTalk(force){
+  if (ui.lightEdit || document.hidden) return false;
+  if (!force && (scenePref().talk === false || ui.tab !== "home")) return false;
+  const msgs = {};
+  // 콩이(마을 일정 안내)가 가운데라 먼저 말하고, 나머지는 할 일이 급한 순서로
+  allChars().map(c => ({ id: c.id, m: talkMessages(c.id) })).filter(x => x.m.length)
+    .sort((a, b) => (a.id === "toon" ? -1 : 0) - (b.id === "toon" ? -1 : 0) || a.m[0].pri - b.m[0].pri)
+    .forEach(x => msgs[x.id] = x.m);
+  if (!Object.keys(msgs).length) return false;
+  talkDay = todayStr();
+  if (force && ui.tab !== "home") ui.tab = "home";
+  ui.talk = { msgs, idx: {}, closed: {}, pop: true };
+  render();
+  setTimeout(() => { if (ui.talk) ui.talk.pop = false; }, 2600);
+  armTalkHide();
+  return true;
+}
+function armTalkHide(){ clearTimeout(talkTimer); talkTimer = setTimeout(hideTalk, 25000); }
+function hideTalk(){
+  clearTimeout(talkTimer);
+  if (!ui.talk) return;
+  ui.talk = null;
+  document.querySelectorAll(".talk").forEach(el => { el.classList.remove("pop"); el.style.animationDelay = ""; el.classList.add("out"); setTimeout(() => el.remove(), 320); });
+  document.querySelectorAll(".npc.talking").forEach(el => el.classList.remove("talking"));
+  document.querySelectorAll(".quick .tk-dot").forEach(el => el.remove());
+}
+function bindTalk(){
+  document.querySelectorAll("[data-talk]").forEach(el => el.onclick = e => {
+    e.stopPropagation(); const id = el.dataset.talk, t = ui.talk; if (!t) return;
+    const i = (t.idx[id] || 0) + 1;
+    t.pop = false;
+    if (i >= t.msgs[id].length) t.closed[id] = true; else t.idx[id] = i;
+    if (Object.keys(t.msgs).every(k => t.closed[k])) { hideTalk(); return; }
+    armTalkHide(); render();
+  });
+  document.querySelectorAll("[data-talk-act]").forEach(b => b.onclick = e => {
+    e.stopPropagation(); const m = talkOf(b.dataset.talkAct); if (!m || !m.act) return;
+    const a = m.act; hideTalk();
+    if (a.k === "timer") startTimer(a.id);
+    else if (a.k === "plan") togglePlan(a.id);
+    else if (a.k === "tt") { ui.tab = "tt"; ui.ttMode = "week"; ui.weekOffset = 0; render(); }
+    else if (a.k === "post") openPostForm(a.id);
+    else if (a.k === "postNew") openPostForm(null);
+    else if (a.k === "fw") openFollowerForm();
+    else if (a.k === "board") { setCard("reels", "open"); ui.rcScroll = 0; render(); }
+  });
+}
+
+
 /* ============ 지금은 무슨 시간? (시간표 따라 팝업) ============ */
 function nowInfo(){
   const today = todayStr(), n = new Date(), m = n.getHours() * 60 + n.getMinutes();
@@ -2473,6 +2665,10 @@ function checkNow(opening){
   if (document.hidden) return;
   if (document.querySelector("#modal-root .overlay") || ui.lightEdit) return;   // 다른 창이 열려 있거나 조명 편집 중이면 다음에
   const { m, current, next, ended } = nowInfo(), today = todayStr(), ann = annLoad(), nowTs = Date.now();
+  // 말풍선이 방금 지금 일정·끝난 일정을 말했으면 팝업은 겹치지 않게 넘어감
+  if (opening && ui.talk && ui.tab === "home") {
+    current.forEach(x => ann[`s:${today}:${x.p.id}`] = nowTs); ended.forEach(x => ann[`e:${today}:${x.p.id}`] = nowTs); annSave(ann); return;
+  }
   // 1) 지금 시작된(진행 중인) 일정: 처음 한 번 + 앱을 다시 열면 1시간마다
   const cur = current.find(x => { const k = `s:${today}:${x.p.id}`; return !ann[k] || (opening && nowTs - ann[k] > 60 * 60000); });
   if (cur) { ann[`s:${today}:${cur.p.id}`] = nowTs; annSave(ann); showNowPopup(cur, next); return; }
@@ -2513,12 +2709,17 @@ function showEndPopup(x){
   document.getElementById("ep-done").onclick = () => { close(); togglePlan(p.id); };
 }
 setInterval(() => checkNow(false), 30000);
-document.addEventListener("visibilitychange", () => { if (!document.hidden) setTimeout(() => checkNow(true), 600); });
+let hiddenAt = null;
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) { hiddenAt = Date.now(); return; }
+  const away = hiddenAt ? Date.now() - hiddenAt : 0; hiddenAt = null;
+  setTimeout(() => { if (away >= 60 * 60000 || todayStr() !== talkDay) showTalk(); checkNow(true); }, 600);
+});
 
 document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });
 
 Store.init();
-setTimeout(() => checkNow(true), 1200);
+setTimeout(() => { showTalk(); checkNow(true); }, 900);
 if ("serviceWorker" in navigator && location.protocol === "https:") {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(e => console.warn("sw", e)));
 }
