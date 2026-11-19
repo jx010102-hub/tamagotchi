@@ -1,0 +1,125 @@
+// 예수사랑교회 유튜브 채널에서 "[예수사랑교회 성금요일 총체적 치유 찬양기도회]" 영상들의
+// 챕터(곡 제목 + 시작 시각)를 모아 worship/songs.json 으로 저장해요. (GitHub Actions에서 실행)
+// 앱은 이 파일만 읽어서 콘티 곡을 찾아요. API 키 필요 없음.
+import fs from "node:fs";
+
+const HANDLE = "@jesuslovechurch6503";
+const TITLE_KEY = "성금요일총체적치유찬양기도회";      // 공백 무시하고 비교
+const OUT = "worship/songs.json";
+const MAX_PAGES = 40;          // 채널 영상 목록 최대 페이지(페이지당 ~30개)
+const KEEP = 80;               // 최근 영상 몇 개까지 보관
+const HEADERS = {
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+  "Accept-Language": "ko-KR,ko;q=0.9",
+  "Cookie": "CONSENT=YES+cb; SOCS=CAI",
+};
+const norm = s => (s || "").replace(/\s+/g, "");
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function jsonAfter(html, marker){
+  const i = html.indexOf(marker); if (i < 0) return null;
+  let j = html.indexOf("{", i), depth = 0, inStr = false, esc = false;
+  for (let k = j; k < html.length; k++) {
+    const ch = html[k];
+    if (inStr) { if (esc) esc = false; else if (ch === "\\") esc = true; else if (ch === '"') inStr = false; continue; }
+    if (ch === '"') inStr = true; else if (ch === "{") depth++; else if (ch === "}") { depth--; if (!depth) return JSON.parse(html.slice(j, k + 1)); }
+  }
+  return null;
+}
+function* walk(o, key){
+  if (!o || typeof o !== "object") return;
+  if (Array.isArray(o)) { for (const x of o) yield* walk(x, key); return; }
+  for (const [k, v] of Object.entries(o)) { if (k === key) yield v; yield* walk(v, key); }
+}
+const text = t => t ? (t.simpleText ?? (t.runs || []).map(r => r.text).join("")) : "";
+
+async function getHtml(url){
+  const r = await fetch(url, { headers: HEADERS });
+  if (!r.ok) throw new Error(`${r.status} ${url}`);
+  return r.text();
+}
+
+async function listVideos(){
+  const html = await getHtml(`https://www.youtube.com/${HANDLE}/videos?hl=ko&gl=KR`);
+  const key = (html.match(/"INNERTUBE_API_KEY":"([^"]+)"/) || [])[1];
+  const ver = (html.match(/"INNERTUBE_CLIENT_VERSION":"([^"]+)"/) || [])[1] || "2.20240601.00.00";
+  let data = jsonAfter(html, "var ytInitialData"), vids = [], page = 0;
+  if (!data) throw new Error("ytInitialData 없음 (YouTube가 페이지를 막았을 수 있어요)");
+  while (data && page < MAX_PAGES) {
+    for (const v of walk(data, "videoRenderer")) vids.push({ id: v.videoId, title: text(v.title), ago: text(v.publishedTimeText) });
+    // 새 레이아웃(lockupViewModel)도 대비
+    for (const l of walk(data, "lockupViewModel")) {
+      const id = l.contentId, t = l.metadata?.lockupMetadataViewModel?.title?.content;
+      if (id && t) vids.push({ id, title: t, ago: "" });
+    }
+    const tok = [...walk(data, "continuationCommand")].map(c => c.token).filter(Boolean).pop();
+    if (!tok || !key) break;
+    page++; await sleep(400);
+    const r = await fetch(`https://www.youtube.com/youtubei/v1/browse?key=${key}&prettyPrint=false`, {
+      method: "POST", headers: { ...HEADERS, "Content-Type": "application/json" },
+      body: JSON.stringify({ context: { client: { clientName: "WEB", clientVersion: ver, hl: "ko", gl: "KR" } }, continuation: tok }),
+    });
+    data = r.ok ? await r.json() : null;
+  }
+  const seen = new Set();
+  return vids.filter(v => v.id && !seen.has(v.id) && seen.add(v.id));
+}
+
+function parseTime(s){
+  const p = s.split(":").map(Number); if (p.some(isNaN)) return null;
+  return p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p[0] * 60 + p[1];
+}
+function chaptersFromDescription(desc){
+  const out = [];
+  for (const line of (desc || "").split("\n")) {
+    const m = line.match(/^\s*[\[(]?((?:\d{1,2}:)?\d{1,2}:\d{2})[\])]?\s*[-–—:.)]?\s*(.+)$/) || line.match(/^\s*(.+?)\s*[-–—:]?\s*[\[(]?((?:\d{1,2}:)?\d{1,2}:\d{2})[\])]?\s*$/);
+    if (!m) continue;
+    const [ts, title] = /\d:\d{2}/.test(m[1]) ? [m[1], m[2]] : [m[2], m[1]];
+    const t = parseTime(ts); if (t == null || !title.trim()) continue;
+    out.push({ t, title: title.trim() });
+  }
+  return out;
+}
+async function videoDetail(id){
+  const html = await getHtml(`https://www.youtube.com/watch?v=${id}&hl=ko&gl=KR`);
+  const init = jsonAfter(html, "var ytInitialData"), player = jsonAfter(html, "var ytInitialPlayerResponse");
+  let chapters = [];
+  for (const c of walk(init, "chapterRenderer")) chapters.push({ t: Math.round((c.timeRangeStartMillis || 0) / 1000), title: text(c.title) });
+  if (!chapters.length) for (const m of walk(init, "macroMarkersListItemRenderer")) {
+    const t = m.onTap?.watchEndpoint?.startTimeSeconds; if (t != null) chapters.push({ t, title: text(m.title) });
+  }
+  const desc = player?.videoDetails?.shortDescription || "";
+  if (!chapters.length) chapters = chaptersFromDescription(desc);
+  const seen = new Set(); chapters = chapters.filter(c => c.title && !seen.has(c.t + c.title) && seen.add(c.t + c.title)).sort((a, b) => a.t - b.t);
+  const mf = player?.microformat?.playerMicroformatRenderer || {};
+  return { date: (mf.publishDate || mf.uploadDate || "").slice(0, 10), title: player?.videoDetails?.title, chapters };
+}
+
+const old = fs.existsSync(OUT) ? JSON.parse(fs.readFileSync(OUT, "utf8")) : { videos: [] };
+const known = new Map((old.videos || []).map(v => [v.id, v]));
+const all = await listVideos();
+const hits = all.filter(v => norm(v.title).includes(TITLE_KEY));
+console.log(`채널 영상 ${all.length}개 중 찬양기도회 ${hits.length}개`);
+const videos = [];
+for (const v of hits.slice(0, KEEP)) {
+  const k = known.get(v.id);
+  if (k && k.chapters?.length) { videos.push({ ...k, title: v.title || k.title }); continue; }
+  try {
+    await sleep(500);
+    const d = await videoDetail(v.id);
+    videos.push({ id: v.id, title: d.title || v.title, date: d.date, chapters: d.chapters });
+    console.log(`  ${d.date} ${v.title} — 챕터 ${d.chapters.length}개`);
+  } catch (e) { console.log(`  실패 ${v.id}: ${e.message}`); if (k) videos.push(k); }
+}
+// 목록에서 사라진(오래된) 것도 기존 데이터는 남겨둠
+for (const k of known.values()) if (!videos.some(v => v.id === k.id)) videos.push(k);
+videos.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+const out = { channel: HANDLE, titleKey: "[예수사랑교회 성금요일 총체적 치유 찬양기도회]", videos: videos.slice(0, KEEP) };
+const prev = JSON.stringify({ ...old, updated: undefined });
+if (JSON.stringify({ ...out, updated: undefined }) !== prev || !old.updated) {
+  out.updated = new Date().toISOString();
+  fs.mkdirSync("worship", { recursive: true });
+  fs.writeFileSync(OUT, JSON.stringify(out, null, 1) + "\n");
+  console.log(`저장: 영상 ${out.videos.length}개, 챕터 ${out.videos.reduce((a, v) => a + v.chapters.length, 0)}개`);
+} else console.log("변경 없음");
+if (!hits.length && !known.size) { console.error("찬양기도회 영상을 하나도 못 찾았어요"); process.exit(1); }
