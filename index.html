@@ -724,9 +724,9 @@
   .gp-cards.many.end { -webkit-mask-image: none; mask-image: none; }
   @media (max-width: 900px) { .dock.many { width: calc(100vw - 24px); } .gp-cards.many { grid-auto-columns: minmax(150px, 1fr); } }
   .gp-cards.many::-webkit-scrollbar { display: none; }
-  .place-bar { position: fixed; left: 50%; transform: translateX(-50%); top: calc(max(14px, env(safe-area-inset-top)) + 70px); z-index: 6; display: flex; align-items: center; gap: 10px; background: #FFF9EC; border: 2.5px solid #5E4535; border-radius: 999px; padding: 6px 8px 6px 6px; font-size: 16px; box-shadow: 0 4px 0 rgba(94,69,53,.2); animation: bob 1.6s ease-in-out infinite; }
+  .place-bar { position: fixed; left: 50%; transform: translateX(-50%); top: calc(max(14px, env(safe-area-inset-top)) + 70px); z-index: 6; display: flex; align-items: center; gap: 10px; background: #FFF9EC; border: 2.5px solid #5E4535; border-radius: 999px; padding: 6px 8px 6px 6px; font-size: 16px; box-shadow: 0 4px 0 rgba(94,69,53,.2); animation: placeBob 1.6s ease-in-out infinite; }
   .place-bar img { width: 40px; height: 40px; object-fit: contain; }
-  @keyframes bob { 50% { transform: translateX(-50%) translateY(-3px); } }
+  @keyframes placeBob { 50% { transform: translateX(-50%) translateY(-3px); } }
   .hero.hatching > img:not(.hatch-shell) { animation: hatchIn .6s 1.1s both cubic-bezier(.3,1.6,.5,1); }
   .pop-c .hero.hatching { display: inline-grid; place-items: center; }
   .pop-c .hero.hatching > img { grid-area: 1 / 1; }
