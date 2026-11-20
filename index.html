@@ -862,7 +862,7 @@ function normalize(s){
     custom: Array.isArray(s.custom) ? s.custom.filter(c => c && typeof c.id === "string" && c.id.startsWith("u_") && c.skill).map(c => {
       // 받은 시트·알 연결: 이미 만든 독서·개발·일기 알에도 (직접 올린 그림이 없을 때만)
       const pr = DREAM_PRESETS.find(p => p.skill === c.skill);
-      if (pr && !c.img && c.sheet === undefined && pr.sheet) c.sheet = pr.sheet;
+      if (pr && !c.img && !c.sheet && pr.sheet && !(c.sheetSeen || []).includes(pr.sheet)) { c.sheet = pr.sheet; c.sheetSeen = [...(c.sheetSeen || []), pr.sheet]; }
       if (!c.egg) c.egg = pr ? pr.egg : 1 + (hstr(c.id) % EGG_COUNT);
       return c; }) : [],
     events: Array.isArray(s.events) ? s.events.filter(e => e && e.id && e.date) : [],
@@ -3027,13 +3027,13 @@ setInterval(tick, 1000);
 const DREAM_COLORS = [["#F6D978", "#FBF0C9"], ["#AFCB8F", "#EAF2DD"], ["#F4B4AC", "#FCE6E1"], ["#9DC6EA", "#E2F0FB"], ["#C9B3E8", "#F1EAFB"], ["#F2B98A", "#FCEBDD"], ["#8FD1C6", "#E0F4F0"], ["#E8A3C4", "#FBE4EF"]];
 const DREAM_PROPS = ["💻", "📚", "📔", "✏️", "🎨", "🎸", "🏃", "🧘", "🍳", "🌱", "📷", "🎯"];
 // 앱에 들어 있는 캐릭터 시트 (표정 15가지씩)
-const DREAM_SHEETS = { owl: { label: "🦉 독서 부엉이", c: 1 }, robot: { label: "🤖 개발 로봇", c: 4 } };
+const DREAM_SHEETS = { owl: { label: "🦉 독서 부엉이", c: 1 }, robot: { label: "🤖 개발 로봇", c: 4 }, diary: { label: "📔 일기 몽글이", c: 4 } };
 const EGG_COUNT = 30;
 const eggFile = n => `eggs/egg-${String(n).padStart(2, "0")}.webp`;
 const DREAM_PRESETS = [
   { skill: "개발", name: "코코", verb: "코딩", prop: "💻", c: 4, sheet: "robot", egg: 30 },
   { skill: "독서", name: "북북이", verb: "독서", prop: "📚", c: 1, sheet: "owl", egg: 10 },
-  { skill: "일기", name: "토닥이", verb: "작성", prop: "📔", c: 2, goalType: "count", weeklyCount: 5, egg: 27 },
+  { skill: "일기", name: "토닥이", verb: "작성", prop: "📔", c: 4, goalType: "count", weeklyCount: 5, egg: 27, sheet: "diary" },
 ];
 // 부화한 친구가 처음 설 자리 후보 (마을 길·광장, 아래 패널과 안 겹치는 곳부터)
 const DREAM_SPOTS = [[37, 52, "푸드트럭 앞"], [53, 47, "파라솔 광장"], [61, 71, "분수 옆"], [13, 58, "그네 나무 아래"], [22, 46, "트리하우스 앞"], [93, 52, "가로등 길"], [31, 38, "언덕길"], [76, 42, "카페 지붕 아래"]];
