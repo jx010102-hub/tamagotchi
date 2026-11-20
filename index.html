@@ -684,6 +684,50 @@
     .tabbar .tb-sub { display: none; }
   }
   .light-editing .guide, .light-editing .dock { display: none !important; }
+
+  /* ===== 꿈의 방 ===== */
+  .dr-intro { margin: -4px 0 14px; }
+  .dr-room { background: linear-gradient(180deg, #F3ECFB, #FFF6E9); border: 2.5px solid #5E4535; border-radius: 28px; padding: 18px; box-shadow: 0 5px 0 rgba(94,69,53,.15); position: relative; overflow: hidden; }
+  .dr-room::before { content: "✦  ⋆   ✧    ⋆  ✦     ✧   ⋆"; position: absolute; top: 6px; left: 20px; right: 20px; color: #E2C46A; letter-spacing: 6px; font-size: 14px; pointer-events: none; }
+  .dr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; margin-top: 12px; }
+  .dr-egg, .dr-new { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; background: rgba(255,249,236,.92); border: 2.5px solid var(--c-main, #D9C7A8); border-radius: 22px; padding: 14px 10px 12px; min-height: 230px; }
+  .dr-egg b { font-size: 22px; }
+  .dr-eggimg { width: 92px; height: 108px; object-fit: contain; animation: eggWob 3.2s ease-in-out infinite; transform-origin: 50% 90%; }
+  .dr-egg:nth-child(2n) .dr-eggimg { animation-delay: -1.1s; }
+  .dr-egg:nth-child(3n) .dr-eggimg { animation-delay: -2s; }
+  @keyframes eggWob { 0%, 70%, 100% { transform: rotate(0); } 76% { transform: rotate(-7deg); } 82% { transform: rotate(6deg); } 88% { transform: rotate(-4deg); } 94% { transform: rotate(2deg); } }
+  .dr-acts { justify-content: center; gap: 6px; margin-top: 6px; }
+  .dr-edit { position: absolute; top: 8px; right: 8px; padding: 4px 8px; background: transparent; box-shadow: none; border: none; font-size: 16px; }
+  .dr-new { justify-content: center; border-style: dashed; border-color: #B9A5D6; color: #6E5A8F; font-family: var(--hand); font-size: 20px; font-weight: 700; box-shadow: none; }
+  .dr-new span { font-size: 48px; line-height: 1; }
+  .dr-presets { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
+  .dr-born .list-item { background: var(--c-bg); }
+  .dr-form { display: flex; gap: 14px; align-items: flex-start; }
+  .dr-prev { flex: none; width: 110px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 18px; font-size: 12px; }
+  .dr-prev img { width: 100px; height: 110px; object-fit: contain; }
+  .dr-col { width: 40px; height: 40px; border-radius: 50%; border: 3px solid; padding: 0; display: grid; place-items: center; box-shadow: none; }
+  .dr-col i { width: 16px; height: 16px; border-radius: 50%; }
+  .dr-col.on { outline: 3px solid #5E4535; outline-offset: 2px; }
+  .dr-file { cursor: pointer; display: inline-flex; align-items: center; margin: 0; padding: 6px 14px; border: 2px solid var(--ink); border-radius: 99px; background: #fff; color: var(--ink); font-size: 13.5px; box-shadow: 0 2px 0 var(--ink); }
+  .tb-badge { position: absolute; top: 2px; right: 8px; min-width: 18px; height: 18px; border-radius: 9px; background: #EE7F8A; color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; padding: 0 4px; font-family: inherit; }
+  .npc .prop-cu { font-size: clamp(14px, 1.4vw, 20px); }
+  .dock.many { width: min(1120px, calc(100vw - 260px)); }
+  .gp-cards.many { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(190px, 1fr); overflow-x: auto; scrollbar-width: none; padding: 8px 2px 4px; margin-top: -8px; -webkit-mask-image: linear-gradient(90deg, #000 92%, transparent); mask-image: linear-gradient(90deg, #000 92%, transparent); }
+  .gp-cards.many.end { -webkit-mask-image: none; mask-image: none; }
+  @media (max-width: 900px) { .dock.many { width: calc(100vw - 24px); } .gp-cards.many { grid-auto-columns: minmax(150px, 1fr); } }
+  .gp-cards.many::-webkit-scrollbar { display: none; }
+  .place-bar { position: fixed; left: 50%; transform: translateX(-50%); top: calc(max(14px, env(safe-area-inset-top)) + 70px); z-index: 6; display: flex; align-items: center; gap: 10px; background: #FFF9EC; border: 2.5px solid #5E4535; border-radius: 999px; padding: 6px 8px 6px 6px; font-size: 16px; box-shadow: 0 4px 0 rgba(94,69,53,.2); animation: bob 1.6s ease-in-out infinite; }
+  .place-bar img { width: 40px; height: 40px; object-fit: contain; }
+  @keyframes bob { 50% { transform: translateX(-50%) translateY(-3px); } }
+  .hero.hatching > img:not(.hatch-shell) { animation: hatchIn .6s 1.1s both cubic-bezier(.3,1.6,.5,1); }
+  .pop-c .hero.hatching { display: inline-grid; place-items: center; }
+  .pop-c .hero.hatching > img { grid-area: 1 / 1; }
+  .hero .hatch-shell { width: 130px !important; height: 150px !important; object-fit: contain; z-index: 2; animation: hatchOut 1.4s ease-in forwards; pointer-events: none; }
+  @keyframes hatchOut { 0% { transform: rotate(0); } 15% { transform: rotate(-12deg); } 30% { transform: rotate(10deg); } 45% { transform: rotate(-8deg); } 60% { transform: rotate(6deg) scale(1.05); } 80% { opacity: 1; transform: scale(1.3); } 100% { opacity: 0; transform: scale(1.6); } }
+  @keyframes hatchIn { from { opacity: 0; transform: scale(.3) translateY(20px); } }
+  @media (prefers-reduced-motion: reduce) { .dr-eggimg, .place-bar { animation: none; } .hero .hatch-shell { animation-duration: .01s; } .hero.hatching > img { animation: none; } }
+  @media (max-width: 900px) { .tabbar button { padding: 9px 12px; font-size: 17px; } }
+  @media (max-width: 560px) { .dr-form { flex-direction: column; align-items: center; } .dr-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tabbar button { padding: 8px 6px; font-size: 13.5px; } }
 </style>
 </head>
 <body>
@@ -700,7 +744,7 @@ const CHARS = [
   { id: "drum",  folder: "hamster", skill: "드럼",     name: "둥둥이", verb: "연습", prop: "🥁", main: "#E6C3A0", bg: "#F7EADC", dailyGoal: 30, weeklyGoal: 180, x: 27, y: 62, w: 11,  spot: "공연 무대", startDate: "2024-04-12" },
 ];
 const POSES = ["idle","hi","base","focus","done1","done2","done3","sleep","cry","lazy","eat","levelup","weekly","empty","think"];
-const SP = (id, pose) => `sprites/${(CHARS.find(c => c.id === id) || CHARS[0]).folder}/${pose}.webp`;
+const SP = (id, pose) => String(id).startsWith("u_") ? customSprite(id) : `sprites/${(CHARS.find(c => c.id === id) || CHARS[0]).folder}/${pose}.webp`;
 POSES.forEach(p => CHARS.forEach(c => { const i = new Image(); i.src = SP(c.id, p); }));
 
 /* ============ 유틸 ============ */
@@ -727,7 +771,7 @@ function fmtClock(ms){ const s = Math.max(0, Math.floor(ms/1000)); return `${pad
 
 /* ============ 상태 ============ */
 let state = emptyState();
-function emptyState(){ return { chars: {}, records: [], timer: null, plans: [], goals: [], goalLogs: [], imports: [], template: [], templateFrom: null, filledDates: [], reels: emptyReels(), worship: { sets: [], bpm: {} }, events: [], scene: {}, createdAt: Date.now(), updatedAt: 0 }; }
+function emptyState(){ return { chars: {}, records: [], timer: null, plans: [], goals: [], goalLogs: [], imports: [], template: [], templateFrom: null, filledDates: [], reels: emptyReels(), worship: { sets: [], bpm: {} }, events: [], custom: [], scene: {}, createdAt: Date.now(), updatedAt: 0 }; }
 function emptyReels(){ return { posts: [], followers: [], board: [], weeklyTarget: null }; }
 function normalize(s){
   const e = emptyState();
@@ -737,6 +781,7 @@ function normalize(s){
     plans: arr("plans"), goals: arr("goals"), goalLogs: arr("goalLogs"), imports: arr("imports"),
     template: arr("template"), templateFrom: s.templateFrom || null, filledDates: arr("filledDates"),
     scene: s.scene && typeof s.scene === "object" ? s.scene : {},
+    custom: Array.isArray(s.custom) ? s.custom.filter(c => c && typeof c.id === "string" && c.id.startsWith("u_") && c.skill) : [],
     events: Array.isArray(s.events) ? s.events.filter(e => e && e.id && e.date) : [],
     worship: { sets: s.worship && Array.isArray(s.worship.sets) ? s.worship.sets : [], bpm: s.worship && s.worship.bpm && typeof s.worship.bpm === "object" ? s.worship.bpm : {} },
     reels: (r => ({ posts: Array.isArray(r.posts) ? r.posts : [], followers: Array.isArray(r.followers) ? r.followers : [], board: Array.isArray(r.board) ? r.board : [], weeklyTarget: r.weeklyTarget || null }))(s.reels || {}),
@@ -884,8 +929,9 @@ function syncTemplate(t, removed){
   state.filledDates.filter(d => d >= today && dowOf(d) === t.dow && !have.has(d)).forEach(d => state.plans.push(planFromTemplate(t, d)));
 }
 // 기본 정의 + 사용자가 바꾼 이름·목표
-function ch(id){ const d = CHARS.find(c => c.id === id); return { ...d, ...(state.chars[id] || {}) }; }
-function allChars(){ return CHARS.map(c => ch(c.id)); }
+function ch(id){ const d = CHARS.find(c => c.id === id) || (state.custom || []).find(c => c.id === id); return { ...d, ...(state.chars[id] || {}) }; }
+// 마을에 사는 친구들: 기본 4명 + 꿈의 방에서 부화한 친구들 (알은 꿈의 방에)
+function allChars(){ return [...CHARS.map(c => ch(c.id)), ...(state.custom || []).map(c => ch(c.id)).filter(c => c.startDate && c.x != null)]; }
 
 /* ============ 저장 ============ */
 const Store = {
@@ -970,7 +1016,7 @@ function goalNow(c, date = todayStr()){
   return { count: false, n: m, t: c.dailyGoal, pct: Math.min(1, m / c.dailyGoal), done: m >= c.dailyGoal, today: m,
     label: `오늘 ${fmtDur(m)} / ${fmtDur(c.dailyGoal)}`, short: fmtDur(m), left: m >= c.dailyGoal ? "달성! 🎉" : `${fmtDur(c.dailyGoal - m)} 남았어요`, goalText: `하루 ${fmtDur(c.dailyGoal)}` };
 }
-function allDone(date){ return CHARS.every(c => goalNow(ch(c.id), date).done); }
+function allDone(date){ return allChars().every(c => goalNow(c, date).done); }
 function timerOf(id){ return state.timer && state.timer.charId === id ? state.timer : null; }
 
 /* 스킬 나이: 시작한 날부터 */
@@ -1115,16 +1161,16 @@ function render(){
   const app = document.getElementById("app");
   if (ui.slide) { const cls = ui.slide; app.classList.remove("slide-l", "slide-r", "bump-l", "bump-r"); void app.offsetWidth; app.classList.add(cls); ui.slide = null;
     clearTimeout(ui.slideT); ui.slideT = setTimeout(() => app.classList.remove(cls), 400); }
-  app.innerHTML = ui.tab === "home" ? viewHome() : ui.tab === "tt" ? viewTimetable() : ui.tab === "cal" ? viewCalendar() : ui.tab === "reels" ? viewReels() : viewSettings();
+  app.innerHTML = ui.tab === "home" ? viewHome() : ui.tab === "tt" ? viewTimetable() : ui.tab === "cal" ? viewCalendar() : ui.tab === "dream" ? viewDream() : ui.tab === "reels" ? viewReels() : viewSettings();
   document.getElementById("nav-root").innerHTML = `<nav class="tabbar">
-    ${[["home","tab-home","마을<span class=\"tb-sub\">(홈)</span>"],["tt","tab-tt","시간표"],["cal","tab-cal","달력"],["set","tab-set","설정"]].map(([k,i,l]) => `<button data-tab="${k}" class="${ui.tab===k?"on":""}"><img class="tb-i" src="icons/${i}.webp" alt="">${l}</button>`).join("")}
+    ${[["home","icons/tab-home.webp","마을<span class=\"tb-sub\">(홈)</span>"],["tt","icons/tab-tt.webp","시간표"],["cal","icons/tab-cal.webp","달력"],["dream",eggSrc({ main: "#F2C14E" }),"꿈의 방"],["set","icons/tab-set.webp","설정"]].map(([k,i,l]) => `<button data-tab="${k}" class="${ui.tab===k?"on":""}"><img class="tb-i" src="${i}" alt="">${l}${k === "dream" && dreamEggs().length ? `<span class="tb-badge">${dreamEggs().length}</span>` : ""}</button>`).join("")}
   </nav><button class="fab" id="fab" aria-label="기록하기"><span class="fab-p">＋</span><span class="fab-l">기록하기</span></button>`;
   document.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => { ui.lightEdit = false; document.body.classList.remove("light-editing"); ui.tab = b.dataset.tab; window.scrollTo(0,0); render(); });
   document.getElementById("fab").onclick = () => openManualSheet();
   document.querySelectorAll("#modal-root .modal[data-day-detail]").forEach(m => m._redraw && m._redraw());
   const rp = document.getElementById("reels-panel");
   if (rp && ui.tab !== "reels") { const y = rp.scrollTop; rp.innerHTML = viewReels(true); bindReels(); rp.scrollTop = y; }
-  if (ui.tab === "home") bindHome(); else if (ui.tab === "tt") bindTimetable(); else if (ui.tab === "cal") bindCalendar(); else if (ui.tab === "reels") bindReels(); else bindSettings();
+  if (ui.tab === "home") bindHome(); else if (ui.tab === "tt") bindTimetable(); else if (ui.tab === "cal") bindCalendar(); else if (ui.tab === "dream") bindDream(); else if (ui.tab === "reels") bindReels(); else bindSettings();
   tick();
 }
 
@@ -1132,7 +1178,7 @@ function render(){
 function charStyle(c){ return `--c-main:${c.main};--c-bg:${c.bg}`; }
 function viewHome(){
   const today = todayStr();
-  const total = CHARS.reduce((a,c) => a + minOn(c.id, today), 0);
+  const total = allChars().reduce((a,c) => a + minOn(c.id, today), 0);
   const t = state.timer, tc = t ? ch(t.charId) : null;
   return `
   <div class="scene-wrap" id="scene-wrap" style="background-image:url(${curSeason()}.webp)"><div class="scene ${sceneClass()}" id="scene">
@@ -1146,7 +1192,7 @@ function viewHome(){
           <span class="nm">${esc(c.name)}</span>
           ${run ? `<span class="run" data-timer>${fmtClock(Date.now() - run.startedAt)}</span>` : `<span class="tm">${esc(c.skill)} · ${!ageOf(c) && !recsOf(c.id).length ? "🥚" : `Lv.${li.level}`}${ageOf(c)?.birthday ? " 🎂" : ""}</span>`}
         </div>
-        <div class="body"><img class="prop-ic" src="icons/${PROP_IC[c.id] || "pr-dots"}.webp" alt=""><img class="sprite" src="${SP(c.id, m.pose)}" alt="${esc(c.name)}"></div>
+        <div class="body">${PROP_IC[c.id] ? `<img class="prop-ic" src="icons/${PROP_IC[c.id]}.webp" alt="">` : `<span class="prop prop-cu">${c.prop || "⭐"}</span>`}<img class="sprite" src="${SP(c.id, m.pose)}" alt="${esc(c.name)}"></div>
         <div class="mini"><i style="width:${goalNow(c).pct * 100}%"></i></div>
       </div>`;
     }).join("")}
@@ -1164,9 +1210,9 @@ function viewHome(){
       <button class="hud-btn" id="btn-summary"><img src="icons/ui-sum.webp" alt=""> 결산</button>
     </div>
   </div>
-  ${guideHTML()}
+  ${ui.placing ? placingBarHTML() : guideHTML()}
   <!-- 아래쪽: 타이머 + 오늘의 할 일 & 성장 현황 -->
-  <div class="dock" id="dock">
+  <div class="dock ${allChars().length > 4 ? "many" : ""}" id="dock">
     ${t ? `<div class="timer-pill" style="${charStyle(tc)}">
       <img src="${SP(tc.id, "focus")}" alt="">
       <div><div class="muted" style="font-size:12px">${esc(callName(tc.name))}랑 ${esc(tc.skill)} ${tc.verb} 중</div><div class="clock" data-timer>${fmtClock(Date.now() - t.startedAt)}</div></div>
@@ -1192,15 +1238,15 @@ function growthPanelHTML(){
   const today = todayStr();
   return `<section class="growth-panel" aria-label="오늘의 할 일과 성장 현황">
     <div class="gp-title"><img class="gp-s" src="icons/ui-star.webp" alt=""><img class="gp-ti" src="icons/ui-sum.webp" alt="">오늘의 할 일 &amp; 성장 현황<img class="gp-s" src="icons/ui-star.webp" alt=""></div>
-    <div class="gp-cards">${["drum", "toon", "reels", "jp"].map(id => {
-      const c = ch(id), g = GP[id], gn = goalNow(c), run = timerOf(id), egg = !ageOf(c) && !recsOf(id).length;
+    <div class="gp-cards ${allChars().length > 4 ? "many" : ""}">${["drum", "toon", "reels", "jp", ...allChars().filter(c => isCustom(c.id)).map(c => c.id)].map(id => {
+      const c = ch(id), g = GP[id] || { ic: null, bg: c.bg, bd: c.main, bar: c.main }, gn = goalNow(c), run = timerOf(id), egg = !ageOf(c) && !recsOf(id).length;
       const plans = plansOn(today).filter(p => p.charId === id), done = plans.filter(p => p.status === "done").length;
       const al = id === "reels" ? reelsAlerts().length : skillAlerts(c).length;
       const val = run ? `<span class="gp-run" data-timer>${fmtClock(Date.now() - run.startedAt)}</span>`
         : egg ? "🥚 첫 기록 전"
         : gn.count ? `주 ${gn.n} / ${gn.t}회` : `${gn.n ? fmtDur(gn.n) : "0분"} / ${fmtDur(gn.t)}`;
       return `<button class="gp-card ${gn.done ? "done" : ""}" data-gp="${id}" style="--gp-bg:${g.bg};--gp-bd:${g.bd};--gp-bar:${g.bar}" aria-label="${esc(c.skill)} 상세 기록 보기">
-        <img class="gp-ic" src="icons/${g.ic}.webp" alt="">
+        <img class="gp-ic" src="${g.ic ? `icons/${g.ic}.webp` : SP(id, "idle")}" alt="">
         <span class="gp-txt"><b>${esc(c.skill)}</b><span class="gp-v">${val}</span>
           <i class="gp-bar"><i style="width:${Math.round(gn.pct * 100)}%"></i></i>
           ${plans.length ? `<span class="gp-plan">할 일 ${done}/${plans.length}</span>` : ""}</span>
@@ -1230,6 +1276,9 @@ function bindHome(){
   document.getElementById("btn-summary").onclick = showSummary;
   document.getElementById("btn-talk").onclick = () => ui.talk ? hideTalk() : showTalk(true);
   bindTalk();
+  bindPlacing();
+  const gpc = document.querySelector(".gp-cards.many");   // 옆으로 넘길 카드가 남았는지 흐림으로 표시
+  if (gpc) { const upd = () => gpc.classList.toggle("end", gpc.scrollLeft + gpc.clientWidth >= gpc.scrollWidth - 4); gpc.onscroll = upd; requestAnimationFrame(upd); }
   document.querySelectorAll("[data-gp]").forEach(b => b.onclick = () => openCharPopup(b.dataset.gp));
   const gd = document.getElementById("guide");
   if (gd) gd.onclick = () => { const ni = nowInfo(); if (ni.current.length || ni.next) { ui.tab = "tt"; ui.ttMode = "week"; ui.weekOffset = 0; render(); } else if (eventsOn(todayStr()).length) openDayDetail(todayStr()); else ui.talk ? hideTalk() : showTalk(true); };
@@ -1367,7 +1416,7 @@ function openManualSheet(id, date){
     const c = ch(sel);
     box.innerHTML = `<button class="close-x" data-close aria-label="닫기">✕</button>
       <h2>시간 기록하기</h2>
-      <div class="row">${allChars().map(x => `<span class="chip ${x.id===sel?"on":""}" data-s="${x.id}" ${x.id===sel?`style="background:${x.bg}"`:""}><span class="dot" style="background:${x.main}"></span>${esc(x.name)} · ${esc(x.skill)}</span>`).join("")}</div>
+      <div class="row">${pickableChars().map(x => `<span class="chip ${x.id===sel?"on":""}" data-s="${x.id}" ${x.id===sel?`style="background:${x.bg}"`:""}><span class="dot" style="background:${x.main}"></span>${esc(x.name)} · ${esc(x.skill)}</span>`).join("")}</div>
       <label style="text-align:center">${esc(josa(c.skill, "을", "를"))} 얼마나 ${c.verb}했나요?</label>
       ${durInputHTML(keep.mins)}
       <p class="muted" style="text-align:center;margin-top:8px">${isCount(c) ? `오늘 ${fmtDur(minOn(sel, todayStr()))} · ${goalNow(c).label}` : `오늘 ${fmtDur(minOn(sel, todayStr()))} / 목표 ${fmtDur(c.dailyGoal)}`}</p>
@@ -1405,6 +1454,7 @@ function addRecord(id, minutes, date, memo, source, extra = {}){
   const dayBefore = minOn(id, date), weekBefore = minWeek(id, monday);
   const born = !c.startDate;
   if (born) { state.chars[id] = { ...(state.chars[id] || {}), startDate: date }; c.startDate = date; }
+  const hatchNow = born && isCustom(id) ? hatchCustom(id) : null;   // 꿈의 방 알 → 마을로
   state.records.push({ id: uid(), charId: id, date, minutes, memo, source, ts: Date.now(), ...extra });
   Store.save();
 
@@ -1422,7 +1472,8 @@ function addRecord(id, minutes, date, memo, source, extra = {}){
       : [day >= c.dailyGoal ? `🎯 하루 목표 ${fmtDur(c.dailyGoal)} ${dailyNew ? "달성!" : "이미 달성"}` : `🌱 하루 목표까지 ${fmtDur(c.dailyGoal - day)} 남았어요`,
          `📅 이번 주 ${fmtDur(week)} / ${fmtDur(c.weeklyGoal)}${weeklyNew ? " · 주간 목표 달성! 🎉" : ""}`]),
   ];
-  let lv = born ? `<div class="levelup">🐣 ${esc(callName(c.name))}가 태어났어요!<br><span style="font-size:16px">${esc(c.skill)} 시작한 날: ${fmtMD(date)}</span></div>` : "";
+  let lv = hatchNow ? `<div class="levelup">🐣 ${esc(callName(c.name))}가 알에서 깨어났어요!<br><span style="font-size:16px">🏡 마을 ${esc(hatchNow.spot || "")}로 이사 갔어요 · ${esc(c.skill)} 시작한 날 ${fmtMD(date)}</span><br><button class="btn-sm" id="hatch-go" style="margin-top:8px">🏡 마을에 가보기</button></div>`
+    : born ? `<div class="levelup">🐣 ${esc(callName(c.name))}가 태어났어요!<br><span style="font-size:16px">${esc(c.skill)} 시작한 날: ${fmtMD(date)}</span></div>` : "";
   if (after > before) {
     const s0 = stageOf(before), s1 = stageOf(after);
     lv += `<div class="levelup">⬆️ ${esc(callName(c.name))}가 Lv.${after}로 자랐어요!${s0.key !== s1.key ? `<br>🌱 ${s1.label} 단계가 되었어요` : ""}</div>`;
@@ -1430,12 +1481,17 @@ function addRecord(id, minutes, date, memo, source, extra = {}){
   ui.selectedDate = date;
   render();
   openModal(`<div class="pop-c" style="${charStyle(c)}">
-    <div class="hero"><span class="prop">${c.prop}</span><img src="${SP(id, pose)}" alt=""></div>
+    <div class="hero ${hatchNow ? "hatching" : ""}"><span class="prop">${c.prop}</span><img src="${SP(id, pose)}" alt="">${hatchNow ? `<img class="hatch-shell" src="${eggSrc(c)}" alt="">` : ""}</div>
     <div class="big">${esc(when)} ${esc(josa(c.skill, "을", "를"))}<br><em>${fmtDur(day)}</em> ${c.verb}했어요</div>
     <div class="lines">${lines.map(l => `<p>${esc(l)}</p>`).join("")}</div>
     <span class="xp-chip">+${gained} XP</span>${lv}
   </div>`, { okLabel: pick(["좋아!", "고마워!", "계속 할래!"]) });
   if (dailyNew || weeklyNew || after > before) floaties(lastModal()?.querySelector(".hero"), weeklyNew ? "💕" : "✨");
+  if (hatchNow) {
+    setTimeout(() => floaties(lastModal()?.querySelector(".hero"), "🎉"), 900);
+    const go = lastModal()?.querySelector("#hatch-go");
+    if (go) go.onclick = () => { document.querySelectorAll("#modal-root .overlay").forEach(o => o.remove()); ui.tab = "home"; ui.scroll = null; render(); };
+  }
 }
 
 /* --- 주간 시간표 (요일 × 시간) --- */
@@ -1563,7 +1619,7 @@ function openTemplateForm(id, preset = {}){
       <label>분류</label>
       <div class="row">${Object.keys(CATS).map(k => `<span class="chip ${k===cat?"on":""}" data-cat="${k}" style="${k===cat?`background:${catColor(k)}`:""}">${k}</span>`).join("")}</div>
       <label>연결할 스킬 <span class="muted">(완료하면 이 스킬 경험치로 들어가요)</span></label>
-      <div class="row"><span class="chip ${!charId?"on":""}" data-ch="">없음</span>${allChars().map(c => `<span class="chip ${c.id===charId?"on":""}" data-ch="${c.id}" style="${c.id===charId?`background:${c.bg}`:""}"><span class="dot" style="background:${c.main}"></span>${esc(c.skill)}</span>`).join("")}</div>
+      <div class="row"><span class="chip ${!charId?"on":""}" data-ch="">없음</span>${pickableChars().map(c => `<span class="chip ${c.id===charId?"on":""}" data-ch="${c.id}" style="${c.id===charId?`background:${c.bg}`:""}"><span class="dot" style="background:${c.main}"></span>${esc(c.skill)}</span>`).join("")}</div>
       ${t?.needsReview ? `<label class="row" style="gap:8px;color:var(--ink);font-size:15px;margin-top:14px"><input type="checkbox" id="tf-reviewed" ${v.reviewed?"checked":""} style="width:22px;height:22px"> 내용을 확인했어요</label>` : ""}
       <div class="err" id="tf-err"></div>
       <div class="row" style="margin-top:4px">
@@ -1806,7 +1862,7 @@ function openPlanForm(id, preset = {}){
       <label>분류</label>
       <div class="row">${Object.keys(CATS).map(k => `<span class="chip ${k===cat?"on":""}" data-cat="${k}" style="${k===cat?`background:${catColor(k)}`:""}">${k}</span>`).join("")}</div>
       <label>연결할 스킬 <span class="muted">(완료하면 이 스킬 경험치로 들어가요)</span></label>
-      <div class="row"><span class="chip ${!charId?"on":""}" data-ch="">없음</span>${allChars().map(c => `<span class="chip ${c.id===charId?"on":""}" data-ch="${c.id}" style="${c.id===charId?`background:${c.bg}`:""}"><span class="dot" style="background:${c.main}"></span>${esc(c.skill)}</span>`).join("")}</div>
+      <div class="row"><span class="chip ${!charId?"on":""}" data-ch="">없음</span>${pickableChars().map(c => `<span class="chip ${c.id===charId?"on":""}" data-ch="${c.id}" style="${c.id===charId?`background:${c.bg}`:""}"><span class="dot" style="background:${c.main}"></span>${esc(c.skill)}</span>`).join("")}</div>
       <label for="pf-memo">메모 (선택)</label>
       <input type="text" id="pf-memo" maxlength="80" value="${esc(v.memo)}">
       ${p?.needsReview ? `<label class="row" style="gap:8px;color:var(--ink);font-size:15px;margin-top:14px"><input type="checkbox" id="pf-reviewed" ${v.reviewed?"checked":""} style="width:22px;height:22px"> 내용을 확인했어요</label>` : ""}
@@ -1857,7 +1913,7 @@ function togglePlan(id){
       <div class="big" style="font-size:22px">'${esc(p.name)}'<br>실제로 했나요?</div>
       ${p.needsReview ? `<p class="review-note">⚠️ 확인 필요한 일정이에요. <button class="rv-badge" id="tp-edit">내용 고치기</button></p>` : ""}
       <p class="muted" style="margin-bottom:6px">어떤 스킬로 기록할까요?</p>
-      <div class="row" style="justify-content:center"><span class="chip ${!sel?"on":""}" data-s="">스킬 아님</span>${allChars().map(x => `<span class="chip ${x.id===sel?"on":""}" data-s="${x.id}" style="${x.id===sel?`background:${x.bg}`:""}"><span class="dot" style="background:${x.main}"></span>${esc(x.skill)}</span>`).join("")}</div>
+      <div class="row" style="justify-content:center"><span class="chip ${!sel?"on":""}" data-s="">스킬 아님</span>${pickableChars().map(x => `<span class="chip ${x.id===sel?"on":""}" data-s="${x.id}" style="${x.id===sel?`background:${x.bg}`:""}"><span class="dot" style="background:${x.main}"></span>${esc(x.skill)}</span>`).join("")}</div>
       ${c ? `<p class="muted" style="margin-top:10px">실제로 ${esc(c.skill)} ${c.verb}한 시간</p>${durInputHTML(keepMin ?? mins0)}` : `<p class="muted" style="margin-top:10px">스킬이 아닌 일정은 완료 표시만 하고 경험치는 없어요.</p>`}
       <div class="err" id="tp-err"></div>
       <div class="actions"><button class="btn-ghost" data-close>취소</button><button class="btn-primary" id="tp-save">완료했어요</button></div>
@@ -1907,7 +1963,7 @@ function viewSettings(){
   return `
   <h1>친구들 설정</h1>
   <p class="muted" style="margin-bottom:14px">이름, 맡은 스킬, 목표 시간을 바꿀 수 있어요</p>
-  ${allChars().map(c => `<div class="card" style="${charStyle(c)}">
+  ${CHARS.map(c => ch(c.id)).map(c => `<div class="card" style="${charStyle(c)}">
     <div class="row" style="gap:12px">
       <img src="${SP(c.id, "hi")}" alt="" style="width:64px;height:64px;object-fit:contain">
       <div class="grow"><h3>${esc(c.name)} <span class="muted">· ${esc(c.spot)}</span></h3><p class="muted">Lv.${levelInfo(xpOf(c.id)).level} · ${(() => { const ag = ageOf(c); return ag ? `${ag.label} (${ag.days.toLocaleString()}일째)` : "🥚 아직 시작 전"; })()} · 누적 ${fmtDur(recsOf(c.id).reduce((a,r)=>a+r.minutes,0))}</p></div>
@@ -2686,7 +2742,7 @@ function bindCards(){
 
 
 /* ============ 손가락으로 옆으로 밀어 페이지 넘기기: 마을 → 시간표 → 달력 → 설정 ============ */
-const PAGES = ["home", "tt", "cal", "set"];
+const PAGES = ["home", "tt", "cal", "dream", "set"];
 function goPage(dir){
   const cur = ui.tab === "reels" ? 0 : PAGES.indexOf(ui.tab), next = cur + dir;
   if (cur < 0 || next < 0 || next >= PAGES.length) { const app = document.getElementById("app"); app.classList.remove("bump-l", "bump-r"); void app.offsetWidth; const cls = dir > 0 ? "bump-l" : "bump-r"; app.classList.add(cls); setTimeout(() => app.classList.remove(cls), 350); return; }
@@ -2750,6 +2806,186 @@ function floaties(el, chr){
 }
 function tick(){ if (!state.timer) return; const t = fmtClock(Date.now() - state.timer.startedAt); document.querySelectorAll("[data-timer]").forEach(e => e.textContent = t); }
 setInterval(tick, 1000);
+/* ============ 🥚 꿈의 방: 기르고 싶은 스킬을 알로 만들고, 첫 기록하면 부화해서 마을로 ============ */
+const DREAM_COLORS = [["#F6D978", "#FBF0C9"], ["#AFCB8F", "#EAF2DD"], ["#F4B4AC", "#FCE6E1"], ["#9DC6EA", "#E2F0FB"], ["#C9B3E8", "#F1EAFB"], ["#F2B98A", "#FCEBDD"], ["#8FD1C6", "#E0F4F0"], ["#E8A3C4", "#FBE4EF"]];
+const DREAM_PROPS = ["💻", "📚", "📔", "✏️", "🎨", "🎸", "🏃", "🧘", "🍳", "🌱", "📷", "🎯"];
+const DREAM_PRESETS = [
+  { skill: "개발", name: "코코", verb: "코딩", prop: "💻", c: 3 },
+  { skill: "독서", name: "북북이", verb: "독서", prop: "📚", c: 1 },
+  { skill: "일기", name: "토닥이", verb: "작성", prop: "📔", c: 4, goalType: "count", weeklyCount: 5 },
+];
+// 부화한 친구가 처음 설 자리 후보 (마을 길·광장, 아래 패널과 안 겹치는 곳부터)
+const DREAM_SPOTS = [[37, 52, "푸드트럭 앞"], [89, 60, "카페 옆 길"], [13, 60, "그네 나무 아래"], [53, 47, "파라솔 광장"], [60, 64, "분수 앞"], [22, 48, "트리하우스 앞"], [93, 74, "도서관 옆"], [31, 40, "언덕길"]];
+const CUSTOM = () => state.custom || (state.custom = []);
+const isCustom = id => typeof id === "string" && id.startsWith("u_");
+function hatched(c){ return !!c.startDate; }
+function dreamEggs(){ return CUSTOM().map(d => ch(d.id)).filter(c => !hatched(c)); }
+function dreamHatched(){ return CUSTOM().map(d => ch(d.id)).filter(hatched); }
+function pickableChars(){ return [...allChars(), ...dreamEggs()]; }
+const svgUrl = s => "data:image/svg+xml;charset=utf-8," + encodeURIComponent(s);
+function eggSrc(c){
+  return svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 140"><ellipse cx="60" cy="132" rx="38" ry="6" fill="rgba(94,69,53,.12)"/>
+    <path d="M60 6C90 6 108 62 108 86c0 28-21 44-48 44S12 114 12 86C12 62 30 6 60 6z" fill="#FFF9EC" stroke="#5E4535" stroke-width="4"/>
+    <circle cx="40" cy="62" r="9" fill="${c.main}"/><circle cx="78" cy="48" r="6" fill="${c.main}"/><circle cx="82" cy="92" r="11" fill="${c.main}"/><circle cx="44" cy="104" r="6" fill="${c.main}"/>
+    <path d="M44 30c4-8 10-12 16-12" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none"/></svg>`);
+}
+// 그림을 아직 안 올린 친구: 색 동그라미 + 소품 이모지
+function avatarSrc(c){
+  return svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 130"><ellipse cx="60" cy="122" rx="36" ry="6" fill="rgba(94,69,53,.12)"/>
+    <circle cx="60" cy="66" r="50" fill="${c.bg}" stroke="${c.main}" stroke-width="6"/><circle cx="42" cy="58" r="5" fill="#5E4535"/><circle cx="78" cy="58" r="5" fill="#5E4535"/>
+    <path d="M50 76q10 9 20 0" stroke="#5E4535" stroke-width="4" fill="none" stroke-linecap="round"/><circle cx="34" cy="74" r="6" fill="#F4B4AC" opacity=".7"/><circle cx="86" cy="74" r="6" fill="#F4B4AC" opacity=".7"/>
+    <text x="96" y="34" font-size="30" text-anchor="middle">${c.prop || "⭐"}</text></svg>`);
+}
+function customSprite(id){ const c = ch(id); return c.img || avatarSrc(c); }
+function freeSpot(){
+  const used = allChars().map(c => [c.x, c.y]);
+  return DREAM_SPOTS.find(([x, y]) => used.every(([a, b]) => Math.hypot(a - x, (b - y) * 1.3) > 10)) || DREAM_SPOTS[CUSTOM().length % DREAM_SPOTS.length];
+}
+// 올린 그림 → 가로세로 최대 420px로 줄여서 저장 (아이패드 저장공간 아끼기)
+function readImage(file, max = 420){
+  return new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = () => { const im = new Image(); im.onload = () => {
+      const k = Math.min(1, max / Math.max(im.width, im.height)), cv = document.createElement("canvas");
+      cv.width = Math.round(im.width * k); cv.height = Math.round(im.height * k);
+      cv.getContext("2d").drawImage(im, 0, 0, cv.width, cv.height);
+      let url = cv.toDataURL("image/webp", .85); if (!url.startsWith("data:image/webp")) url = cv.toDataURL("image/png");
+      res(url); }; im.onerror = rej; im.src = fr.result; };
+    fr.onerror = rej; fr.readAsDataURL(file);
+  });
+}
+
+function viewDream(){
+  const eggs = dreamEggs(), born = dreamHatched();
+  return `<h1>꿈의 방</h1>
+  <p class="muted dr-intro">기르고 싶은 스킬을 알로 만들어 두세요. 처음 기록하는 날 알이 깨어나서 마을로 이사 가요 🏡</p>
+  <div class="dr-room">
+    <div class="dr-grid">
+      ${eggs.map(c => `<div class="dr-egg" style="${charStyle(c)}">
+        <button class="dr-edit" data-dr-edit="${c.id}" aria-label="${esc(c.skill)} 알 고치기">✏️</button>
+        <img class="dr-eggimg" src="${eggSrc(c)}" alt="${esc(c.skill)} 알">
+        <b class="hand">${esc(c.skill)}</b>
+        <span class="muted">${esc(c.name)} · ${esc(goalNow(c).goalText)}</span>
+        <div class="row dr-acts"><button class="btn-sm" data-dr-timer="${c.id}">▶ 첫 도전</button><button class="btn-sm" data-dr-rec="${c.id}">✎ 기록</button></div>
+      </div>`).join("")}
+      <button class="dr-new" id="dr-new"><span>＋</span>새 알 만들기</button>
+    </div>
+    ${CUSTOM().length ? "" : `<div class="dr-presets"><span class="muted">이런 스킬은 어때요?</span>${DREAM_PRESETS.map((p, i) => `<button class="chip" data-dr-preset="${i}">${p.prop} ${p.skill}</button>`).join("")}</div>`}
+  </div>
+  ${born.length ? `<h2 style="margin-top:22px">🏡 마을로 간 친구들</h2>
+  <div class="dr-born">${born.map(c => { const li = levelInfo(xpOf(c.id)); return `<div class="list-item" style="${charStyle(c)}">
+      <img src="${SP(c.id, "idle")}" alt="" style="width:52px;height:52px;object-fit:contain">
+      <div class="grow"><b>${esc(c.name)}</b> <span class="muted">· ${esc(c.skill)} · Lv.${li.level}</span><br><span class="muted">🐣 ${fmtMD(c.startDate)}에 부화</span></div>
+      <button class="btn-sm" data-dr-move="${c.id}">📍 자리 옮기기</button><button class="btn-sm" data-dr-edit="${c.id}">✏️</button>
+    </div>`; }).join("")}</div>` : ""}`;
+}
+function bindDream(){
+  document.getElementById("dr-new").onclick = () => openDreamForm();
+  document.querySelectorAll("[data-dr-preset]").forEach(b => b.onclick = () => openDreamForm(null, DREAM_PRESETS[+b.dataset.drPreset]));
+  document.querySelectorAll("[data-dr-edit]").forEach(b => b.onclick = () => openDreamForm(b.dataset.drEdit));
+  document.querySelectorAll("[data-dr-timer]").forEach(b => b.onclick = () => startTimer(b.dataset.drTimer));
+  document.querySelectorAll("[data-dr-rec]").forEach(b => b.onclick = () => openManualSheet(b.dataset.drRec));
+  document.querySelectorAll("[data-dr-move]").forEach(b => b.onclick = () => startPlacing(b.dataset.drMove));
+}
+function openDreamForm(id, preset){
+  const old = id ? CUSTOM().find(d => d.id === id) : null, cur = old ? ch(id) : null;
+  const p = preset || {};
+  const f = old ? { ...old, startDate: cur.startDate } : { skill: p.skill || "", name: p.name || "", verb: p.verb || "연습", prop: p.prop || "⭐",
+    main: DREAM_COLORS[p.c ?? 0][0], bg: DREAM_COLORS[p.c ?? 0][1], goalType: p.goalType || "time", dailyGoal: 30, weeklyGoal: 150, weeklyCount: p.weeklyCount || 3, img: null };
+  const close = openModal("", { sheet: true });
+  const box = lastModal(); box.classList.add("dr-modal");
+  const draw = () => {
+    box.innerHTML = `<div style="${charStyle(f)}">
+      <button class="close-x" data-close aria-label="닫기">✕</button>
+      <h2>${old ? (hatched(cur) ? `${esc(cur.name)} 고치기` : "알 고치기") : "🥚 새 알 만들기"}</h2>
+      <div class="dr-form">
+        <div class="dr-prev"><img src="${f.img || (old && hatched(cur) ? avatarSrc(f) : eggSrc(f))}" alt=""><span class="muted">${f.img ? "올린 그림" : old && hatched(cur) ? "기본 모습" : "알 모습"}</span></div>
+        <div class="grow">
+          <label for="df-skill">기르고 싶은 스킬</label><input type="text" id="df-skill" maxlength="12" placeholder="예) 개발, 독서, 일기" value="${esc(f.skill)}">
+          <div class="row"><div class="grow"><label for="df-name">캐릭터 이름</label><input type="text" id="df-name" maxlength="8" placeholder="예) 코코" value="${esc(f.name)}"></div>
+          <div class="grow"><label for="df-verb">하는 일 (○○했어요)</label><input type="text" id="df-verb" maxlength="6" placeholder="예) 코딩" value="${esc(f.verb)}"></div></div>
+        </div>
+      </div>
+      <label>소품</label><div class="ev-emojis">${DREAM_PROPS.map(x => `<button type="button" class="ev-em ${x === f.prop ? "on" : ""}" data-df-prop="${x}">${x}</button>`).join("")}</div>
+      <label>색</label><div class="row" style="gap:8px">${DREAM_COLORS.map(([m, b], i) => `<button type="button" class="dr-col ${m === f.main ? "on" : ""}" data-df-col="${i}" style="background:${b};border-color:${m}" aria-label="색 ${i + 1}"><i style="background:${m}"></i></button>`).join("")}</div>
+      <label>목표</label>
+      <div class="row">${[["time", "⏱ 시간 (하루 몇 분)"], ["count", "✔ 횟수 (주 몇 번)"]].map(([k, l]) => `<span class="chip ${f.goalType === k ? "on" : ""}" data-df-gt="${k}">${l}</span>`).join("")}</div>
+      <div class="row" style="align-items:center;margin-top:6px">${f.goalType === "count"
+        ? `일주일에 <input type="number" id="df-wc" min="1" max="14" value="${f.weeklyCount}" style="width:80px"> 번`
+        : `하루 <input type="number" id="df-dg" min="5" max="600" step="5" value="${f.dailyGoal}" style="width:90px"> 분 · 일주일 <input type="number" id="df-wg" min="0.5" max="80" step="0.5" value="${+(f.weeklyGoal / 60).toFixed(1)}" style="width:80px"> 시간`}</div>
+      <label>캐릭터 그림 <span class="muted">(선택 · 나중에 올려도 돼요)</span></label>
+      <div class="row" style="align-items:center"><label class="btn-sm dr-file">🖼 그림 고르기<input type="file" id="df-img" accept="image/*" hidden></label>${f.img ? `<button class="btn-sm" id="df-img-del">그림 지우기</button>` : ""}<span class="muted" style="font-size:12.5px">${old && !hatched(cur) ? "그림은 부화할 때 나타나요" : ""}</span></div>
+      <div class="err" id="df-err"></div>
+      <div class="row" style="margin-top:12px">${old && !hatched(cur) ? `<button class="btn-ghost" id="df-del" style="color:#C4473A">알 지우기</button>` : ""}<button class="btn-primary grow" id="df-save">${old ? "저장" : "🥚 알 만들기"}</button></div>
+    </div>`;
+    bind();
+  };
+  const grab = () => {
+    const g = k => box.querySelector(k);
+    f.skill = g("#df-skill").value.trim(); f.name = g("#df-name").value.trim(); f.verb = g("#df-verb").value.trim();
+    if (g("#df-wc")) f.weeklyCount = Math.round(+g("#df-wc").value);
+    if (g("#df-dg")) { f.dailyGoal = Math.round(+g("#df-dg").value); f.weeklyGoal = Math.round(+g("#df-wg").value * 60); }
+  };
+  const bind = () => {
+    box.querySelector("[data-close]").onclick = close;
+    box.querySelectorAll("[data-df-prop]").forEach(b => b.onclick = () => { grab(); f.prop = b.dataset.dfProp; draw(); });
+    box.querySelectorAll("[data-df-col]").forEach(b => b.onclick = () => { grab(); [f.main, f.bg] = DREAM_COLORS[+b.dataset.dfCol]; draw(); });
+    box.querySelectorAll("[data-df-gt]").forEach(b => b.onclick = () => { grab(); f.goalType = b.dataset.dfGt; draw(); });
+    box.querySelector("#df-img").onchange = async e => {
+      const file = e.target.files[0]; if (!file) return; grab();
+      try { f.img = await readImage(file); draw(); } catch(err) { box.querySelector("#df-err").textContent = "그림을 읽지 못했어요. 다른 그림으로 해볼까요?"; }
+    };
+    const idel = box.querySelector("#df-img-del"); if (idel) idel.onclick = () => { grab(); f.img = null; draw(); };
+    const del = box.querySelector("#df-del");
+    if (del) del.onclick = () => { if (!confirm(`'${old.skill}' 알을 지울까요?`)) return; state.custom = CUSTOM().filter(d => d.id !== old.id); delete state.chars[old.id]; Store.save(); close(); render(); };
+    box.querySelector("#df-save").onclick = () => {
+      grab(); const err = box.querySelector("#df-err");
+      if (!f.skill) { err.textContent = "스킬 이름을 적어주세요."; return; }
+      if (!f.name) f.name = `${f.skill} 친구`;
+      if (!f.verb) f.verb = "연습";
+      if (f.goalType === "count" ? !(f.weeklyCount >= 1) : !(f.dailyGoal >= 5 && f.weeklyGoal >= 30)) { err.textContent = "목표를 다시 확인해주세요."; return; }
+      const dup = [...CHARS.map(c => ch(c.id)), ...CUSTOM()].find(c => c.skill === f.skill && c.id !== (old && old.id));
+      if (dup) { err.textContent = `'${f.skill}'은(는) 이미 있어요.`; return; }
+      const data = { skill: f.skill, name: f.name, verb: f.verb, prop: f.prop, main: f.main, bg: f.bg, goalType: f.goalType, dailyGoal: f.dailyGoal, weeklyGoal: f.weeklyGoal, weeklyCount: f.weeklyCount, img: f.img || null };
+      try {
+        if (old) Object.assign(old, data);
+        else CUSTOM().push({ id: "u_" + uid(), ...data, w: 8.5, x: null, y: null, startDate: null, created: Date.now() });
+        Store.save();
+      } catch(e) { err.textContent = "저장 공간이 부족해요. 더 작은 그림으로 해볼까요?"; return; }
+      close(); render();
+      if (!old) toast(`🥚 ${esc(f.skill)} 알이 생겼어요! 처음 기록하면 깨어나요`);
+    };
+  };
+  draw();
+}
+// 부화: 첫 기록 순간 (addRecord에서 불러요) → 마을 빈자리로 이사
+function hatchCustom(id){
+  const d = CUSTOM().find(x => x.id === id); if (!d) return null;
+  if (d.x == null) { const [x, y, spot] = freeSpot(); d.x = x; d.y = y; d.spot = spot; }
+  return d;
+}
+// 📍 자리 옮기기: 마을에서 원하는 곳을 누르면 그 자리로
+function startPlacing(id){ ui.placing = id; ui.tab = "home"; ui.scroll = null; hideTalk(); render(); }
+function placingBarHTML(){
+  if (!ui.placing) return "";
+  const c = ch(ui.placing);
+  return `<div class="place-bar"><img src="${SP(c.id, "hi")}" alt=""><span><b>${esc(c.name)}</b>가 설 곳을 마을에서 눌러주세요</span><button class="btn-sm" id="place-cancel">취소</button></div>`;
+}
+function bindPlacing(){
+  if (!ui.placing) return;
+  document.getElementById("place-cancel").onclick = () => { ui.placing = null; render(); };
+  const sc = document.getElementById("scene");
+  sc.addEventListener("click", e => {
+    if (!ui.placing) return;
+    e.stopPropagation(); e.preventDefault();
+    const r = sc.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * 100, y = (e.clientY - r.top) / r.height * 100;
+    const d = CUSTOM().find(v => v.id === ui.placing);
+    if (d) { d.x = +x.toFixed(1); d.y = +Math.min(92, Math.max(18, y)).toFixed(1); d.spot = null; }
+    else state.chars[ui.placing] = { ...(state.chars[ui.placing] || {}), x: +x.toFixed(1), y: +Math.min(92, Math.max(18, y)).toFixed(1) };
+    const nm = ch(ui.placing).name; ui.placing = null; Store.save(); render(); toast(`📍 ${esc(nm)}가 새 자리로 갔어요`);
+  }, true);
+}
+
 /* ============ 📌 개인 일정 (달력) ============
    시간표(알바·예배·연습)와 따로 저장하는 약속·생일·병원 같은 일정 */
 const EV_EMOJI = ["📌", "🎂", "🏥", "✈️", "🍽️", "☕", "💼", "⛪", "🎉", "📚", "💇", "🛍️"];
@@ -2780,7 +3016,7 @@ function openEventForm(id, presetDate){
   box.innerHTML = `<button class="close-x" data-close aria-label="닫기">✕</button>
     <h2>${old ? "일정 고치기" : "📌 일정 추가"}</h2>
     <label for="ev-title">무엇을 하나요?</label>
-    <input id="ev-title" maxlength="40" placeholder="예) 친구 생일, 치과, 가족 여행" value="${esc(e.title || "")}">
+    <input type="text" id="ev-title" maxlength="40" placeholder="예) 친구 생일, 치과, 가족 여행" value="${esc(e.title || "")}">
     <div class="ev-emojis">${EV_EMOJI.map(x => `<button type="button" class="ev-em ${x === e.emoji ? "on" : ""}" data-em="${x}">${x}</button>`).join("")}</div>
     <div class="ev-grid">
       <div><label for="ev-date">날짜</label><input type="date" id="ev-date" value="${e.date}"></div>
@@ -3296,6 +3532,29 @@ const TALK_LINES = {
     reactLv: ["레벨업. すごい(대단해). …됐지. 한 번만 말함."],
   },
 };
+// 꿈의 방에서 태어난 친구들의 기본 말투 ({k}=스킬)
+TALK_LINES.custom = {
+  hello: ["안녕! 나 {k} 친구야. 오늘도 같이 해볼까?", "왔다! 오늘 {k} 조금만 해도 나 쑥쑥 커!"],
+  sched: ["오늘 {t}에 {p} 있어! 잊지 마~", "{t} {p} 있대. 미리 준비하자!"],
+  before: ["{m}분 뒤 {p}! 슬슬 준비하자~", "{p} {m}분 전이야. 같이 가자!"],
+  now: ["지금 {p} 시간이야! 같이 해보자!", "{p} 하는 중이지? 옆에서 응원할게!"],
+  nowx: ["지금 {p} 시간이야. 잘 다녀와~", "{p} 중이지? 끝나면 나랑 놀자!"],
+  unchecked: ["{p} 했어? 했으면 체크해줘!", "{p} 체크가 비었어. 지금 해볼까?"],
+  uncheckedN: ["체크 안 한 일정이 {n}개 있어. 같이 정리하자!"],
+  gap: ["{n}일째 {k} 못 했어… 오늘 5분만 해볼까?", "나 {k} 하고 싶어서 기다리는 중이야!"],
+  left0: ["오늘 {k} {s} 하기로 했잖아. 시작해볼까?", "{k} {s}만 하면 오늘 목표 끝!"],
+  left1: ["좋아! {k} {s}만 더 하면 돼!", "벌써 많이 했다! {s} 남았어!"],
+  done: ["오늘 {k} 목표 다 했다! 최고야!", "목표 달성! 나 오늘 쑥쑥 컸어!"],
+  running: ["{k} 하는 중이지? 집중집중!", "옆에서 조용히 응원 중이야!"],
+  empty: ["오늘 일정 없네! 마지막 {k}은 {last}였어.", "일정 없는 날엔 {k} 조금 어때?"],
+  emptyNo: ["오늘 일정 없네! 뭐 하고 싶어?"],
+  react: ["{m}분이나 했어? 나 방금 자랐어!", "{m}분 기록 완료! 잘했어!"],
+  reactDay: ["오늘 목표 달성! 우리 최고야!"],
+  reactWeek: ["주간 목표까지 했다! 대단해!"],
+  reactLv: ["레벨업! 나 커졌어! 보여? 보여?"],
+  reactBorn: ["드디어 태어났어! 앞으로 잘 부탁해!"],
+};
+function personaOf(id){ const c = ch(id); return PERSONA[id] || { name: c.name, skill: c.skill, color: c.bg, personality: `꿈의 방에서 태어난 ${c.skill} 친구. 다정하고 응원을 잘함`, speech_style: "친근한 반말, 밝고 다정함" }; }
 // 캐릭터끼리 티격태격 (실제 일정·시간은 언급하지 않음)
 const TALK_CHATS = [
   [["drum", "야 오늘 드럼부터 해!!!"], ["toon", "조용히 해. 인스타툰 마감이 먼저거든?"], ["reels", "둘 다 시끄러. 촬영부터 하자."], ["jp", "난 그냥 잘게. 순서 정하면 깨워."]],
@@ -3317,7 +3576,7 @@ const TALK_SEEN_KEY = "tg-talk-seen";
 function hstr(s){ let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; }
 function talkSeen(){ try { return JSON.parse(localStorage.getItem(TALK_SEEN_KEY) || "[]"); } catch(e) { return []; } }
 function pickLine(id, key){
-  const L = TALK_LINES[id] || {}; if (!L[key] && /x$/.test(key)) key = key.slice(0, -1);
+  const L = TALK_LINES[id] || TALK_LINES.custom; if (!L[key] && /x$/.test(key)) key = key.slice(0, -1);
   const arr = L[key]; if (!arr || !arr.length) return null;
   const seen = talkSeen(), fresh = arr.filter(x => !seen.includes(hstr(id + x)));
   const line = pick(fresh.length ? fresh : arr);
@@ -3331,7 +3590,7 @@ function fillLine(line, v = {}){
     return k === "p" || k === "g" ? `<b>${esc(x)}</b>` : esc(String(x));
   });
 }
-function say(id, key, v, extra = {}){ const l = pickLine(id, key); return l ? { ev: key, t: fillLine(l, v), facts: v, ...extra } : null; }
+function say(id, key, v, extra = {}){ const l = pickLine(id, key); v = { k: ch(id).skill, ...v }; return l ? { ev: key, t: fillLine(l, v), facts: v, ...extra } : null; }
 
 /* 일정 → 말할 캐릭터: 스킬 일정은 담당 캐릭터, 이름으로 짐작되면(찬양 합주 → 둥둥이) 그 캐릭터.
    짐작만으로는 스킬 기록·통계에 넣지 않아요(완료 체크 때 직접 고른 것만 기록). 나머지는 돌아가며 안내 */
@@ -3364,7 +3623,7 @@ function uncheckedPlans(id){
 
 /* 상황 분석 → 캐릭터별 할 말 (중요한 것부터, 최대 3개) */
 function talkMessages(id, opts = {}){
-  const c = ch(id); if (!c || !TALK_LINES[id]) return [];
+  const c = ch(id); if (!c || !c.id) return [];
   const today = todayStr(), ni = nowInfo(), out = [];
   const add = (pri, msg, a) => { if (msg) out.push({ pri, ...msg, act: a || null }); };
   const recs = recsOf(id), run = timerOf(id), ag = ageOf(c);
@@ -3420,14 +3679,14 @@ function talkMessages(id, opts = {}){
 }
 function talkReactMsg(id, info){
   if (info.posted) return say("reels", "posted", {});
-  const key = info.born && TALK_LINES[id].reactBorn ? "reactBorn" : info.levelUp ? "reactLv" : info.weeklyNew ? "reactWeek" : info.dailyNew ? "reactDay" : "react";
+  const key = info.born && (TALK_LINES[id] || TALK_LINES.custom).reactBorn ? "reactBorn" : info.levelUp ? "reactLv" : info.weeklyNew ? "reactWeek" : info.dailyNew ? "reactDay" : "react";
   return say(id, key, { m: info.minutes });
 }
 
 /* ---- AI 연결(선택): 상황 정보를 서버로 보내 새 대사 받기. 실패하면 준비된 대사 그대로 ---- */
 function plainText(html){ const d = document.createElement("div"); d.innerHTML = html; return d.textContent; }
 function talkContext(id, msg){
-  const c = ch(id), P = PERSONA[id], today = todayStr(), gn = goalNow(c), li = levelInfo(xpOf(id));
+  const c = ch(id), P = personaOf(id), today = todayStr(), gn = goalNow(c), li = levelInfo(xpOf(id));
   return {
     character_id: id, character_name: P.name, personality: P.personality, speech_style: P.speech_style, skill_category: P.skill,
     event_type: msg.ev, fallback_line: plainText(msg.t),
@@ -3474,7 +3733,7 @@ function talkHTML(c){
   const delay = fresh && t.first ? (.15 + vis.indexOf(c.id) * .45).toFixed(2) : 0;
   const list = t.chat ? null : t.msgs[c.id], i = t.idx[c.id] || 0;
   const more = t.chat ? (t.chat.i < t.chat.lines.length - 1 ? "▸" : "✕") : list.length > 1 ? `${i + 1}/${list.length} ▸` : "✕";
-  return `<div class="talk ${fresh ? "pop" : ""} ${t.chat ? "chat" : ""}" data-talk="${c.id}" data-key="${key}" style="--tk-bg:${PERSONA[c.id].color};${delay ? `animation-delay:${delay}s` : ""}" role="button" aria-label="${esc(c.name)}의 말풍선, 누르면 다음">
+  return `<div class="talk ${fresh ? "pop" : ""} ${t.chat ? "chat" : ""}" data-talk="${c.id}" data-key="${key}" style="--tk-bg:${personaOf(c.id).color};${delay ? `animation-delay:${delay}s` : ""}" role="button" aria-label="${esc(c.name)}의 말풍선, 누르면 다음">
     <div class="tx">${m.t}</div>
     <div class="tk-row">${m.act ? `<button class="tk-act" data-talk-act="${c.id}">${m.act.l}</button>` : ""}<span class="tk-n">${more}</span></div>
   </div>`;
