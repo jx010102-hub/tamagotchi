@@ -765,6 +765,45 @@
   .dia-w i { font-style: normal; font-size: 11px; color: var(--ink-soft); }
   .dia-good { margin: 3px 0; font-size: 14px; }
   @media (max-width: 560px) { .sum-grid { grid-template-columns: 1fr; } .sum-hero { grid-template-columns: 1fr 1fr; } .sum-dots { grid-column: 1 / -1; order: 3; } }
+
+  /* ===== 북북이 스튜디오 ===== */
+  .bk-panel { min-width: 0; }
+  .bk-modal { width: min(620px, 100%); }
+  .bk-tabs { margin: 8px 0 10px; gap: 6px; }
+  .bk-cover { position: relative; flex: none; width: 56px; aspect-ratio: 2 / 3; border-radius: 4px 8px 8px 4px; overflow: hidden; background: var(--bk-c, #EADCC4); border: 1.5px solid rgba(94,69,53,.35); box-shadow: 2px 3px 0 rgba(94,69,53,.18), inset 4px 0 0 rgba(0,0,0,.08); display: grid; place-items: center; }
+  .bk-cover.big { width: 104px; }
+  .bk-cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+  .bk-cover i { font-style: normal; font-size: 10px; line-height: 1.2; text-align: center; padding: 4px; color: #4a3529; word-break: keep-all; }
+  .bk-mini { position: relative; flex: none; width: 30px; aspect-ratio: 2 / 3; border-radius: 2px 4px 4px 2px; overflow: hidden; background: var(--bk-c, #EADCC4); border: 1px solid rgba(94,69,53,.35); display: inline-grid; place-items: center; vertical-align: middle; }
+  .bk-mini img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .bk-mini i { font-style: normal; font-size: 6px; text-align: center; }
+  .bk-today { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+  .bk-log { display: flex; gap: 10px; align-items: flex-start; background: #FFFDF7; border: 2px solid #EADCC4; border-radius: 14px; padding: 8px 10px; }
+  .bk-memo { margin: 4px 0 0; font-size: 13px; color: #6B5345; font-style: italic; }
+  .bk-results { display: flex; flex-direction: column; gap: 6px; max-height: min(46vh, 420px); overflow: auto; padding: 2px; }
+  .bk-res { display: flex; align-items: center; gap: 10px; text-align: left; background: #FFFDF7; border: 1.5px solid #EADCC4; border-radius: 12px; padding: 6px 10px; box-shadow: none; color: var(--ink); width: 100%; }
+  .bk-res .bk-cover { width: 44px; }
+  .bk-quick { display: flex; gap: 6px; align-items: center; overflow-x: auto; margin-top: 8px; padding-bottom: 2px; }
+  .bk-q { display: inline-flex; align-items: center; gap: 6px; flex: none; padding: 4px 10px 4px 4px; border-radius: 99px; font-size: 13px; background: #fff; box-shadow: none; border: 1.5px solid #EADCC4; max-width: 180px; }
+  .bk-q span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bk-key { background: #FFF8E3; border: 2px dashed #E0BE6A; border-radius: 16px; padding: 10px 12px; }
+  .bk-key p { margin: 2px 0; }
+  .bk-pick { display: flex; gap: 14px; align-items: flex-start; background: #FFFDF7; border: 2px solid #EADCC4; border-radius: 16px; padding: 12px; }
+  .bk-pick input { width: 100%; }
+  .bk-st { gap: 6px; margin: 8px 0; flex-wrap: wrap; }
+  .bk-link { font-size: 13px; color: #6B5345; }
+  .bk-shelf-h { font-family: var(--hand); font-size: 19px; margin: 12px 0 4px; }
+  .bk-shelf { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 12px 10px; padding: 10px 8px 14px; background: linear-gradient(transparent calc(100% - 10px), #C9A27A calc(100% - 10px)); border-radius: 0 0 6px 6px; }
+  .bk-spine { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0; background: none; border: none; box-shadow: none; color: var(--ink); min-width: 0; }
+  .bk-spine .bk-cover { width: 100%; }
+  .bk-cap { font-size: 11.5px; line-height: 1.25; width: 100%; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; text-align: center; }
+  .bk-sub { font-size: 10.5px; }
+  .bk-empty { margin: 0 0 4px; font-size: 13px; }
+  .bk-li { padding: 6px 0; border-bottom: 1px dashed rgba(74,53,41,.15); font-size: 14px; }
+  .mchip.bk { background: #E5F0DA; border: 1.5px solid #AFCB8F; }
+  .day-bk { background: #F1F7EA; border: 2px dashed #AFCB8F; border-radius: 16px; padding: 10px 12px; margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .day-bk .bk-log { background: #fff; }
+  .sum-bk { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
 </style>
 </head>
 <body>
@@ -808,7 +847,7 @@ function fmtClock(ms){ const s = Math.max(0, Math.floor(ms/1000)); return `${pad
 
 /* ============ 상태 ============ */
 let state = emptyState();
-function emptyState(){ return { chars: {}, records: [], timer: null, plans: [], goals: [], goalLogs: [], imports: [], template: [], templateFrom: null, filledDates: [], reels: emptyReels(), worship: { sets: [], bpm: {} }, events: [], custom: [], diary: {}, scene: {}, createdAt: Date.now(), updatedAt: 0 }; }
+function emptyState(){ return { chars: {}, records: [], timer: null, plans: [], goals: [], goalLogs: [], imports: [], template: [], templateFrom: null, filledDates: [], reels: emptyReels(), worship: { sets: [], bpm: {} }, events: [], custom: [], diary: {}, books: { key: "", list: [], logs: [] }, scene: {}, createdAt: Date.now(), updatedAt: 0 }; }
 function emptyReels(){ return { posts: [], followers: [], board: [], weeklyTarget: null }; }
 function normalize(s){
   const e = emptyState();
@@ -818,6 +857,7 @@ function normalize(s){
     plans: arr("plans"), goals: arr("goals"), goalLogs: arr("goalLogs"), imports: arr("imports"),
     template: arr("template"), templateFrom: s.templateFrom || null, filledDates: arr("filledDates"),
     scene: s.scene && typeof s.scene === "object" ? s.scene : {},
+    books: s.books && typeof s.books === "object" ? { key: typeof s.books.key === "string" ? s.books.key : "", list: Array.isArray(s.books.list) ? s.books.list : [], logs: Array.isArray(s.books.logs) ? s.books.logs : [] } : { key: "", list: [], logs: [] },
     diary: s.diary && typeof s.diary === "object" && !Array.isArray(s.diary) ? s.diary : {},
     custom: Array.isArray(s.custom) ? s.custom.filter(c => c && typeof c.id === "string" && c.id.startsWith("u_") && c.skill).map(c => {
       // 받은 시트·알 연결: 이미 만든 독서·개발·일기 알에도 (직접 올린 그림이 없을 때만)
@@ -1449,6 +1489,7 @@ function showSummary(){
       <div class="sum-box"><h3 class="sum-h">🎬 릴스</h3><p>업로드 <b>${r.posts.length}</b>개${r.posts.length ? ` <span class="muted">· ${r.posts.slice(0, 2).map(p => esc(p.title || "")).join(", ")}</span>` : ""}</p>
         <p class="muted">${r.fwEnd ? `팔로워 ${fmtN(r.fwEnd.count)}${r.fwStart ? ` (${r.fwEnd.count - r.fwStart.count >= 0 ? "+" : ""}${r.fwEnd.count - r.fwStart.count})` : ""}` : "팔로워 기록 없음"}</p></div>
       <div class="sum-box"><h3 class="sum-h">🎵 찬양 콘티</h3>${r.conti.length ? r.conti.map(s => `<p>${fmtMD(wsSatOf(s))}(토) <b>${s.songs.length}곡</b> <span class="muted">· ${s.songs.slice(0, 3).map(x => esc(x.q)).join(", ")}${s.songs.length > 3 ? "…" : ""}</span></p>`).join("") : `<p class="muted">콘티가 없었어요</p>`}</div>
+      ${(bl => bl.length ? `<div class="sum-box"><h3 class="sum-h">📚 읽은 책</h3><div class="row" style="gap:8px;flex-wrap:wrap">${bl.map(b => `<span class="sum-bk">${coverHTML(b, "bk-mini")}<span>${esc(b.title)}${b.status === "done" && b.finished && r.days.includes(b.finished) ? " ✅" : ""}</span></span>`).join("")}</div></div>` : "")(BK().list.filter(b => BK().logs.some(l => l.bookId === b.id && r.days.includes(l.date))))}
       <div class="sum-box"><h3 class="sum-h">📌 개인 일정</h3>${r.evs.length ? r.evs.slice(0, 5).map(({ d, e }) => `<p>${e.emoji} ${esc(e.title)} <span class="muted">${fmtMD(d)}</span></p>`).join("") : `<p class="muted">일정이 없었어요</p>`}</div>
     </div>
     <h3 class="sum-h">📔 일기 정리</h3>
@@ -1513,9 +1554,9 @@ function openCharPopup(id){
       ${id === "reels" ? `<button class="btn-block btn-ghost" id="cp-studio" style="margin-top:10px">↗ 릴스 스튜디오 크게 보기</button>` : ""}
     </div>`;
   };
-  const duo = id === "reels" || id === "drum";
+  const isBook = isBookChar(ch(id)), duo = id === "reels" || id === "drum" || isBook;
   if (id === "reels" && reelsCardState() === "open") { ui.cards = { active: "reels", mode: "preview" }; render(); }
-  const right = () => id === "reels" ? `<div class="duo-r" id="reels-panel">${viewReels(true)}</div>` : `<div class="duo-r ws-panel" id="drum-panel"></div>`;
+  const right = () => id === "reels" ? `<div class="duo-r" id="reels-panel">${viewReels(true)}</div>` : isBook ? `<div class="duo-r bk-panel" id="book-panel"></div>` : `<div class="duo-r ws-panel" id="drum-panel"></div>`;
   const wrap = () => duo ? `<div class="duo"><div class="duo-l">${draw()}</div>${right()}</div>` : draw();
   const close = openModal(wrap(), { bare: true, wide: duo });
   const box = duo ? lastModal().querySelector(".duo-l") : lastModal();
@@ -1530,6 +1571,7 @@ function openCharPopup(id){
   };
   bind();
   if (id === "drum") mountWorship(lastModal().querySelector("#drum-panel"));
+  if (isBook) mountBooks(lastModal().querySelector("#book-panel"), { onChange: () => { if (box.isConnected) { box.innerHTML = draw(); bind(); } } });
   floaties(box.querySelector(".hero"), "✨");
 }
 
@@ -1919,6 +1961,7 @@ function viewCalendar(){
         return `<button class="mday ${inMonth(d) ? "" : "out"} ${d === today ? "today" : ""}" data-mday="${d}" aria-label="${fmtMD(d)} 기록 보기">
           <span class="mdn">${parseYmd(d).getDate()}</span>
           ${(evs => evs.slice(0, 2).map(e => `<span class="mchip ev"><span>${e.emoji}</span><span class="mlbl">${esc(e.title)}</span></span>`).join("") + (evs.length > 2 ? `<span class="mchip ev more">+${evs.length - 2}</span>` : ""))(eventsOn(d))}
+          ${(bl => bl.length ? `<span class="mchip bk"><span>📚</span><span class="mlbl">${esc(bl[0].b.title)}</span>${bl.length > 1 ? ` +${bl.length - 1}` : ""}</span>` : "")(booksOn(d))}
           ${wsn ? `<span class="mchip ws"><span>🎵</span><span class="mlbl">콘티</span> ${wsn}곡</span>` : ""}
           ${ups ? `<span class="mchip up"><span>🎬</span><span class="mlbl">릴스 업로드</span>${ups > 1 ? ` ${ups}` : ""}</span>` : ""}
           ${ents.map(x => `<span class="mchip" style="background:${x.c.bg}"><i style="background:${x.c.main}"></i><span class="mlbl">${esc(x.c.skill)} </span>${fmtShort(x.n)}</span>`).join("")}
@@ -1964,6 +2007,7 @@ function openDayDetail(date){
       <h2 style="margin-bottom:2px">${fmtMD(date)} (${DOW[(dd.getDay() + 6) % 7]})</h2>
       <p class="muted">${recs.length ? `총 ${fmtDur(total)} 기록했어요` : ""}</p>
       ${dayEventsHTML(date)}
+      ${(bl => bl.length ? `<div class="day-bk"><p class="hand" style="font-size:19px;margin:0 0 4px">📚 읽은 책</p>${bl.map(({ l, b }) => `<div class="bk-log">${coverHTML(b, "bk-mini")}<div class="grow"><b>${esc(b.title)}</b> <span class="muted">${[l.minutes ? fmtDur(l.minutes) : "", l.pages ? `${l.pages}쪽` : ""].filter(Boolean).join(" · ")}</span>${l.memo ? `<br><span class="bk-memo">“${esc(l.memo)}”</span>` : ""}</div></div>`).join("")}</div>` : "")(booksOn(date))}
       ${wsHTML}
       ${upHTML}
       ${recs.length ? `
@@ -1981,7 +2025,7 @@ function openDayDetail(date){
       ${untimed.length ? `<p class="muted" style="margin:12px 0 2px">시간이 기록되지 않은 활동</p>` : ""}
       <div>${untimed.map(r => recRow(r)).join("")}</div>
       <details class="dtl-list"><summary>기록 목록 · 지우기</summary>${recs.map(r => recRow(r, true)).join("")}</details>`
-      : ups.length || wss.length || eventsOn(date).length ? "" : `<div class="empty"><img src="${SP("toon", date > todayStr() ? "think" : "empty")}" alt=""><p class="muted">${date > todayStr() ? "아직 오지 않은 날이에요" : "이 날은 기록한 스킬이 없어요"}</p></div>`}
+      : ups.length || wss.length || eventsOn(date).length || booksOn(date).length ? "" : `<div class="empty"><img src="${SP("toon", date > todayStr() ? "think" : "empty")}" alt=""><p class="muted">${date > todayStr() ? "아직 오지 않은 날이에요" : "이 날은 기록한 스킬이 없어요"}</p></div>`}
       ${date <= todayStr() ? `<button class="btn-block" id="dd-add" style="margin-top:14px;background:var(--sage-pale)">＋ 이 날 기록 추가</button>` : ""}`;
     box.querySelector("[data-close]").onclick = close;
     const add = box.querySelector("#dd-add"); if (add) add.onclick = () => { close(); openManualSheet(null, date); };
@@ -3177,6 +3221,148 @@ function bindPlacing(){
     const nm = ch(ui.placing).name; ui.placing = null; Store.save(); render(); toast(`📍 ${esc(nm)}가 새 자리로 갔어요`);
   }, true);
 }
+
+/* ============ 📚 북북이 스튜디오: 오늘 읽은 책 기록 + 내 책장 (알라딘 책 검색) ============
+   알라딘 키는 이 아이패드에만 저장돼요 (코드·GitHub에는 없음) */
+const BK = () => state.books || (state.books = { key: "", list: [], logs: [] });
+const BK_STATUS = { reading: "📖 읽는 중", done: "✅ 다 읽음", want: "🔖 읽고 싶은" };
+const isBookChar = c => c && (c.sheet === "owl" || c.skill === "독서");
+function bookChar(){ return [...allChars(), ...dreamEggs()].find(isBookChar) || null; }
+const kyoboCover = isbn => isbn ? `https://contents.kyobobook.co.kr/sih/fit-in/458x0/pdt/${isbn}.jpg` : "";
+const kyoboLink = b => `https://search.kyobobook.co.kr/search?keyword=${encodeURIComponent(b.isbn || b.title)}`;
+// 교보 표지 → 안 되면 알라딘 표지 → 그것도 없으면 이름표 표지
+function coverHTML(b, cls = "bk-cover"){
+  const alt = b.cover || "";
+  return `<span class="${cls}" style="--bk-c:${["#F4B4AC", "#AFCB8F", "#9DC6EA", "#C9B3E8", "#F6D978"][hstr(b.title) % 5]}">${b.isbn || alt
+    ? `<img src="${esc(b.isbn ? kyoboCover(b.isbn) : alt)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="if(this.dataset.f!=='1'&&'${esc(alt)}'){this.dataset.f='1';this.src='${esc(alt)}'}else{this.remove()}">` : ""}<i>${esc(b.title.slice(0, 14))}</i></span>`;
+}
+// 알라딘 검색 (브라우저에서 바로 부를 수 있게 JSONP 방식)
+let bkCb = 0;
+function aladinSearch(q, key){
+  return new Promise((res, rej) => {
+    const name = `__aladin${Date.now()}${bkCb++}`, sc = document.createElement("script");
+    const done = (err, data) => { clearTimeout(to); delete window[name]; sc.remove(); err ? rej(err) : res(data); };
+    const to = setTimeout(() => done(new Error("timeout")), 8000);
+    window[name] = data => done(null, data);
+    sc.onerror = () => done(new Error("load"));
+    const isbn = q.replace(/[-\s]/g, "");
+    const qs = /^\d{10}(\d{3})?$/.test(isbn)
+      ? `ItemLookUp.aspx?ttbkey=${encodeURIComponent(key)}&itemIdType=ISBN${isbn.length === 13 ? "13" : ""}&ItemId=${isbn}`
+      : `ItemSearch.aspx?ttbkey=${encodeURIComponent(key)}&Query=${encodeURIComponent(q)}&QueryType=Keyword&MaxResults=12&start=1&SearchTarget=Book`;
+    sc.src = `https://www.aladin.co.kr/ttb/api/${qs}&output=js&Version=20131101&Cover=Big&callback=${name}`;
+    document.head.appendChild(sc);
+  }).then(d => {
+    if (d && d.errorCode) throw new Error(d.errorMessage || "error " + d.errorCode);
+    return (d && d.item || []).map(it => ({ isbn: it.isbn13 || it.isbn || "", title: (it.title || "").replace(/\s*-\s*[^-]*$/, m => m.length > 30 ? m : "").trim(), fullTitle: it.title || "",
+      author: (it.author || "").replace(/\s*\(지은이\)/g, "").replace(/\s*\(([^)]*)\)/g, " ($1)").trim(), publisher: it.publisher || "", pubDate: it.pubDate || "", cover: it.cover || "", aladin: it.link || "" }));
+  });
+}
+function booksOn(d){ return BK().logs.filter(l => l.date === d).map(l => ({ l, b: BK().list.find(b => b.id === l.bookId) })).filter(x => x.b); }
+
+function mountBooks(box, opts = {}){
+  let tab = "today", q = "", results = null, msg = "", busy = false, picked = null, keyEdit = false;
+  const today = todayStr(), close = opts.close;
+  const draw = () => {
+    const B = BK(), todays = booksOn(today), cOwl = bookChar();
+    const shelf = s => B.list.filter(b => b.status === s).sort((a, b) => b.ts - a.ts);
+    box.innerHTML = `<div>
+      ${close ? `<button class="close-x" data-close aria-label="닫기">✕</button>` : ""}
+      <div class="hand duo-title" style="font-size:24px;margin:0">📚 북북이 스튜디오</div>
+      <div class="row bk-tabs">${[["today", "오늘 읽은 책"], ["shelf", `내 책장 ${B.list.length}`]].map(([k, l]) => `<span class="chip ${tab === k ? "on" : ""}" data-bk-tab="${k}">${l}</span>`).join("")}</div>
+      ${tab === "today" ? `
+        ${todays.length ? `<div class="bk-today">${todays.map(({ l, b }) => `<div class="bk-log">${coverHTML(b)}<div class="grow"><b>${esc(b.title)}</b><br><span class="muted">${[l.minutes ? fmtDur(l.minutes) : "", l.pages ? `${l.pages}쪽` : ""].filter(Boolean).join(" · ") || "읽었어요"}</span>${l.memo ? `<p class="bk-memo">“${esc(l.memo)}”</p>` : ""}</div><button class="btn-sm ws-del" data-bk-unlog="${l.id}" aria-label="기록 지우기">✕</button></div>`).join("")}</div>` : `<p class="muted" style="margin:4px 0 8px">오늘 읽은 책을 찾아서 기록해요. 표지는 교보문고 이미지로 책장에 꽂혀요.</p>`}
+        ${picked ? pickedHTML() : `
+          ${!B.key || keyEdit ? keyHTML() : `
+            <div class="row" style="gap:6px"><input type="text" id="bk-q" class="grow" placeholder="책 제목, 저자, ISBN" value="${esc(q)}" enterkeyhint="search" style="min-width:0"><button class="btn-primary" id="bk-go" ${busy ? "disabled" : ""}>${busy ? "찾는 중…" : "🔍 찾기"}</button></div>
+            ${(B.list.filter(b => b.status === "reading").length) ? `<div class="bk-quick"><span class="muted">읽는 중:</span>${shelf("reading").slice(0, 6).map(b => `<button class="bk-q" data-bk-pick-own="${b.id}">${coverHTML(b, "bk-mini")}<span>${esc(b.title)}</span></button>`).join("")}</div>` : ""}
+            <p class="err" style="margin-top:4px">${esc(msg)}</p>
+            ${results ? (results.length ? `<div class="bk-results">${results.map((r, i) => `<button class="bk-res" data-bk-res="${i}">${coverHTML(r)}<span class="grow"><b>${esc(r.title)}</b><br><span class="muted">${esc(r.author)}${r.publisher ? ` · ${esc(r.publisher)}` : ""}${r.pubDate ? ` · ${esc(r.pubDate.slice(0, 4))}` : ""}</span></span><span class="muted">＋</span></button>`).join("")}</div>`
+              : `<p class="muted">못 찾았어요 🥲 다른 말로 찾거나 <button class="btn-sm" id="bk-manual">직접 적기</button></p>`) : `<p class="muted" style="font-size:12.5px">못 찾는 책은 <button class="btn-sm" id="bk-manual">직접 적기</button> · <button class="btn-sm" id="bk-key">🔑 키 바꾸기</button></p>`}`}`}`
+      : shelfHTML(shelf)}
+    </div>`;
+    bind();
+  };
+  const keyHTML = () => `<div class="bk-key">
+      <p><b>🔑 알라딘 검색 키를 넣어주세요</b></p>
+      <p class="muted" style="font-size:12.5px">알라딘 OpenAPI에서 받은 TTBKey예요. 이 아이패드에만 저장되고 GitHub에는 올라가지 않아요.</p>
+      <div class="row" style="gap:6px"><input type="text" id="bk-keyin" class="grow" placeholder="ttbxxxxxxxx0000" value="${esc(BK().key)}" autocomplete="off" autocapitalize="off" style="min-width:0"><button class="btn-primary" id="bk-keysave">저장</button></div>
+      <p class="err">${esc(msg)}</p>
+      <p class="muted" style="font-size:12.5px">키가 아직 없어도 <button class="btn-sm" id="bk-manual">직접 적어서 기록</button>할 수 있어요.</p></div>`;
+  const pickedHTML = () => { const p = picked;
+    return `<div class="bk-pick">${coverHTML(p, "bk-cover big")}<div class="grow">
+      ${p.manual ? `<label>책 제목</label><input type="text" id="bp-title" value="${esc(p.title)}"><label>지은이</label><input type="text" id="bp-author" value="${esc(p.author || "")}">`
+        : `<b style="font-size:17px">${esc(p.title)}</b><br><span class="muted">${esc(p.author || "")}${p.publisher ? ` · ${esc(p.publisher)}` : ""}</span><br><a class="bk-link" href="${kyoboLink(p)}" target="_blank" rel="noopener">교보문고에서 보기 ↗</a>`}
+      <div class="row bk-st">${Object.entries(BK_STATUS).map(([k, l]) => `<span class="chip ${p.status === k ? "on" : ""}" data-bp-st="${k}">${l}</span>`).join("")}</div>
+      ${p.status !== "want" ? `<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><span>오늘</span><input type="number" id="bp-min" min="0" max="600" step="5" placeholder="분" value="${p.minutes || ""}" style="width:80px"> 분 <input type="number" id="bp-pg" min="0" max="3000" placeholder="쪽" value="${p.pages || ""}" style="width:80px"> 쪽</div>
+      <input type="text" id="bp-memo" maxlength="120" placeholder="한 줄 메모 (마음에 남은 문장)" value="${esc(p.memo || "")}" style="margin-top:6px">` : ""}
+      <p class="err" id="bp-err"></p>
+      <div class="row" style="margin-top:6px"><button id="bp-cancel">취소</button><button class="btn-primary grow" id="bp-save">${p.status === "want" ? "🔖 책장에 꽂기" : "📚 기록하기"}</button></div>
+    </div></div>`; };
+  const shelfHTML = shelf => `${Object.entries(BK_STATUS).map(([k, l]) => { const list = shelf(k); return `<div class="bk-shelf-h">${l} <span class="muted">${list.length}</span></div>
+      ${list.length ? `<div class="bk-shelf">${list.map(b => { const days = BK().logs.filter(x => x.bookId === b.id), mins = days.reduce((a, x) => a + (x.minutes || 0), 0);
+        return `<button class="bk-spine" data-bk-book="${b.id}" title="${esc(b.title)}">${coverHTML(b)}<span class="bk-cap">${esc(b.title)}</span><span class="muted bk-sub">${days.length ? `${days.length}일${mins ? ` · ${fmtShort(mins)}` : ""}` : ""}</span></button>`; }).join("")}</div>` : `<p class="muted bk-empty">아직 없어요</p>`}`; }).join("")}`;
+  const openBook = id => {
+    const b = BK().list.find(x => x.id === id); if (!b) return;
+    const logs = BK().logs.filter(x => x.bookId === id).sort((a, c) => a.date < c.date ? 1 : -1);
+    const cl = openModal("", { sheet: true }), m = lastModal(); m.classList.add("bk-modal");
+    const dr = () => { m.innerHTML = `<button class="close-x" data-close aria-label="닫기">✕</button>
+      <div class="bk-pick">${coverHTML(b, "bk-cover big")}<div class="grow"><b style="font-size:18px">${esc(b.title)}</b><br><span class="muted">${esc(b.author || "")}${b.publisher ? ` · ${esc(b.publisher)}` : ""}</span><br><a class="bk-link" href="${kyoboLink(b)}" target="_blank" rel="noopener">교보문고에서 보기 ↗</a>
+      <div class="row bk-st">${Object.entries(BK_STATUS).map(([k, l]) => `<span class="chip ${b.status === k ? "on" : ""}" data-st="${k}">${l}</span>`).join("")}</div>
+      <p class="muted">${logs.length ? `${logs.length}일 읽음 · ${fmtDur(logs.reduce((a, x) => a + (x.minutes || 0), 0))}${b.finished ? ` · ${fmtMD(b.finished)} 완독` : ""}` : "아직 읽은 기록이 없어요"}</p></div></div>
+      ${logs.map(l => `<div class="bk-li"><b>${fmtMD(l.date)}</b> <span class="muted">${[l.minutes ? fmtDur(l.minutes) : "", l.pages ? `${l.pages}쪽` : ""].filter(Boolean).join(" · ")}</span>${l.memo ? `<br>“${esc(l.memo)}”` : ""}</div>`).join("")}
+      <div class="row" style="margin-top:12px"><button class="btn-ghost" id="bb-del" style="color:#C4473A">책장에서 빼기</button><button class="btn-primary grow" id="bb-read">📖 오늘 읽기 기록</button></div>`;
+      m.querySelector("[data-close]").onclick = cl;
+      m.querySelectorAll("[data-st]").forEach(x => x.onclick = () => { b.status = x.dataset.st; if (b.status === "done" && !b.finished) b.finished = todayStr(); Store.save(); dr(); draw(); });
+      m.querySelector("#bb-read").onclick = () => { cl(); tab = "today"; picked = { ...b, own: b.id, status: b.status === "want" ? "reading" : b.status }; draw(); };
+      m.querySelector("#bb-del").onclick = () => { if (!confirm(`'${b.title}'을(를) 책장에서 뺄까요? (읽은 기록 ${logs.length}개도 함께)`)) return; BK().list = BK().list.filter(x => x.id !== b.id); BK().logs = BK().logs.filter(x => x.bookId !== b.id); Store.save(); cl(); draw(); };
+    }; dr();
+  };
+  const grabPick = () => { const v = k => box.querySelector(k); if (!picked) return;
+    if (v("#bp-title")) { picked.title = v("#bp-title").value.trim(); picked.author = v("#bp-author").value.trim(); }
+    if (v("#bp-min")) { picked.minutes = Math.round(+v("#bp-min").value || 0); picked.pages = Math.round(+v("#bp-pg").value || 0); picked.memo = v("#bp-memo").value.trim(); } };
+  const search = async () => {
+    q = box.querySelector("#bk-q").value.trim(); if (!q) return;
+    busy = true; msg = ""; draw();
+    try { results = await aladinSearch(q, BK().key); }
+    catch (e) { results = null; msg = /timeout|load/.test(e.message) ? "알라딘에 연결이 안 돼요. 인터넷을 확인하거나 잠시 후 다시 해주세요." : `알라딘: ${e.message} (키를 확인해주세요)`; }
+    busy = false; draw();
+    const qi = box.querySelector("#bk-q"); if (qi && !results) qi.focus();
+  };
+  const bind = () => {
+    const g = k => box.querySelector(k);
+    if (g("[data-close]") && close) g("[data-close]").onclick = close;
+    box.querySelectorAll("[data-bk-tab]").forEach(b => b.onclick = () => { tab = b.dataset.bkTab; draw(); });
+    if (g("#bk-go")) { g("#bk-go").onclick = search; g("#bk-q").onkeydown = e => { if (e.key === "Enter") search(); }; }
+    if (g("#bk-keysave")) g("#bk-keysave").onclick = () => { const k = g("#bk-keyin").value.trim(); if (!/^ttb[\w.-]{6,}$/i.test(k)) { msg = "ttb로 시작하는 키를 넣어주세요."; draw(); return; } BK().key = k; Store.save(); keyEdit = false; msg = "키를 저장했어요! 책을 찾아보세요 📚"; draw(); };
+    if (g("#bk-key")) g("#bk-key").onclick = () => { keyEdit = true; msg = ""; draw(); };
+    box.querySelectorAll("#bk-manual").forEach(b => b.onclick = () => { picked = { manual: true, title: q, author: "", status: "reading" }; draw(); });
+    box.querySelectorAll("[data-bk-res]").forEach(b => b.onclick = () => { const r = results[+b.dataset.bkRes], own = BK().list.find(x => x.isbn && x.isbn === r.isbn); picked = { ...r, own: own && own.id, status: own ? own.status : "reading" }; draw(); });
+    box.querySelectorAll("[data-bk-pick-own]").forEach(b => b.onclick = () => { const o = BK().list.find(x => x.id === b.dataset.bkPickOwn); picked = { ...o, own: o.id }; draw(); });
+    box.querySelectorAll("[data-bk-book]").forEach(b => b.onclick = () => openBook(b.dataset.bkBook));
+    box.querySelectorAll("[data-bk-unlog]").forEach(b => b.onclick = () => { const l = BK().logs.find(x => x.id === b.dataset.bkUnlog); if (!l || !confirm("이 독서 기록을 지울까요?")) return;
+      BK().logs = BK().logs.filter(x => x !== l); if (l.recId) state.records = state.records.filter(r => r.id !== l.recId); Store.save(); draw(); render(); });
+    box.querySelectorAll("[data-bp-st]").forEach(b => b.onclick = () => { grabPick(); picked.status = b.dataset.bpSt; draw(); });
+    if (g("#bp-cancel")) g("#bp-cancel").onclick = () => { picked = null; draw(); };
+    if (g("#bp-save")) g("#bp-save").onclick = () => {
+      grabPick(); const p = picked, err = g("#bp-err");
+      if (!p.title) { err.textContent = "책 제목을 적어주세요."; return; }
+      let b = p.own ? BK().list.find(x => x.id === p.own) : null;
+      if (!b) { b = { id: uid(), isbn: p.isbn || "", title: p.title, author: p.author || "", publisher: p.publisher || "", cover: p.cover || "", ts: Date.now() }; BK().list.push(b); }
+      b.status = p.status; b.ts = Date.now(); if (p.status === "done" && !b.finished) b.finished = today;
+      let recId = null;
+      if (p.status !== "want") {
+        const c = bookChar();
+        if (p.minutes && c) { Store.save(); addRecord(c.id, p.minutes, today, `📚 ${p.title}`, "book"); recId = (state.records[state.records.length - 1] || {}).id; }
+        BK().logs.push({ id: uid(), bookId: b.id, date: today, minutes: p.minutes || 0, pages: p.pages || 0, memo: p.memo || "", recId, ts: Date.now() });
+      }
+      Store.save(); picked = null; results = null; q = ""; msg = p.status === "want" ? "책장에 꽂았어요 🔖" : "";
+      if (opts.onChange) opts.onChange();
+      draw(); if (!p.minutes || p.status === "want") toast(p.status === "want" ? `🔖 '${esc(p.title)}' 읽고 싶은 책에 꽂았어요` : `📚 '${esc(p.title)}' 기록했어요`);
+    };
+  };
+  draw();
+}
+function openBooks(){ const close = openModal("", { sheet: true }), box = lastModal(); box.classList.add("bk-modal"); mountBooks(box, { close }); }
 
 /* ============ 📌 개인 일정 (달력) ============
    시간표(알바·예배·연습)와 따로 저장하는 약속·생일·병원 같은 일정 */
