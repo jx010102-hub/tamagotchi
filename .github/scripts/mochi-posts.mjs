@@ -41,10 +41,27 @@ const found = [...walk(d, "backstagePostRenderer")].map(p => ({
 console.log(`게시물 ${found.length}개`, found.slice(0, 5).map(p => `${p.ago} | ${p.text.slice(0, 40).replace(/\n/g, " ")}`));
 
 // 3) 번역 (구글 번역 무료 엔드포인트) + 히라가나
-async function translate(s, tl){
-  const u = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ko&tl=${tl}&dt=t&q=${encodeURIComponent(s)}`;
-  const r = await fetch(u, { headers: { "User-Agent": H["User-Agent"] } }); if (!r.ok) throw new Error("translate " + r.status);
-  const j = await r.json(); return (j[0] || []).map(x => x[0]).join("");
+// 게시물 하나를 한 번에 번역 (문장마다 줄을 나눠 보내고, 같은 순서로 받기)
+const SEP = "\n";
+async function googleT(sents){
+  const u = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ko&tl=ja&dt=t`;
+  for (let i = 0; i < 4; i++) {
+    const r = await fetch(u, { method: "POST", headers: { "User-Agent": H["User-Agent"], "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" }, body: "q=" + encodeURIComponent(sents.join(SEP)) });
+    if (r.ok) { const j = await r.json(); const out = (j[0] || []).map(x => x[0]).join("").split(SEP).map(x => x.trim()); if (out.length === sents.length) return out; throw new Error("google 줄 수 불일치 " + out.length + "/" + sents.length); }
+    if (r.status !== 429) throw new Error("google " + r.status);
+    console.log("  구글 429 → 쉬었다가 다시"); await sleep(20000 * (i + 1));
+  }
+  throw new Error("google 429");
+}
+async function myMemoryT(sents){
+  const out = [];
+  for (const s of sents) { const r = await fetch(`https://api.mymemory.translated.net/get?langpair=ko|ja&de=mochi-bot@users.noreply.github.com&q=${encodeURIComponent(s.slice(0, 480))}`);
+    const j = await r.json(); if (!r.ok || j.responseStatus != 200) throw new Error("mymemory " + (j.responseDetails || r.status)); out.push(j.responseData.translatedText); await sleep(400); }
+  return out;
+}
+async function translateAll(sents){
+  try { return { ja: await googleT(sents), via: "google" }; }
+  catch (e) { console.log("  " + e.message + " → MyMemory로"); return { ja: await myMemoryT(sents), via: "mymemory" }; }
 }
 const kuro = new Kuroshiro.default ? new Kuroshiro.default() : new Kuroshiro();
 await kuro.init(new (KuromojiAnalyzer.default || KuromojiAnalyzer)());
@@ -54,18 +71,23 @@ const posts = [];
 for (const p of found.slice(0, KEEP)) {
   const k = known.get(p.id);
   if (k && k.text === p.text && k.lines?.length) { posts.push({ ...k, ago: p.ago, image: p.image ?? k.image }); continue; }
-  // 문단·문장 단위로 나눠 번역 (줄바꿈 유지)
-  const lines = [];
+  // 문단·문장 단위로 나눠 번역 (빈 줄은 문단 구분으로 유지)
+  const parts = [];
   for (const para of p.text.split(/\n/)) {
-    if (!para.trim()) { lines.push({ ko: "", ja: "", ruby: "", kana: "" }); continue; }
-    const sents = para.match(/[^.!?。！？]+[.!?。！？"”’」)]*\s*/g) || [para];
-    for (const s0 of sents) { const s = s0.trim(); if (!s) continue;
-      const ja = await translate(s, "ja"); await sleep(250);
-      const ruby = await kuro.convert(ja, { to: "hiragana", mode: "furigana" });
-      const kana = await kuro.convert(ja, { to: "hiragana", mode: "spaced" });
-      lines.push({ ko: s, ja, ruby, kana }); }
+    if (!para.trim()) { parts.push(null); continue; }
+    for (const s0 of (para.match(/[^.!?。！？]+[.!?。！？"”’」)]*\s*/g) || [para])) { const s = s0.trim(); if (s) parts.push(s); }
   }
-  posts.push({ id: p.id, url: `https://www.youtube.com/post/${p.id}`, text: p.text, ago: p.ago, image: p.image, firstSeen: k?.firstSeen || today, lines });
+  let tr;
+  try { tr = await translateAll(parts.filter(Boolean)); }
+  catch (e) { console.log("번역 실패, 다음에 다시:", e.message); if (k) posts.push(k); continue; }
+  let ti = 0; const lines = [];
+  for (const s of parts) {
+    if (s === null) { lines.push({ ko: "", ja: "", ruby: "", kana: "" }); continue; }
+    const ja = tr.ja[ti++] || "";
+    lines.push({ ko: s, ja, ruby: await kuro.convert(ja, { to: "hiragana", mode: "furigana" }), kana: await kuro.convert(ja, { to: "hiragana", mode: "spaced" }) });
+  }
+  await sleep(1500);
+  posts.push({ id: p.id, url: `https://www.youtube.com/post/${p.id}`, text: p.text, ago: p.ago, image: p.image, firstSeen: k?.firstSeen || today, via: tr.via, lines });
   console.log(`번역: ${p.text.slice(0, 30).replace(/\n/g, " ")}… (${lines.length}줄)`);
 }
 const out = { channelId, channelName, posts };
