@@ -1,0 +1,25 @@
+name: 모찌 일본어 게시물 모으기
+on:
+  schedule:
+    - cron: "17 */3 * * *"   # 3시간마다
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: mochi-posts
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm install --no-save --no-package-lock kuroshiro@1.2.0 kuroshiro-analyzer-kuromoji@1.1.0
+      - run: node .github/scripts/mochi-posts.mjs
+      - name: 바뀐 게 있으면 저장
+        run: |
+          git add mochi/
+          if git diff --cached --quiet; then echo "변경 없음"; exit 0; fi
+          git config user.name "mochi-bot"
+          git config user.email "mochi-bot@users.noreply.github.com"
+          git commit -m "모찌 일본어 게시물 업데이트"
+          git pull --rebase -q origin main && git push
