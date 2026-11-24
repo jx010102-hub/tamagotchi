@@ -164,7 +164,7 @@ async function naver(w){
     if (!r.ok) return { err: r.status };
     const j = await r.json(), items = j?.searchResultMap?.searchResultListMap?.WORD?.items || [];
     const it = items.find(x => [strip(x.expEntry), strip(x.handleEntry)].includes(w)) || items.find(x => strip(x.expEntry).replace(/[-・]/g, "") === w);
-    if (!it) return { ko: "" };
+    if (!it) { if (!globalThis.__dbg || globalThis.__dbg < 3) { globalThis.__dbg = (globalThis.__dbg || 0) + 1; console.log("  [miss]", w, JSON.stringify(items.slice(0, 2).map(x => Object.fromEntries(Object.entries(x).filter(([k, v]) => typeof v === "string" && v && v.length < 80))))); } return { ko: "" }; }
     const means = (it.meansCollector || []).flatMap(m => (m.means || []).map(x => strip(x.value))).filter(Boolean);
     const ko = means.slice(0, 2).map(x => x.replace(/^\d+\.\s*/, "")).join(" / ").slice(0, 60);
     const pr = strip(it.expKanji || "") ? "" : "";
