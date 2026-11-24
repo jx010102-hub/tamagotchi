@@ -4,7 +4,8 @@ import Kuroshiro from "kuroshiro";
 import KuromojiAnalyzer from "kuroshiro-analyzer-kuromoji";
 
 const SEED_POST = "UgkxDWZ8CzAaLncCvCqw4z7H7v6nTvAQmX2-";
-const OUT = "mochi/posts.json", KEEP = 20;
+const OUT = "mochi/posts.json", KEEP = 20, NEW_PER_RUN = 3;   // 한 번에 새로 번역하는 글은 최근 3개까지 (나머지는 다음 실행에)
+const T = ms => AbortSignal.timeout(ms);
 const H = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36", "Accept-Language": "ko-KR,ko;q=0.9", "Cookie": "CONSENT=YES+cb; SOCS=CAI" };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 function jsonAfter(html, marker){
@@ -18,7 +19,7 @@ function jsonAfter(html, marker){
 function* walk(o, key){ if (!o || typeof o !== "object") return; if (Array.isArray(o)) { for (const x of o) yield* walk(x, key); return; }
   for (const [k, v] of Object.entries(o)) { if (k === key) yield v; yield* walk(v, key); } }
 const text = t => t ? (t.simpleText ?? (t.runs || []).map(r => r.text).join("")) : "";
-async function get(url){ for (let i = 0; ; i++) { const r = await fetch(url, { headers: H }); if (r.ok) return r.text(); if (r.status !== 429 || i > 2) throw new Error(`${r.status} ${url}`); await sleep(8000 * (i + 1)); } }
+async function get(url){ for (let i = 0; ; i++) { const r = await fetch(url, { headers: H, signal: T(20000) }); if (r.ok) return r.text(); if (r.status !== 429 || i > 2) throw new Error(`${r.status} ${url}`); await sleep(8000 * (i + 1)); } }
 
 const old = fs.existsSync(OUT) ? JSON.parse(fs.readFileSync(OUT, "utf8")) : { posts: [] };
 // 1) 채널 찾기 (처음 받은 게시물에서)
@@ -45,17 +46,18 @@ console.log(`게시물 ${found.length}개`, found.slice(0, 5).map(p => `${p.ago}
 const SEP = "\n";
 async function googleT(sents){
   const u = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ko&tl=ja&dt=t`;
-  for (let i = 0; i < 4; i++) {
-    const r = await fetch(u, { method: "POST", headers: { "User-Agent": H["User-Agent"], "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" }, body: "q=" + encodeURIComponent(sents.join(SEP)) });
+  for (let i = 0; i < 2; i++) {
+    const r = await fetch(u, { method: "POST", headers: { "User-Agent": H["User-Agent"], "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" }, body: "q=" + encodeURIComponent(sents.join(SEP)), signal: T(20000) });
     if (r.ok) { const j = await r.json(); const out = (j[0] || []).map(x => x[0]).join("").split(SEP).map(x => x.trim()); if (out.length === sents.length) return out; throw new Error("google 줄 수 불일치 " + out.length + "/" + sents.length); }
     if (r.status !== 429) throw new Error("google " + r.status);
-    console.log("  구글 429 → 쉬었다가 다시"); await sleep(20000 * (i + 1));
+    console.log("  구글 429 → 잠깐 쉬었다가 다시"); await sleep(5000);
+    if (i >= 1) break;
   }
   throw new Error("google 429");
 }
 async function myMemoryT(sents){
   const out = [];
-  for (const s of sents) { const r = await fetch(`https://api.mymemory.translated.net/get?langpair=ko|ja&de=mochi-bot@users.noreply.github.com&q=${encodeURIComponent(s.slice(0, 480))}`);
+  for (const s of sents) { const r = await fetch(`https://api.mymemory.translated.net/get?langpair=ko|ja&de=mochi-bot@users.noreply.github.com&q=${encodeURIComponent(s.slice(0, 480))}`, { signal: T(15000) });
     const j = await r.json(); if (!r.ok || j.responseStatus != 200) throw new Error("mymemory " + (j.responseDetails || r.status)); out.push(j.responseData.translatedText); await sleep(400); }
   return out;
 }
@@ -67,10 +69,12 @@ const kuro = new Kuroshiro.default ? new Kuroshiro.default() : new Kuroshiro();
 await kuro.init(new (KuromojiAnalyzer.default || KuromojiAnalyzer)());
 const known = new Map(old.posts.map(p => [p.id, p]));
 const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
-const posts = [];
+const posts = []; let fresh = 0;
 for (const p of found.slice(0, KEEP)) {
   const k = known.get(p.id);
   if (k && k.text === p.text && k.lines?.length) { posts.push({ ...k, ago: p.ago, image: p.image ?? k.image }); continue; }
+  if (fresh >= NEW_PER_RUN) { if (k) posts.push(k); continue; }
+  fresh++;
   // 문단·문장 단위로 나눠 번역 (빈 줄은 문단 구분으로 유지)
   const parts = [];
   for (const para of p.text.split(/\n/)) {

@@ -15,6 +15,7 @@ jobs:
         with: { node-version: 20 }
       - run: npm install --no-save --no-package-lock kuroshiro@1.2.0 kuroshiro-analyzer-kuromoji@1.1.0
       - run: node .github/scripts/mochi-posts.mjs
+        timeout-minutes: 10
       - name: 바뀐 게 있으면 저장
         run: |
           git add mochi/
