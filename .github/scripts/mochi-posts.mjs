@@ -143,7 +143,7 @@ const DJ = "mochi/dict.json", MAX_NEW_WORDS = 250;
 const dict = fs.existsSync(DJ) ? JSON.parse(fs.readFileSync(DJ, "utf8")) : {};
 const freq = new Map();
 for (const p of posts) for (const l of p.lines) for (const t of l.t || []) if (t[2]) freq.set(t[2], (freq.get(t[2]) || 0) + 1);
-const todo = [...freq.keys()].filter(b => !dict[b] || !dict[b].ko || dict[b].src !== "naver" && !dict[b].tried).sort((a, b) => freq.get(b) - freq.get(a)).slice(0, MAX_NEW_WORDS);
+const todo = [...freq.keys()].filter(b => !dict[b] || !dict[b].ko || dict[b].src !== "naver" && (dict[b].nv || 0) < 2).sort((a, b) => freq.get(b) - freq.get(a)).slice(0, MAX_NEW_WORDS);
 console.log(`낱말 ${freq.size}개, 새로 뜻 찾을 낱말 ${todo.length}개`);
 async function wordsT(words){
   try {
@@ -180,14 +180,14 @@ for (const b of todo) {
   if (nvFail >= 8 && !nvOk) { console.log("네이버 사전 연결 안 됨:", r.err); left.push(...todo.slice(todo.indexOf(b) + 1)); break; }
   await sleep(250);
 }
+for (const b of left) if (dict[b]) dict[b].nv = (dict[b].nv || 0) + 1;
 console.log(`네이버 사전 뜻 ${nvOk}개, 남은 ${left.length}개`, Object.entries(dict).filter(([, v]) => v.src === "naver").slice(0, 6).map(([k, v]) => k + "=" + v.ko).join(" | "));
-for (const b of left) if (dict[b]) dict[b].tried = 1;
 const rest = left.filter(b => !dict[b] || !dict[b].ko);
 for (let i = 0; i < rest.length; i += 50) {
   const batch = rest.slice(i, i + 50), ko = await wordsT(batch);
   for (let j = 0; j < batch.length; j++) {
     const b = batch[j], toks = await an.parse(b);
-    dict[b] = { r: HAS_KANJI.test(b) ? k2h(toks.map(t => t.reading || t.surface_form).join("")) : "", ko: (/^[\x00-\x7f]+$/.test(ko[j] || "") ? "" : (ko[j] || "").replace(/\(%\)|[（(][^)）]*[)）]|[.。]$/g, "").trim()), p: (toks[0] || {}).pos || "", lv: levelOf(b), src: "mt", tried: 1 };
+    dict[b] = { r: HAS_KANJI.test(b) ? k2h(toks.map(t => t.reading || t.surface_form).join("")) : "", ko: (/^[\x00-\x7f]+$/.test(ko[j] || "") ? "" : (ko[j] || "").replace(/\(%\)|[（(][^)）]*[)）]|[.。]$/g, "").trim()), p: (toks[0] || {}).pos || "", lv: levelOf(b), src: "mt", nv: 1 };
   }
   await sleep(1500);
 }
