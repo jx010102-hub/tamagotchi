@@ -168,7 +168,7 @@ async function naver(w){
     if (!it) return { ko: "" };
     const means = (it.meansCollector || []).flatMap(m => (m.means || []).map(x => strip(x.value))).filter(Boolean);
     const clean = x => x.replace(/^\d+\.\s*/, "").replace(/\((?:=|→|←|↔)[^)]*\)/g, "").replace(/^\([^)]*\)\s*/, "").replace(/\s+/g, " ").replace(/[.。]\s*$/, "").trim();
-    const ko = means.map(clean).filter(Boolean).slice(0, 2).join(" / ").slice(0, 60);
+    const ko = means.map(clean).map(x => x.split(/[;；]/)[0].trim()).filter(Boolean).slice(0, 2).join(" / ").slice(0, 60);
     const jl = +((String(it.frequencyAdd || "").match(/JLPT\s*(\d)/) || [])[1] || 0) || null;
     return { ko, jl };
   } catch (e) { return { err: e.message }; }
