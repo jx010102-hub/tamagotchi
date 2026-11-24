@@ -18,6 +18,20 @@ function jsonAfter(html, marker){
 }
 function* walk(o, key){ if (!o || typeof o !== "object") return; if (Array.isArray(o)) { for (const x of o) yield* walk(x, key); return; }
   for (const [k, v] of Object.entries(o)) { if (k === key) yield v; yield* walk(v, key); } }
+// 글 끝의 링크·SNS 안내(📌 영상 제목 + 주소들)는 빼고 본문만 남겨요
+const LINKY = /https?:|www\.|youtu\.|\.(com|kr|net|co)\b|^\s*(be|com|org)\/|@\w/i;
+const TITLE_LEAD = /^\s*(?:[\p{Extended_Pictographic}\uFE0F\u200D]|\[|【|▶|➡)/u;
+function cutBody(lines, get = x => x){
+  let i = lines.findIndex(l => LINKY.test(get(l)));
+  if (i < 0) i = lines.length;
+  let out = lines.slice(0, i);
+  const blank = l => !get(l).trim();
+  while (out.length && blank(out[out.length - 1])) out.pop();
+  while (out.length && TITLE_LEAD.test(get(out[out.length - 1])) && i < lines.length) out.pop();   // 링크 바로 위 제목 줄
+  while (out.length && blank(out[out.length - 1])) out.pop();
+  return out;
+}
+const cleanText = t => cutBody(t.split("\n")).join("\n").trim();
 const text = t => t ? (t.simpleText ?? (t.runs || []).map(r => r.text).join("")) : "";
 async function get(url){ for (let i = 0; ; i++) { const r = await fetch(url, { headers: H, signal: T(20000) }); if (r.ok) return r.text(); if (r.status !== 429 || i > 2) throw new Error(`${r.status} ${url}`); await sleep(8000 * (i + 1)); } }
 
@@ -38,7 +52,7 @@ const d = jsonAfter(html, "var ytInitialData");
 const found = [...walk(d, "backstagePostRenderer")].map(p => ({
   id: p.postId, text: text(p.contentText).trim(), ago: text(p.publishedTimeText),
   image: ((p.backstageAttachment?.backstageImageRenderer?.image?.thumbnails) || []).slice(-1)[0]?.url || null,
-})).filter(p => p.id && p.text);
+})).map(p => ({ ...p, text: cleanText(p.text) })).filter(p => p.id && p.text);
 console.log(`게시물 ${found.length}개`, found.slice(0, 5).map(p => `${p.ago} | ${p.text.slice(0, 40).replace(/\n/g, " ")}`));
 
 // 3) 번역 (구글 번역 무료 엔드포인트) + 히라가나
@@ -72,7 +86,8 @@ const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
 const posts = []; let fresh = 0;
 for (const p of found.slice(0, KEEP)) {
   const k = known.get(p.id);
-  if (k && k.text === p.text && k.lines?.length) { posts.push({ ...k, ago: p.ago, image: p.image ?? k.image }); continue; }
+  // 이미 번역한 글: 다시 번역하지 않고 링크 부분만 잘라서 정리
+  if (k && k.lines?.length && (k.text === p.text || cleanText(k.text) === p.text)) { posts.push({ ...k, text: p.text, lines: cutBody(k.lines, l => l.ko), ago: p.ago, image: p.image ?? k.image }); continue; }
   if (fresh >= NEW_PER_RUN) { if (k) posts.push(k); continue; }
   fresh++;
   // 문단·문장 단위로 나눠 번역 (빈 줄은 문단 구분으로 유지)
