@@ -812,7 +812,7 @@
   .mc-t.ja { font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; }
   .mc-t.on { color: var(--ink); border-color: #5E4535; transform: translateY(-1px); }
   .mc-t.ja.on { background: #FFF1C9; } .mc-t.kana.on { background: #FCE1E7; } .mc-t.ko.on { background: #DDEEFB; }
-  .mc-post { margin-top: 12px; background: #FFFDF7; border: 2px solid #EADCC4; border-radius: 18px; padding: 12px 14px; max-height: min(56vh, 560px); overflow: auto; }
+  .mc-post { margin-top: 12px; background: #FFFDF7; border: 2px solid #EADCC4; border-radius: 18px; padding: 12px 14px; max-height: max(240px, min(560px, calc(100vh - 610px), calc(100dvh - 610px))); overflow: auto; }
   .mc-meta { display: flex; gap: 8px; align-items: center; font-size: 12.5px; color: var(--ink-soft); margin-bottom: 6px; }
   .mc-meta a { margin-left: auto; color: #6B5345; }
   .mc-new { background: #EE7F8A; color: #fff; border-radius: 99px; padding: 0 8px; font-weight: 700; }
@@ -864,6 +864,9 @@
   .mc-line.playing { background: #FFF1C9; box-shadow: 0 0 0 6px #FFF1C9; }
   .mc-say { position: absolute; right: 0; top: 2px; width: 30px; height: 30px; padding: 0; border-radius: 50%; font-size: 14px; background: #fff; border: 1.5px solid #EADCC4; box-shadow: none; opacity: .75; }
   .mc-say.in { position: static; opacity: 1; flex: none; }
+
+  .mc-stat { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12.5px; color: var(--ink-soft); background: #F6F0E4; border-radius: 12px; padding: 5px 10px; margin-bottom: 8px; }
+  .mc-daily { background: linear-gradient(135deg, #FFF1F4, #FFF8E3); border: 2px solid #F0C7D3; border-radius: 16px; padding: 8px 12px; margin: 2px 0 10px; }
 </style>
 </head>
 <body>
@@ -1545,6 +1548,7 @@ function showSummary(){
         <p class="muted" style="margin-top:4px">${x.c.id === "reels" ? (x.n ? `업로드 ${x.n}개` : "이번 주엔 업로드가 없어요") : x.daysOn ? `${x.daysOn}일 했어요` : "이번 주엔 기록이 없어요"}${x.best ? ` · 가장 많이 한 날 ${fmtMD(x.best[0])} ${fmtDur(x.best[1])}` : ""}${x.prev || x.mins ? ` · 지난주 ${fmtDur(x.prev)}` : ""}</p>
       </div></div>`).join("")}
     <div class="sum-grid">
+      ${(w => w.words || w.rev || w.shadow || w.lines ? `<div class="sum-box"><h3 class="sum-h">🐱 모찌 일본어</h3><p>새 낱말 <b>${w.words}</b>개 · 복습 <b>${w.rev}</b>번${w.rev ? ` <span class="muted">(정답 ${Math.round(w.ok / w.rev * 100)}%)</span>` : ""}</p><p class="muted">쉐도잉 ${w.shadow}문장 · 읽은 문장 ${w.lines} · 단어장 ${Object.keys(MC().vocab).length}개</p></div>` : "")(mcWeekStats(r.days))}
       <div class="sum-box"><h3 class="sum-h">🗓 시간표</h3>${r.plans.length ? `<p><b>${r.planDone.length}</b> / ${r.plans.length}개 완료 <span class="muted">(${Math.round(r.planDone.length / r.plans.length * 100)}%)</span></p>
         ${r.planMiss.length ? `<p class="muted" style="font-size:12.5px">못 한 일: ${r.planMiss.slice(0, 4).map(p => esc(p.name)).join(", ")}${r.planMiss.length > 4 ? ` 외 ${r.planMiss.length - 4}개` : ""}</p>` : `<p class="muted">못 한 일 없음 🎉</p>`}` : `<p class="muted">일정이 없었어요</p>`}</div>
       <div class="sum-box"><h3 class="sum-h">🎬 릴스</h3><p>업로드 <b>${r.posts.length}</b>개${r.posts.length ? ` <span class="muted">· ${r.posts.slice(0, 2).map(p => esc(p.title || "")).join(", ")}</span>` : ""}</p>
@@ -3521,7 +3525,7 @@ function addVocab(w, ex){
 }
 
 function mountMochi(box){
-  let idx = 0, tab = "read", pop = null, rv = null, sh = null;   // sh = 쉐도잉 중 { li, timer }
+  let idx = 0, tab = ui.mochiTab || "read", pop = null, rv = null, sh = null; ui.mochiTab = null;   // sh = 쉐도잉 중 { li, timer }
   const draw = () => {
     const d = mcData, s = MC().show, posts = d ? d.posts : [], p = posts[idx], V = MC().vocab, due = vocabDue().length;
     const on = k => s[k] ? "on" : "";
@@ -3529,12 +3533,22 @@ function mountMochi(box){
       <div class="row" style="justify-content:space-between;align-items:center"><div class="hand duo-title" style="font-size:24px;margin:0">📺 모찌 채널</div>
         ${tab === "read" && p ? `<span class="muted" style="font-size:12px">${idx + 1} / ${posts.length}</span>` : ""}</div>
       <div class="row mc-tabs">${[["read", "📖 글 읽기"], ["vocab", `⭐ 단어장 ${Object.keys(V).length}`], ["review", `🔁 복습${due ? ` <b>${due}</b>` : ""}`]].map(([k, l]) => `<span class="chip ${tab === k ? "on" : ""}" data-mc-tab="${k}">${l}</span>`).join("")}</div>
+      ${statsLine()}
       ${tab === "read" ? readHTML(d, p, posts, s, on) : tab === "vocab" ? vocabHTML() : reviewHTML()}
       ${pop ? popHTML() : ""}
     </div>`;
     bind();
   };
-  const readHTML = (d, p, posts, s, on) => `
+  const statsLine = () => {
+    const st = MC().stats[todayStr()] || {}, pend = mcPendingMin(), bits = [];
+    if (st.words) bits.push(`낱말 +${st.words}`); if (st.rev) bits.push(`복습 ${st.rev} (${Math.round((st.ok || 0) / st.rev * 100)}%)`);
+    if (st.shadow) bits.push(`쉐도잉 ${st.shadow}문장`); if (st.lines) bits.push(`읽은 문장 ${st.lines}`);
+    return bits.length || pend > 0 ? `<div class="mc-stat"><span>오늘: ${bits.join(" · ") || "-"}</span>${pend > 0 ? `<button class="btn-sm" id="mc-rec">⏱ ${pend}분 공부 기록</button>` : ""}</div>` : "";
+  };
+  const dailyHTML = () => { const dl = mcDaily(); if (!dl) return "";
+    return `<div class="mc-daily"><div class="row" style="justify-content:space-between;align-items:center"><span class="hand" style="font-size:17px">🌸 今日の一文 · 오늘의 한 문장</span><button class="mc-say in" id="dl-say" aria-label="읽어주기">🔊</button></div>
+      <p class="mc-ja" style="margin:2px 0 0">${jaLineHTML(dl.l, true)}</p><p class="mc-ko" style="margin:0">${esc(dl.l.ko)}</p></div>`; };
+  const readHTML = (d, p, posts, s, on) => `${idx === 0 ? dailyHTML() : ""}
       <p class="muted" style="font-size:12.5px;margin:2px 0 8px">${d ? `${esc(d.channelName || "영적세계전문가")} 게시물 · 낱말을 누르면 뜻이 나와요` : "게시물 불러오는 중…"}</p>
       <div class="row mc-toggles">
         <button class="mc-t ja ${on("ja")}" data-mc="ja">日本語</button>
@@ -3620,7 +3634,7 @@ function mountMochi(box){
     const nv = box.querySelector(".mc-vlist"); if (nv) nv.scrollTop = vst;
   };
   // 🎧 쉐도잉: 지금 보이는 문장부터 한 문장씩 읽고, 읽은 만큼 쉬어서 따라 말할 시간을 줘요
-  const stopShadow = () => { if (sh) clearTimeout(sh.timer); sh = null; stopJa(); };
+  const stopShadow = () => { if (sh) { clearTimeout(sh.timer); mcAddSec((Date.now() - sh.t0) / 1000); } sh = null; stopJa(); };
   const playLine = li => {
     const p = mcData && mcData.posts[idx]; if (!sh || !p || !box.isConnected) { stopShadow(); return; }
     while (li < p.lines.length && !p.lines[li].ja) li++;
@@ -3639,7 +3653,7 @@ function mountMochi(box){
       if (sh) { stopShadow(); keepScroll(draw); return; }
       const post = box.querySelector(".mc-post"), top = post ? post.getBoundingClientRect().top : 0;
       const first = post ? [...post.querySelectorAll(".mc-line")].find(x => x.getBoundingClientRect().bottom > top + 4) : null;
-      sh = { li: first ? +first.dataset.li : 0, timer: null }; keepScroll(draw); playLine(sh.li);
+      sh = { li: first ? +first.dataset.li : 0, timer: null, t0: Date.now() }; keepScroll(draw); playLine(sh.li);
     };
     box.querySelectorAll("[data-rate]").forEach(b => b.onclick = () => { MC().rate = +b.dataset.rate; Store.save(); keepScroll(draw); });
     box.querySelectorAll("[data-say]").forEach(b => b.onclick = e => { e.stopPropagation(); const l = mcData.posts[idx].lines[+b.dataset.say]; if (sh) stopShadow(); sayJa(l.ja); keepScroll(draw); });
@@ -3668,16 +3682,36 @@ function mountMochi(box){
       const gr = +b.dataset.g, w = rv.q[rv.i]; srsGrade(w, gr); rv.res.push(gr);
       if (gr === 0 && rv.q.filter(x => x === w).length < 3) rv.q.push(w);   // 몰랐던 낱말은 이번 복습 끝에 한 번 더
       rv.i++; rv.show = false;
-      if (rv.i >= rv.q.length) rv.mins = Math.round((Date.now() - rv.t0) / 60000);
+      if (rv.i >= rv.q.length) { mcAddSec((Date.now() - rv.t0) / 1000); rv.mins = mcPendingMin(); }
       draw();
     });
     if (g("#rv-done")) g("#rv-done").onclick = () => { rv = null; draw(); };
-    if (g("#rv-rec")) g("#rv-rec").onclick = () => { const m = rv.mins; rv = null; draw(); addRecord("jp", m, todayStr(), "🔁 단어 복습", "auto"); };
+    const recPending = label => { const m = mcPendingMin(); if (m < 1) return; mcStat("recSec", m * 60); Store.save(); addRecord("jp", m, todayStr(), label, "auto"); };
+    if (g("#rv-rec")) g("#rv-rec").onclick = () => { rv = null; draw(); recPending("🐱 모찌 공부 (복습·쉐도잉)"); };
+    if (g("#mc-rec")) g("#mc-rec").onclick = () => { recPending("🐱 모찌 공부 (복습·쉐도잉)"); keepScroll(draw); };
+    if (g("#dl-say")) g("#dl-say").onclick = () => { const dl = mcDaily(); if (dl) sayJa(dl.l.ja); };
   };
   draw();
   const watch = setInterval(() => { if (!box.isConnected) { stopShadow(); clearInterval(watch); } }, 500);   // 창 닫히면 소리 끄기
   mcLoad().then(d => { if (d) { MC().seen = d.posts[0] && d.posts[0].id; Store.save(); } if (box.isConnected) draw(); });
 }
+/* ---- 오늘의 한 문장: 날마다 최근 글에서 짧은 문장 하나 ---- */
+function mcDaily(){
+  if (!mcData) return null;
+  const pool = mcData.posts.slice(0, 6).flatMap(p => p.lines.filter(l => l.ja && l.ja.length >= 8 && l.ja.length <= 32 && !/[💌@#]|牧師|教会/.test(l.ja)).map(l => ({ l, p })));
+  if (!pool.length) return null;
+  return pool[hstr("daily" + todayStr()) % pool.length];
+}
+/* ---- 모찌 퀴즈: 복습할 낱말(없으면 단어장에서 덜 맞힌 낱말) ---- */
+function mcQuizWord(){
+  const V = MC().vocab, due = vocabDue(); const all = Object.keys(V); if (!all.length) return null;
+  const pool = due.length ? due : all.sort((a, b) => ((V[a].ok || 0) - (V[a].miss || 0)) - ((V[b].ok || 0) - (V[b].miss || 0))).slice(0, 5);
+  return pool[hstr("quiz" + todayStr() + new Date().getHours()) % pool.length];
+}
+/* ---- 공부 시간 모으기: 쉐도잉·복습한 시간 → 아직 기록 안 한 시간은 버튼 하나로 기록 ---- */
+function mcAddSec(sec){ if (sec > 0) { mcStat("sec", Math.round(sec)); Store.save(); } }
+function mcPendingMin(){ const st = MC().stats[todayStr()] || {}; return Math.floor(((st.sec || 0) - (st.recSec || 0)) / 60); }
+function mcWeekStats(days){ const o = { words: 0, rev: 0, ok: 0, lines: 0, shadow: 0, sec: 0 }; days.forEach(d => { const st = MC().stats[d] || {}; for (const k in o) o[k] += st[k] || 0; }); return o; }
 function mochiHasNew(){ return mcData && mcData.posts[0] && mcData.posts[0].id !== MC().seen; }
 
 /* ============ 📌 개인 일정 (달력) ============
@@ -4220,6 +4254,9 @@ const TALK_LINES = {
     running: ["공부 중이네. …조용히 있을게.", "집중해. 나 지금 안 보고 있음. 진짜로."],
     empty: ["오늘 일정 없음. 단어 5개만. 5개가 너한테 오진 않아.", "일정 없네. 마지막 공부가 {last}. 기억은 하냐."],
     emptyNo: ["오늘 일정 없음. 뭐 할 건데. 정하면 말해. 난 잘게."],
+    quiz: ["야. {p} 읽는 법. 알아? 3초 준다.", "{p}. …뜻 말해봐. 기다리는 거 아님.", "퀴즈. {p}. 모르면 복습해."],
+    quizAns: ["{p} = {s}. 맞혔으면 됐고.", "정답: {p}, {s}. …뭐, 다음엔 맞히겠지."],
+    daily: ["今日の一文(오늘의 한 문장). {p} …읽어봐.", "오늘 문장. {p} 소리 내서 한 번."],
     mochiNew: ["새 글 올라왔다. 일본어로 바꿔놨음. 읽든가.", "新しい投稿(あたらしいとうこう·새 게시물). …읽어봐."],
     react: ["{m}분 했네. 제법인데. 뭐, 그렇다고.", "{m}분. …나쁘지 않음. 아주 조금 놀람."],
     reactDay: ["목표 달성. …よくできました(참 잘했어요). 끝."],
@@ -4263,7 +4300,7 @@ const TALK_CHATS_DONE = [
   [["toon", "우리 오늘 목표 다 했대."], ["drum", "축제다!!! 드럼롤!!! 두구두구!!!"], ["jp", "시끄러. …근데 잘했네."], ["reels", "기념 셀카 찍자. 내 쪽이 잘 나오게."]],
 ];
 const STAGE_KO = { idea: "아이디어", shoot: "촬영", edit: "편집" };
-const TALK_ACT = { mochi: "📺 모찌 채널", worship: "🎵 콘티 열기", timer: "▶ 같이 하기", plan: "○ 완료 체크", tt: "🗓 일정 보기", post: "📊 성과 입력", postNew: "＋ 업로드 기록", fw: "📈 기록하기", board: "📋 보드 보기" };
+const TALK_ACT = { quiz: "정답 보기", mochiRev: "🔁 복습하기", mochi: "📺 모찌 채널", worship: "🎵 콘티 열기", timer: "▶ 같이 하기", plan: "○ 완료 체크", tt: "🗓 일정 보기", post: "📊 성과 입력", postNew: "＋ 업로드 기록", fw: "📈 기록하기", board: "📋 보드 보기" };
 const tAct = (k, id) => ({ k, id, l: TALK_ACT[k] });
 
 /* 대사 고르기: 최근에 한 말은 피해서 매번 새롭게 */
@@ -4339,6 +4376,12 @@ function talkMessages(id, opts = {}){
   else if (un.length > 1) add(3, say(id, "uncheckedN", { n: un.length }), tAct("tt"));
   if (id === "toon" && !ag && !recs.length) { add(4, say(id, "egg", {}), tAct("timer", id)); return finish(out); }
   if (id === "jp" && mochiHasNew()) add(3, say(id, "mochiNew", {}), tAct("mochi"));
+  if (id === "jp") {
+    const qw = mcQuizWord();
+    if (qw) { const m = say(id, "quiz", { p: qw }); if (m) { m.act = { k: "quiz", id: qw, l: TALK_ACT.quiz }; add(vocabDue().length ? 3.5 : 6.5, m, m.act); } }
+    const dl = mcDaily();
+    if (dl && !opts.single) add(7.5, say(id, "daily", { p: dl.l.ja }), tAct("mochi"));
+  }
   if (id === "drum") {
     // 월요일 낮(콘티 오는 날)~수요일 연습 전: 이번 주 콘티 챙기기
     const dw = new Date().getDay(), h = new Date().getHours(), ws = wsWeekSet();
@@ -4524,8 +4567,14 @@ function bindTalk(){
   });
   document.querySelectorAll("[data-talk-act]").forEach(b => b.onclick = e => {
     e.stopPropagation(); const m = talkOf(b.dataset.talkAct); if (!m || !m.act) return;
-    const a = m.act; hideTalk();
-    if (a.k === "timer") startTimer(a.id);
+    const a = m.act;
+    if (a.k === "quiz") {   // 같은 말풍선에서 정답으로 바뀌기
+      const v = MC().vocab[a.id] || mcDict[a.id] || {}, ans = say("jp", "quizAns", { p: a.id, s: `${v.r ? v.r + " · " : ""}${shortKo(v.ko)}` });
+      m.t = ans ? ans.t : m.t; m.act = tAct("mochiRev"); render(); return;
+    }
+    hideTalk();
+    if (a.k === "mochiRev") { ui.mochiTab = "review"; openCharPopup("jp"); }
+    else if (a.k === "timer") startTimer(a.id);
     else if (a.k === "worship") openWorship();
     else if (a.k === "mochi") openCharPopup("jp");
     else if (a.k === "plan") togglePlan(a.id);
