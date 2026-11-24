@@ -143,7 +143,7 @@ const DJ = "mochi/dict.json", MAX_NEW_WORDS = 250;
 const dict = fs.existsSync(DJ) ? JSON.parse(fs.readFileSync(DJ, "utf8")) : {};
 const freq = new Map();
 for (const p of posts) for (const l of p.lines) for (const t of l.t || []) if (t[2]) freq.set(t[2], (freq.get(t[2]) || 0) + 1);
-const todo = [...freq.keys()].filter(b => !dict[b] || !dict[b].ko || dict[b].src !== "naver" && (dict[b].nv || 0) < 2).sort((a, b) => freq.get(b) - freq.get(a)).slice(0, MAX_NEW_WORDS);
+const todo = [...freq.keys()].filter(b => !dict[b] || !dict[b].ko || dict[b].src !== "naver" && (dict[b].nv || 0) < 4).sort((a, b) => freq.get(b) - freq.get(a)).slice(0, MAX_NEW_WORDS);
 console.log(`낱말 ${freq.size}개, 새로 뜻 찾을 낱말 ${todo.length}개`);
 async function wordsT(words){
   try {
@@ -163,19 +163,21 @@ async function naver(w){
     const r = await fetch(`https://ja.dict.naver.com/api3/jako/search?query=${encodeURIComponent(w)}&m=pc&range=word&page=1`, { headers: { ...H, Referer: "https://ja.dict.naver.com/" }, signal: T(15000) });
     if (!r.ok) return { err: r.status };
     const j = await r.json(), items = j?.searchResultMap?.searchResultListMap?.WORD?.items || [];
-    const it = items.find(x => [strip(x.expEntry), strip(x.handleEntry)].includes(w)) || items.find(x => strip(x.expEntry).replace(/[-・]/g, "") === w);
-    if (!it) { if (!globalThis.__dbg || globalThis.__dbg < 3) { globalThis.__dbg = (globalThis.__dbg || 0) + 1; console.log("  [miss]", w, JSON.stringify(items.slice(0, 2).map(x => Object.fromEntries(Object.entries(x).filter(([k, v]) => typeof v === "string" && v && v.length < 80))))); } return { ko: "" }; }
+    const keys = x => [strip(x.expEntry), strip(x.handleEntry), ...strip(x.expKanji).split(/[·・,、]/).map(k => k.replace(/[〈〉()（）]/g, "").trim())].filter(Boolean);
+    const it = items.find(x => keys(x).includes(w)) || items.find(x => keys(x).some(k => k.replace(/[-・]/g, "") === w));
+    if (!it) return { ko: "" };
     const means = (it.meansCollector || []).flatMap(m => (m.means || []).map(x => strip(x.value))).filter(Boolean);
-    const ko = means.slice(0, 2).map(x => x.replace(/^\d+\.\s*/, "")).join(" / ").slice(0, 60);
-    const pr = strip(it.expKanji || "") ? "" : "";
-    return { ko };
+    const clean = x => x.replace(/^\d+\.\s*/, "").replace(/\((?:=|→|←|↔)[^)]*\)/g, "").replace(/^\([^)]*\)\s*/, "").replace(/\s+/g, " ").replace(/[.。]\s*$/, "").trim();
+    const ko = means.map(clean).filter(Boolean).slice(0, 2).join(" / ").slice(0, 60);
+    const jl = +((String(it.frequencyAdd || "").match(/JLPT\s*(\d)/) || [])[1] || 0) || null;
+    return { ko, jl };
   } catch (e) { return { err: e.message }; }
 }
 let nvOk = 0, nvFail = 0;
 const left = [];
 for (const b of todo) {
   const r = await naver(b);
-  if (r.ko) { const toks = await an.parse(b); dict[b] = { r: HAS_KANJI.test(b) ? k2h(toks.map(t => t.reading || t.surface_form).join("")) : "", ko: r.ko, p: (toks[0] || {}).pos || "", lv: levelOf(b), src: "naver" }; nvOk++; }
+  if (r.ko) { const toks = await an.parse(b); dict[b] = { r: HAS_KANJI.test(b) ? k2h(toks.map(t => t.reading || t.surface_form).join("")) : "", ko: r.ko, p: (toks[0] || {}).pos || "", lv: levelOf(b), jl: r.jl, src: "naver" }; nvOk++; }
   else { left.push(b); if (r.err) nvFail++; }
   if (nvFail >= 8 && !nvOk) { console.log("네이버 사전 연결 안 됨:", r.err); left.push(...todo.slice(todo.indexOf(b) + 1)); break; }
   await sleep(250);
