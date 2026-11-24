@@ -3430,7 +3430,7 @@ function mountMochi(box){
         <div class="mc-post">
           <div class="mc-meta"><span>${p.ago ? esc(p.ago) : fmtMD(p.firstSeen)}</span>${idx === 0 ? `<span class="mc-new">최신</span>` : ""}${MC().read[p.id] ? `<span class="mc-done">✓ 읽음</span>` : ""}<a href="${esc(p.url)}" target="_blank" rel="noopener">원문 ↗</a></div>
           ${p.image ? `<img class="mc-img" src="${esc(p.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}
-          <div class="mc-body">${!s.ja && !s.kana && !s.ko ? `<p class="muted">위 버튼을 눌러 보고 싶은 것을 켜세요</p>` : p.lines.map(l => !l.ko ? `<div class="mc-gap"></div>` : `<div class="mc-line">
+          <div class="mc-body">${!s.ja && !s.kana && !s.ko ? `<p class="muted">위 버튼을 눌러 보고 싶은 것을 켜세요</p>` : p.lines.map((l, li) => !l.ko ? `<div class="mc-gap" data-li="${li}"></div>` : `<div class="mc-line" data-li="${li}">
             ${s.ja ? `<p class="mc-ja">${s.kana ? l.ruby : esc(l.ja)}</p>` : s.kana ? `<p class="mc-kana">${esc(l.kana)}</p>` : ""}
             ${s.ko ? `<p class="mc-ko">${esc(l.ko)}</p>` : ""}</div>`).join("")}</div>
           <p class="muted" style="font-size:11.5px;margin-top:8px">${p.via === "mymemory" ? "MyMemory" : "구글"} 자동 번역이라 어색한 문장이 있을 수 있어요.</p>
@@ -3444,7 +3444,16 @@ function mountMochi(box){
     bind();
   };
   const bind = () => {
-    box.querySelectorAll("[data-mc]").forEach(b => b.onclick = () => { const k = b.dataset.mc; MC().show[k] = !MC().show[k]; Store.save(); draw(); });
+    // 버튼을 눌러도 읽던 문장 위치 그대로: 지금 맨 위에 보이는 문장을 기억했다가 다시 그 문장으로
+    box.querySelectorAll("[data-mc]").forEach(b => b.onclick = () => {
+      const post = box.querySelector(".mc-post"); let anchor = null, off = 0;
+      if (post) { const top = post.getBoundingClientRect().top;
+        const el = [...post.querySelectorAll("[data-li]")].find(x => x.getBoundingClientRect().bottom > top + 4);
+        if (el && post.scrollTop > 0) { anchor = el.dataset.li; off = el.getBoundingClientRect().top - top; } }
+      const k = b.dataset.mc; MC().show[k] = !MC().show[k]; Store.save(); draw();
+      const np = box.querySelector(".mc-post");
+      if (np && anchor != null) { const el = np.querySelector(`[data-li="${anchor}"]`); if (el) np.scrollTop += el.getBoundingClientRect().top - np.getBoundingClientRect().top - off; }
+    });
     box.querySelectorAll("[data-mc-go]").forEach(b => b.onclick = () => { idx = Math.max(0, Math.min(mcData.posts.length - 1, idx + +b.dataset.mcGo)); draw(); box.querySelector(".mc-post")?.scrollIntoView({ block: "nearest" }); });
     const rd = box.querySelector("#mc-read");
     if (rd) rd.onclick = () => { const p = mcData.posts[idx]; MC().read[p.id] = todayStr(); Store.save(); openManualSheet("jp"); draw(); };
