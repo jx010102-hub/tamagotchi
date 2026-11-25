@@ -3582,7 +3582,18 @@ function mountMochi(box){
       ${tab === "read" ? gridHTML(d, posts) : tab === "vocab" ? vocabHTML() : reviewHTML()}
       ${pop && !full ? popHTML() : ""}
     </div>`;
-    if (full) full.innerHTML = `<div class="mc-wrap mc-reader">${readHTML(d, p, posts, s, on)}${pop ? popHTML() : ""}</div>`;
+    if (full) {
+      const cur = full.querySelector(".mc-post");
+      if (cur && p && cur.dataset.pid === p.id) {
+        // 같은 글이면 그림·글 상자는 그대로 두고 버튼 줄·글자·아래 버튼·뜻 창만 바꿔요 (화면이 위로 튀지 않게)
+        full.querySelector(".mc-ctrl").innerHTML = ctrlHTML(s, on);
+        full.querySelector(".mc-body").innerHTML = bodyHTML(p, s);
+        full.querySelector(".mc-rnav").innerHTML = navHTML(p, posts);
+        full.querySelector(".mc-meta").outerHTML = `<div class="mc-meta"><span>${p.ago ? esc(p.ago) : fmtMD(p.firstSeen)}</span>${idx === 0 ? `<span class="mc-new">최신</span>` : ""}${MC().read[p.id] ? `<span class="mc-done">✓ 읽음</span>` : ""}<a href="${esc(p.url)}" target="_blank" rel="noopener">원문 ↗</a></div>`;
+        const wrap = full.querySelector(".mc-wrap"); wrap.querySelectorAll(":scope > .mc-pop").forEach(x => x.remove());
+        if (pop) wrap.insertAdjacentHTML("beforeend", popHTML());
+      } else full.innerHTML = `<div class="mc-wrap mc-reader">${readHTML(d, p, posts, s, on)}${pop ? popHTML() : ""}</div>`;
+    }
     bind();
   };
   const statsLine = () => {
@@ -3615,28 +3626,30 @@ function mountMochi(box){
       <button class="btn-sm ${nNew ? "" : "btn-primary"}" id="mc-upd" ${upd === "busy" ? "disabled" : ""}>🔄 업데이트</button></div>`;
   const readHTML = (d, p, posts, s, on) => `
       <div class="mc-rbar"><button class="btn-sm" id="mc-close">✕ 목록으로</button><b class="grow mc-rtitle">${p ? esc(postTitle(p)) : ""}</b><span class="muted" style="font-size:12px">${idx + 1} / ${posts.length}</span></div>
-      <div class="row mc-toggles">
+      <div class="mc-ctrl">${ctrlHTML(s, on)}</div>
+      ${!d ? `<p class="muted" style="margin-top:12px">아직 번역된 게시물이 없어요. 잠시 후 다시 열어주세요.</p>` : !p ? `<p class="muted">게시물이 없어요.</p>` : `
+        <div class="mc-post" data-pid="${esc(p.id)}">
+          <div class="mc-meta"><span>${p.ago ? esc(p.ago) : fmtMD(p.firstSeen)}</span>${idx === 0 ? `<span class="mc-new">최신</span>` : ""}${MC().read[p.id] ? `<span class="mc-done">✓ 읽음</span>` : ""}<a href="${esc(p.url)}" target="_blank" rel="noopener">원문 ↗</a></div>
+          ${p.image ? `<img class="mc-img" src="${esc(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}
+          <div class="mc-body">${bodyHTML(p, s)}</div>
+          <p class="muted" style="font-size:11.5px;margin-top:8px">${p.via === "mymemory" ? "MyMemory" : "구글"} 자동 번역 · 낱말 뜻은 네이버 일본어사전</p>
+        </div>
+        <div class="row mc-rnav" style="margin-top:10px;gap:6px">${navHTML(p, posts)}</div>`}`;
+  const ctrlHTML = (s, on) => `<div class="row mc-toggles">
         <button class="mc-t ja ${on("ja")}" data-mc="ja">日本語</button>
         <button class="mc-t kana ${on("kana")}" data-mc="kana">ひらがな</button>
         <button class="mc-t ko ${on("ko")}" data-mc="ko">한국어</button>
       </div>
       <div class="row mc-audio"><button class="btn-sm ${sh ? "btn-primary" : ""}" id="mc-shadow">${sh ? "■ 쉐도잉 멈추기" : "🎧 쉐도잉"}</button>
         <span class="muted">속도</span>${[[0.7, "천천히"], [1, "보통"]].map(([r, l]) => `<span class="chip ${(MC().rate || 1) === r ? "on" : ""}" data-rate="${r}">${l}</span>`).join("")}</div>
-      ${s.ja && s.kana ? `<div class="row mc-furi"><span class="muted">후리가나</span>${[["hard", `N${MC().level}보다 어려운 한자만`], ["all", "모든 한자"]].map(([k, l]) => `<span class="chip ${MC().furi === k ? "on" : ""}" data-furi="${k}">${l}</span>`).join("")}</div>` : ""}
-      ${!d ? `<p class="muted" style="margin-top:12px">아직 번역된 게시물이 없어요. 잠시 후 다시 열어주세요.</p>` : !p ? `<p class="muted">게시물이 없어요.</p>` : `
-        <div class="mc-post">
-          <div class="mc-meta"><span>${p.ago ? esc(p.ago) : fmtMD(p.firstSeen)}</span>${idx === 0 ? `<span class="mc-new">최신</span>` : ""}${MC().read[p.id] ? `<span class="mc-done">✓ 읽음</span>` : ""}<a href="${esc(p.url)}" target="_blank" rel="noopener">원문 ↗</a></div>
-          ${p.image ? `<img class="mc-img" src="${esc(p.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}
-          <div class="mc-body">${!s.ja && !s.kana && !s.ko ? `<p class="muted">위 버튼을 눌러 보고 싶은 것을 켜세요</p>` : p.lines.map((l, li) => !l.ko ? `<div class="mc-gap" data-li="${li}"></div>` : `<div class="mc-line ${sh && sh.li === li ? "playing" : ""}" data-li="${li}"><button class="mc-say" data-say="${li}" aria-label="읽어주기">🔊</button>
+      ${s.ja && s.kana ? `<div class="row mc-furi"><span class="muted">후리가나</span>${[["hard", `N${MC().level}보다 어려운 한자만`], ["all", "모든 한자"]].map(([k, l]) => `<span class="chip ${MC().furi === k ? "on" : ""}" data-furi="${k}">${l}</span>`).join("")}</div>` : ""}`;
+  const bodyHTML = (p, s) => !s.ja && !s.kana && !s.ko ? `<p class="muted">위 버튼을 눌러 보고 싶은 것을 켜세요</p>` : p.lines.map((l, li) => !l.ko ? `<div class="mc-gap" data-li="${li}"></div>` : `<div class="mc-line ${sh && sh.li === li ? "playing" : ""}" data-li="${li}"><button class="mc-say" data-say="${li}" aria-label="읽어주기">🔊</button>
             ${s.ja ? `<p class="mc-ja">${jaLineHTML(l, s.kana)}</p>` : s.kana ? `<p class="mc-kana">${esc(l.kana)}</p>` : ""}
-            ${s.ko ? `<p class="mc-ko">${esc(l.ko)}</p>` : ""}</div>`).join("")}</div>
-          <p class="muted" style="font-size:11.5px;margin-top:8px">${p.via === "mymemory" ? "MyMemory" : "구글"} 자동 번역 · 낱말 뜻은 네이버 일본어사전</p>
-        </div>
-        <div class="row mc-rnav" style="margin-top:10px;gap:6px">
+            ${s.ko ? `<p class="mc-ko">${esc(l.ko)}</p>` : ""}</div>`).join("");
+  const navHTML = (p, posts) => `
           <button class="btn-sm" data-mc-go="1" ${idx >= posts.length - 1 ? "disabled" : ""}>◀ 이전 글</button>
           <button class="btn-primary grow" id="mc-read">${MC().read[p.id] ? "✓ 읽었어요 (다시 기록)" : "📖 다 읽었어요 · 공부 기록"}</button>
-          <button class="btn-sm" data-mc-go="-1" ${idx <= 0 ? "disabled" : ""}>다음 글 ▶</button>
-        </div>`}`;
+          <button class="btn-sm" data-mc-go="-1" ${idx <= 0 ? "disabled" : ""}>다음 글 ▶</button>`;
   const vocabHTML = () => {
     const list = Object.entries(MC().vocab).sort((a, b) => (b[1].added || "").localeCompare(a[1].added || ""));
     if (!list.length) return `<div class="mc-empty"><p>⭐ 단어장이 비어 있어요</p><p class="muted">글을 읽다가 낱말을 누르고 <b>⭐ 단어장에 넣기</b>를 눌러보세요.</p></div>`;
