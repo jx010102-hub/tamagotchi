@@ -867,6 +867,39 @@
 
   .mc-stat { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12.5px; color: var(--ink-soft); background: #F6F0E4; border-radius: 12px; padding: 5px 10px; margin-bottom: 8px; }
   .mc-daily { background: linear-gradient(135deg, #FFF1F4, #FFF8E3); border: 2px solid #F0C7D3; border-radius: 16px; padding: 8px 12px; margin: 2px 0 10px; }
+
+  /* ===== 모찌: 게시판 + 전체 화면 읽기 ===== */
+  .mc-upd { display: flex; align-items: center; gap: 10px; background: #FFFDF7; border: 2px solid #EADCC4; border-radius: 16px; padding: 8px 12px; margin-bottom: 10px; }
+  .mc-upd-s { font-size: 14px; margin: 1px 0; }
+  .mc-upd-s b { color: #D35A6E; }
+  .mc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; max-height: max(260px, calc(100dvh - 520px)); overflow: auto; padding: 4px 2px 6px; }
+  .mc-card-p { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 4px; text-align: left; min-height: 150px; padding: 10px 11px; border-radius: 16px; background: #FFFDF7; border: 2px solid #EADCC4; box-shadow: 0 3px 0 rgba(94,69,53,.1); color: var(--ink); overflow: hidden; }
+  .mc-card-p:active { transform: translateY(2px); }
+  .mc-card-p.new { border-color: #EE7F8A; background: #FFF6F8; }
+  .mc-card-p.read { opacity: .78; }
+  .mc-thumb { width: calc(100% + 22px); margin: -10px -11px 4px; height: 70px; object-fit: cover; }
+  .mc-cardtop { display: flex; align-items: center; gap: 5px; font-size: 11px; }
+  .mc-ago { margin-left: auto; color: var(--ink-soft); }
+  .mc-new.soft { background: #F2C14E; }
+  .mc-ct { font-size: 14.5px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .mc-cs { font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; font-size: 12.5px; color: var(--ink-soft); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .mc-cn { margin-top: auto; font-size: 11px; color: var(--ink-soft); }
+  /* 전체 화면 읽기 */
+  .mc-full { position: fixed; inset: 0; z-index: 200; background: #FFFBF2; padding: max(14px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); animation: rcUp .2s ease; }
+  .mc-reader { height: 100%; display: flex; flex-direction: column; max-width: 980px; margin: 0 auto; }
+  .mc-reader .mc-post { flex: 1; max-height: none; min-height: 0; margin-top: 10px; padding: 18px 22px; }
+  .mc-reader .mc-ja { font-size: clamp(20px, 2.3vw, 26px); line-height: 2.2; }
+  .mc-reader .mc-ja rt { font-size: 12px; }
+  .mc-reader .mc-kana { font-size: clamp(18px, 2vw, 22px); }
+  .mc-reader .mc-ko { font-size: clamp(15px, 1.6vw, 18px); }
+  .mc-reader .mc-line { margin-bottom: 16px; padding-right: 44px; }
+  .mc-reader .mc-say { width: 38px; height: 38px; font-size: 17px; }
+  .mc-rbar { display: flex; align-items: center; gap: 10px; }
+  .mc-rtitle { font-size: 17px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .mc-reader .mc-toggles .mc-t { padding: 12px 8px; font-size: 19px; }
+  .mc-rnav button { min-height: 48px; }
+  body.mc-full-on { overflow: hidden; }
+  body.mc-full-on #toast { z-index: 300; }
 </style>
 </head>
 <body>
@@ -3457,7 +3490,7 @@ function mcLoad(force){
     if (d && Array.isArray(d.posts)) mcData = d; return mcData; });
   return mcLoading;
 }
-const MC_DEF = () => ({ show: { ja: true, ko: false, kana: false }, furi: "hard", rate: 1, read: {}, seen: null, vocab: {}, stats: {}, level: 3 });
+const MC_DEF = () => ({ show: { ja: true, ko: false, kana: false }, furi: "hard", rate: 1, opened: {}, since: null, read: {}, seen: null, vocab: {}, stats: {}, level: 3 });
 const MC = () => { const m = state.mochi || (state.mochi = MC_DEF()); for (const [k, v] of Object.entries(MC_DEF())) if (m[k] === undefined) m[k] = v; return m; };
 const mcStat = (k, n = 1) => { const d = todayStr(), st = MC().stats[d] || (MC().stats[d] = {}); st[k] = (st[k] || 0) + n; };
 const HAS_K = /[一-鿿々]/;
@@ -3525,18 +3558,31 @@ function addVocab(w, ex){
 }
 
 function mountMochi(box){
-  let idx = 0, tab = ui.mochiTab || "read", pop = null, rv = null, sh = null; ui.mochiTab = null;   // sh = 쉐도잉 중 { li, timer }
+  let idx = 0, tab = ui.mochiTab || "read", pop = null, rv = null, sh = null, full = null, upd = null; ui.mochiTab = null;
+  // 글은 바둑판 목록(box) → 누르면 전체 화면(full)으로 집중해서 읽기
+  const qa = sel => [full, box].filter(Boolean).flatMap(r => [...r.querySelectorAll(sel)]), g1 = sel => qa(sel)[0] || null;
+  if (!MC().since) { MC().since = todayStr(); Store.save(); }
+  const isNew = p => !MC().opened[p.id] && (p.firstSeen || "") >= MC().since;
+  const openReader = i => {
+    idx = i; pop = null; const p = mcData.posts[i]; MC().opened[p.id] = todayStr(); Store.save();
+    if (!full) { full = document.createElement("div"); full.className = "mc-full"; full.setAttribute("role", "dialog"); document.body.appendChild(full); document.body.classList.add("mc-full-on"); }
+    draw(); const post = g1(".mc-post"); if (post) post.scrollTop = 0;
+  };
+  const closeReader = () => { stopShadow(); pop = null; if (full) full.remove(); full = null; document.body.classList.remove("mc-full-on"); draw(); };
+  const onKey = e => { if (e.key === "Escape" && full) closeReader(); };
+  document.addEventListener("keydown", onKey);   // sh = 쉐도잉 중 { li, timer }
   const draw = () => {
     const d = mcData, s = MC().show, posts = d ? d.posts : [], p = posts[idx], V = MC().vocab, due = vocabDue().length;
     const on = k => s[k] ? "on" : "";
     box.innerHTML = `<div class="mc-wrap">
       <div class="row" style="justify-content:space-between;align-items:center"><div class="hand duo-title" style="font-size:24px;margin:0">📺 모찌 채널</div>
-        ${tab === "read" && p ? `<span class="muted" style="font-size:12px">${idx + 1} / ${posts.length}</span>` : ""}</div>
+        </div>
       <div class="row mc-tabs">${[["read", "📖 글 읽기"], ["vocab", `⭐ 단어장 ${Object.keys(V).length}`], ["review", `🔁 복습${due ? ` <b>${due}</b>` : ""}`]].map(([k, l]) => `<span class="chip ${tab === k ? "on" : ""}" data-mc-tab="${k}">${l}</span>`).join("")}</div>
       ${statsLine()}
-      ${tab === "read" ? readHTML(d, p, posts, s, on) : tab === "vocab" ? vocabHTML() : reviewHTML()}
-      ${pop ? popHTML() : ""}
+      ${tab === "read" ? gridHTML(d, posts) : tab === "vocab" ? vocabHTML() : reviewHTML()}
+      ${pop && !full ? popHTML() : ""}
     </div>`;
+    if (full) full.innerHTML = `<div class="mc-wrap mc-reader">${readHTML(d, p, posts, s, on)}${pop ? popHTML() : ""}</div>`;
     bind();
   };
   const statsLine = () => {
@@ -3548,8 +3594,27 @@ function mountMochi(box){
   const dailyHTML = () => { const dl = mcDaily(); if (!dl) return "";
     return `<div class="mc-daily"><div class="row" style="justify-content:space-between;align-items:center"><span class="hand" style="font-size:17px">🌸 今日の一文 · 오늘의 한 문장</span><button class="mc-say in" id="dl-say" aria-label="읽어주기">🔊</button></div>
       <p class="mc-ja" style="margin:2px 0 0">${jaLineHTML(dl.l, true)}</p><p class="mc-ko" style="margin:0">${esc(dl.l.ko)}</p></div>`; };
-  const readHTML = (d, p, posts, s, on) => `${idx === 0 ? dailyHTML() : ""}
-      <p class="muted" style="font-size:12.5px;margin:2px 0 8px">${d ? `${esc(d.channelName || "영적세계전문가")} 게시물 · 낱말을 누르면 뜻이 나와요` : "게시물 불러오는 중…"}</p>
+  const postTitle = p => { const l = (p.lines || []).find(x => x.ko); return (l ? l.ko : p.text || "").replace(/^["“'‘「]+|["”'’」]+$/g, "").trim(); };
+  const postSub = p => { const ls = (p.lines || []).filter(x => x.ja); return ls[0] ? ls[0].ja.replace(/^[「『"]+|[」』"]+$/g, "") : ""; };
+  const gridHTML = (d, posts) => {
+    if (!d) return `<p class="muted" style="margin-top:12px">${mcLoading ? "게시물 불러오는 중…" : "아직 번역된 게시물이 없어요. 🔄 업데이트를 눌러보세요."}</p>${updHTML(d, posts)}`;
+    const nNew = posts.filter(isNew).length, nRead = posts.filter(p => MC().read[p.id]).length;
+    return `${dailyHTML()}${updHTML(d, posts, nNew, nRead)}
+      <div class="mc-grid">${posts.map((p, i) => `<button class="mc-card-p ${isNew(p) ? "new" : ""} ${MC().read[p.id] ? "read" : ""}" data-open="${i}">
+        ${p.image ? `<img class="mc-thumb" src="${esc(p.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}
+        <span class="mc-cardtop">${isNew(p) ? `<span class="mc-new">NEW</span>` : i === 0 ? `<span class="mc-new soft">최신</span>` : ""}${MC().read[p.id] ? `<span class="mc-done">✓ 읽음</span>` : ""}<span class="mc-ago">${esc(p.ago || fmtMD(p.firstSeen))}</span></span>
+        <b class="mc-ct">${esc(postTitle(p))}</b>
+        <span class="mc-cs">${esc(postSub(p))}</span>
+        <span class="mc-cn">${p.lines.filter(l => l.ja).length}문장</span>
+      </button>`).join("")}</div>`;
+  };
+  const updHTML = (d, posts = [], nNew = 0, nRead = 0) => `<div class="mc-upd">
+      <div class="grow"><b>게시물 ${posts.length}개</b>${posts.length ? ` <span class="muted">· 읽음 ${nRead}</span>` : ""}
+        <div class="mc-upd-s">${upd === "busy" ? "확인 중…" : upd ? esc(upd) : nNew ? `🆕 새 게시물 <b>${nNew}</b>개가 있어요` : "새 게시물이 없어요"}</div>
+        <div class="muted" style="font-size:11.5px">${d && d.updated ? `마지막 업데이트 ${fmtMD(ymd(new Date(d.updated)))} ${String(new Date(d.updated).getHours()).padStart(2, "0")}:${String(new Date(d.updated).getMinutes()).padStart(2, "0")} · ` : ""}모찌가 1시간마다 채널을 확인해요</div></div>
+      <button class="btn-sm ${nNew ? "" : "btn-primary"}" id="mc-upd" ${upd === "busy" ? "disabled" : ""}>🔄 업데이트</button></div>`;
+  const readHTML = (d, p, posts, s, on) => `
+      <div class="mc-rbar"><button class="btn-sm" id="mc-close">✕ 목록으로</button><b class="grow mc-rtitle">${p ? esc(postTitle(p)) : ""}</b><span class="muted" style="font-size:12px">${idx + 1} / ${posts.length}</span></div>
       <div class="row mc-toggles">
         <button class="mc-t ja ${on("ja")}" data-mc="ja">日本語</button>
         <button class="mc-t kana ${on("kana")}" data-mc="kana">ひらがな</button>
@@ -3567,7 +3632,7 @@ function mountMochi(box){
             ${s.ko ? `<p class="mc-ko">${esc(l.ko)}</p>` : ""}</div>`).join("")}</div>
           <p class="muted" style="font-size:11.5px;margin-top:8px">${p.via === "mymemory" ? "MyMemory" : "구글"} 자동 번역 · 낱말 뜻은 네이버 일본어사전</p>
         </div>
-        <div class="row" style="margin-top:10px;gap:6px">
+        <div class="row mc-rnav" style="margin-top:10px;gap:6px">
           <button class="btn-sm" data-mc-go="1" ${idx >= posts.length - 1 ? "disabled" : ""}>◀ 이전 글</button>
           <button class="btn-primary grow" id="mc-read">${MC().read[p.id] ? "✓ 읽었어요 (다시 기록)" : "📖 다 읽었어요 · 공부 기록"}</button>
           <button class="btn-sm" data-mc-go="-1" ${idx <= 0 ? "disabled" : ""}>다음 글 ▶</button>
@@ -3616,22 +3681,22 @@ function mountMochi(box){
       </div></div>`;
   };
   const openPop = (el, w, s, ex) => {
-    const br = box.getBoundingClientRect(), r = el.getBoundingClientRect();
+    const cont = full ? full.querySelector(".mc-wrap") : box, br = cont.getBoundingClientRect(), r = el.getBoundingClientRect();
     const W = Math.min(300, br.width - 16), x = Math.max(8, Math.min(br.width - W - 8, r.left - br.left + r.width / 2 - W / 2));
     const below = r.bottom - br.top + 8, y = below + 170 > br.height ? Math.max(8, r.top - br.top - 178) : below;
     pop = { w, s, ex, x, y }; keepScroll(draw);
   };
   // 다시 그려도 글 읽던 위치 그대로
   const keepScroll = fn => {
-    const post = box.querySelector(".mc-post"); let anchor = null, off = 0, st = null;
+    const post = g1(".mc-post"); let anchor = null, off = 0, st = null;
     if (post) { const top = post.getBoundingClientRect().top; st = post.scrollTop;
       const el = [...post.querySelectorAll("[data-li]")].find(x => x.getBoundingClientRect().bottom > top + 4);
       if (el) { anchor = el.dataset.li; off = el.getBoundingClientRect().top - top; } }
-    const vl = box.querySelector(".mc-vlist"), vst = vl ? vl.scrollTop : 0;
+    const vl = g1(".mc-vlist"), vst = vl ? vl.scrollTop : 0;
     fn();
-    const np = box.querySelector(".mc-post");
+    const np = g1(".mc-post");
     if (np && anchor != null) { const el = np.querySelector(`[data-li="${anchor}"]`); if (el) np.scrollTop += el.getBoundingClientRect().top - np.getBoundingClientRect().top - off; else np.scrollTop = st; }
-    const nv = box.querySelector(".mc-vlist"); if (nv) nv.scrollTop = vst;
+    const nv = g1(".mc-vlist"); if (nv) nv.scrollTop = vst;
   };
   // 🎧 쉐도잉: 지금 보이는 문장부터 한 문장씩 읽고, 읽은 만큼 쉬어서 따라 말할 시간을 줘요
   const stopShadow = () => { if (sh) { clearTimeout(sh.timer); mcAddSec((Date.now() - sh.t0) / 1000); } sh = null; stopJa(); };
@@ -3639,8 +3704,8 @@ function mountMochi(box){
     const p = mcData && mcData.posts[idx]; if (!sh || !p || !box.isConnected) { stopShadow(); return; }
     while (li < p.lines.length && !p.lines[li].ja) li++;
     if (li >= p.lines.length) { stopShadow(); keepScroll(draw); toast("🎧 쉐도잉 끝! 수고했어"); return; }
-    sh.li = li; box.querySelectorAll(".mc-line.playing").forEach(x => x.classList.remove("playing"));
-    const el = box.querySelector(`.mc-line[data-li="${li}"]`), post = box.querySelector(".mc-post");
+    sh.li = li; qa(".mc-line.playing").forEach(x => x.classList.remove("playing"));
+    const el = g1(`.mc-line[data-li="${li}"]`), post = g1(".mc-post");
     if (el) { el.classList.add("playing"); if (post) post.scrollTo({ top: post.scrollTop + el.getBoundingClientRect().top - post.getBoundingClientRect().top - post.clientHeight / 3, behavior: "smooth" }); }
     const t0 = Date.now();
     sayJa(p.lines[li].ja, { onend: () => { if (!sh) return; const gap = Math.min(9000, Math.max(1200, (Date.now() - t0) * 1.1)); mcStat("shadow"); sh.timer = setTimeout(() => playLine(li + 1), gap); },
@@ -3648,37 +3713,45 @@ function mountMochi(box){
   };
   const startReview = list => { rv = { q: list.sort(() => Math.random() - .5).slice(0, 30), i: 0, show: false, res: [], t0: Date.now(), mins: 0 }; pop = null; draw(); };
   const bind = () => {
-    const g = k => box.querySelector(k);
+    const g = k => g1(k);
     if (g("#mc-shadow")) g("#mc-shadow").onclick = () => {
       if (sh) { stopShadow(); keepScroll(draw); return; }
-      const post = box.querySelector(".mc-post"), top = post ? post.getBoundingClientRect().top : 0;
+      const post = g1(".mc-post"), top = post ? post.getBoundingClientRect().top : 0;
       const first = post ? [...post.querySelectorAll(".mc-line")].find(x => x.getBoundingClientRect().bottom > top + 4) : null;
       sh = { li: first ? +first.dataset.li : 0, timer: null, t0: Date.now() }; keepScroll(draw); playLine(sh.li);
     };
-    box.querySelectorAll("[data-rate]").forEach(b => b.onclick = () => { MC().rate = +b.dataset.rate; Store.save(); keepScroll(draw); });
-    box.querySelectorAll("[data-say]").forEach(b => b.onclick = e => { e.stopPropagation(); const l = mcData.posts[idx].lines[+b.dataset.say]; if (sh) stopShadow(); sayJa(l.ja); keepScroll(draw); });
+    qa("[data-rate]").forEach(b => b.onclick = () => { MC().rate = +b.dataset.rate; Store.save(); keepScroll(draw); });
+    qa("[data-say]").forEach(b => b.onclick = e => { e.stopPropagation(); const l = mcData.posts[idx].lines[+b.dataset.say]; if (sh) stopShadow(); sayJa(l.ja); keepScroll(draw); });
     if (g("#pop-say")) g("#pop-say").onclick = e => { e.stopPropagation(); sayJa(pop.w); };
     if (g("#rv-say")) g("#rv-say").onclick = () => sayJa(rv.q[rv.i]);
-    box.querySelectorAll("[data-mc-tab]").forEach(b => b.onclick = () => { stopShadow(); tab = b.dataset.mcTab; pop = null; if (tab !== "review") rv = rv && rv.i < rv.q.length ? rv : null; draw(); });
-    box.querySelectorAll("[data-mc]").forEach(b => b.onclick = () => { const k = b.dataset.mc; MC().show[k] = !MC().show[k]; Store.save(); pop = null; keepScroll(draw); });
-    box.querySelectorAll("[data-furi]").forEach(b => b.onclick = () => { MC().furi = b.dataset.furi; Store.save(); keepScroll(draw); });
-    box.querySelectorAll("[data-mc-go]").forEach(b => b.onclick = () => { stopShadow(); idx = Math.max(0, Math.min(mcData.posts.length - 1, idx + +b.dataset.mcGo)); pop = null; draw(); });
+    qa("[data-mc-tab]").forEach(b => b.onclick = () => { stopShadow(); tab = b.dataset.mcTab; pop = null; if (tab !== "review") rv = rv && rv.i < rv.q.length ? rv : null; draw(); });
+    qa("[data-mc]").forEach(b => b.onclick = () => { const k = b.dataset.mc; MC().show[k] = !MC().show[k]; Store.save(); pop = null; keepScroll(draw); });
+    qa("[data-furi]").forEach(b => b.onclick = () => { MC().furi = b.dataset.furi; Store.save(); keepScroll(draw); });
+    qa("[data-mc-go]").forEach(b => b.onclick = () => { stopShadow(); openReader(Math.max(0, Math.min(mcData.posts.length - 1, idx + +b.dataset.mcGo))); });
+    qa("[data-open]").forEach(b => b.onclick = () => openReader(+b.dataset.open));
+    if (g("#mc-close")) g("#mc-close").onclick = closeReader;
+    if (g("#mc-upd")) g("#mc-upd").onclick = async () => {
+      const before = new Set((mcData ? mcData.posts : []).map(p => p.id)); upd = "busy"; draw();
+      const d = await mcLoad(true); const got = d ? d.posts.filter(p => !before.has(p.id)).length : 0;
+      upd = !d ? "연결이 안 돼요. 인터넷을 확인해주세요." : got ? `🆕 새 게시물 ${got}개를 받았어요!` : "새 게시물이 없어요. 최신 상태예요 ✓";
+      draw(); setTimeout(() => { if (upd && upd !== "busy") { upd = null; if (box.isConnected) draw(); } }, 6000);
+    };
     const rd = g("#mc-read");
     if (rd) rd.onclick = () => { const p = mcData.posts[idx]; if (!MC().read[p.id]) mcStat("lines", p.lines.filter(l => l.ko).length); MC().read[p.id] = todayStr(); Store.save(); openManualSheet("jp"); draw(); };
-    box.querySelectorAll(".mc-w").forEach(el => el.onclick = e => {
+    qa(".mc-w").forEach(el => el.onclick = e => {
       e.stopPropagation(); const line = el.closest(".mc-line"), li = line ? +line.dataset.li : -1, p = mcData.posts[idx], l = p && p.lines[li];
       openPop(el, el.dataset.w, el.dataset.s, l ? { ja: l.ja, ko: l.ko, s: el.dataset.s, post: p.id } : null);
     });
-    box.querySelectorAll("[data-pop]").forEach(el => el.onclick = e => { e.stopPropagation(); const v = MC().vocab[el.dataset.pop]; openPop(el, el.dataset.pop, v && v.ex && v.ex.s, v && v.ex); });
+    qa("[data-pop]").forEach(el => el.onclick = e => { e.stopPropagation(); const v = MC().vocab[el.dataset.pop]; openPop(el, el.dataset.pop, v && v.ex && v.ex.s, v && v.ex); });
     if (g("#pop-x")) g("#pop-x").onclick = () => { pop = null; keepScroll(draw); };
     if (g("#pop-save")) g("#pop-save").onclick = () => { if (addVocab(pop.w, pop.ex)) toast(`⭐ ${esc(pop.w)} 단어장에 넣었어요`); keepScroll(draw); };
     const mp = g(".mc-pop"); if (mp) mp.onclick = e => e.stopPropagation();
-    box.querySelector(".mc-wrap").onclick = () => { if (pop) { pop = null; keepScroll(draw); } };
-    box.querySelectorAll("[data-unv]").forEach(b => b.onclick = e => { e.stopPropagation(); const w = b.dataset.unv; if (!confirm(`'${w}'을(를) 단어장에서 뺄까요?`)) return; delete MC().vocab[w]; Store.save(); pop = null; keepScroll(draw); });
+    qa(".mc-wrap").forEach(w => w.onclick = () => { if (pop) { pop = null; keepScroll(draw); } });
+    qa("[data-unv]").forEach(b => b.onclick = e => { e.stopPropagation(); const w = b.dataset.unv; if (!confirm(`'${w}'을(를) 단어장에서 뺄까요?`)) return; delete MC().vocab[w]; Store.save(); pop = null; keepScroll(draw); });
     if (g("#rv-start")) g("#rv-start").onclick = () => startReview(vocabDue());
     if (g("#rv-extra")) g("#rv-extra").onclick = () => startReview(Object.keys(MC().vocab).slice(0, 15).map(w => w));
     if (g("#rv-show")) g("#rv-show").onclick = () => { rv.show = true; draw(); };
-    box.querySelectorAll("[data-g]").forEach(b => b.onclick = () => {
+    qa("[data-g]").forEach(b => b.onclick = () => {
       const gr = +b.dataset.g, w = rv.q[rv.i]; srsGrade(w, gr); rv.res.push(gr);
       if (gr === 0 && rv.q.filter(x => x === w).length < 3) rv.q.push(w);   // 몰랐던 낱말은 이번 복습 끝에 한 번 더
       rv.i++; rv.show = false;
@@ -3692,7 +3765,7 @@ function mountMochi(box){
     if (g("#dl-say")) g("#dl-say").onclick = () => { const dl = mcDaily(); if (dl) sayJa(dl.l.ja); };
   };
   draw();
-  const watch = setInterval(() => { if (!box.isConnected) { stopShadow(); clearInterval(watch); } }, 500);   // 창 닫히면 소리 끄기
+  const watch = setInterval(() => { if (!box.isConnected) { stopShadow(); if (full) { full.remove(); full = null; document.body.classList.remove("mc-full-on"); } document.removeEventListener("keydown", onKey); clearInterval(watch); } }, 500);   // 창 닫히면 소리 끄기·전체 화면 닫기
   mcLoad().then(d => { if (d) { MC().seen = d.posts[0] && d.posts[0].id; Store.save(); } if (box.isConnected) draw(); });
 }
 /* ---- 오늘의 한 문장: 날마다 최근 글에서 짧은 문장 하나 ---- */
