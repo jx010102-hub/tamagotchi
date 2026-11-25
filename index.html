@@ -873,6 +873,22 @@
   .mc-upd-s { font-size: 14px; margin: 1px 0; }
   .mc-upd-s b { color: #D35A6E; }
   .mc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; max-height: max(260px, calc(100dvh - 520px)); overflow: auto; padding: 4px 2px 6px; }
+  .mc-vprev { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; align-content: flex-start; }
+  .mc-vprev span { font-size: 14px; padding: 1px 7px; border-radius: 8px; background: #F4ECDD; }
+  .mc-rvopt { align-items: flex-start; }
+  .mc-rvopt[disabled] { opacity: .5; }
+  .mc-rvopt .mc-cs { font-size: 12px; color: var(--ink-soft, #8a7766); flex: 1; }
+  .mc-rvic { font-size: 28px; line-height: 1; }
+  .mc-vbig { flex: 1; overflow: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 10px; align-content: start; padding: 2px; }
+  .mc-vb { background: #FFFDF7; border: 2px solid #EADCC4; border-radius: 16px; padding: 10px 12px; }
+  .mc-vbh { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .mc-vb .mc-pw { font-size: 26px; }
+  .mc-vb .mc-pk { margin: 4px 0 2px; font-size: 16px; }
+  .mc-rvbar { height: 6px; border-radius: 4px; background: #EADCC4; overflow: hidden; margin: 2px 0 10px; }
+  .mc-rvbar i { display: block; height: 100%; background: var(--accent, #F2A65A); transition: width .3s; }
+  .mc-rvstage { flex: 1; display: flex; align-items: center; justify-content: center; overflow: auto; }
+  .mc-rvstage > * { width: min(640px, 100%); }
+  .mc-rvstage .mc-cw { font-size: 52px; }
   .mc-card-p { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 4px; text-align: left; min-height: 150px; padding: 10px 11px; border-radius: 16px; background: #FFFDF7; border: 2px solid #EADCC4; box-shadow: 0 3px 0 rgba(94,69,53,.1); color: var(--ink); overflow: hidden; }
   .mc-card-p:active { transform: translateY(2px); }
   .mc-card-p.new { border-color: #EE7F8A; background: #FFF6F8; }
@@ -3560,17 +3576,20 @@ function addVocab(w, ex){
 }
 
 function mountMochi(box){
-  let idx = 0, tab = ui.mochiTab || "read", pop = null, rv = null, sh = null, full = null, upd = null; ui.mochiTab = null;
+  let idx = 0, tab = ui.mochiTab || "read", pop = null, rv = null, sh = null, full = null, upd = null, fmode = null, vday = null; ui.mochiTab = null;
   // 글은 바둑판 목록(box) → 누르면 전체 화면(full)으로 집중해서 읽기
   const qa = sel => [full, box].filter(Boolean).flatMap(r => [...r.querySelectorAll(sel)]), g1 = sel => qa(sel)[0] || null;
   if (!MC().since) { MC().since = todayStr(); Store.save(); }
   const isNew = p => !MC().opened[p.id] && (p.firstSeen || "") >= MC().since;
-  const openReader = i => {
-    idx = i; pop = null; const p = mcData.posts[i]; MC().opened[p.id] = todayStr(); Store.save();
+  // 전체 화면: 글 읽기(read) · 날짜별 단어(vday) · 복습(review)
+  const openFull = mode => {
+    fmode = mode; pop = null;
     if (!full) { full = document.createElement("div"); full.className = "mc-full"; full.setAttribute("role", "dialog"); document.body.appendChild(full); document.body.classList.add("mc-full-on"); }
-    draw(); const post = g1(".mc-post"); if (post) post.scrollTop = 0;
+    else full.innerHTML = "";
+    draw(); const sc = g1(".mc-full .mc-post, .mc-full .mc-vbig"); if (sc) sc.scrollTop = 0;
   };
-  const closeReader = () => { stopShadow(); pop = null; if (full) full.remove(); full = null; document.body.classList.remove("mc-full-on"); draw(); };
+  const openReader = i => { idx = i; const p = mcData.posts[i]; MC().opened[p.id] = todayStr(); Store.save(); openFull("read"); };
+  const closeReader = () => { stopShadow(); pop = null; rv = null; fmode = null; if (full) full.remove(); full = null; document.body.classList.remove("mc-full-on"); draw(); };
   const onKey = e => { if (e.key === "Escape" && full) closeReader(); };
   document.addEventListener("keydown", onKey);   // sh = 쉐도잉 중 { li, timer }
   const draw = () => {
@@ -3584,7 +3603,8 @@ function mountMochi(box){
       ${tab === "read" ? gridHTML(d, posts) : tab === "vocab" ? vocabHTML() : reviewHTML()}
       ${pop && !full ? popHTML() : ""}
     </div>`;
-    if (full) {
+    if (full && fmode !== "read") full.innerHTML = `<div class="mc-wrap mc-reader">${fmode === "vday" ? vdayHTML() : rvFullHTML()}</div>`;
+    else if (full) {
       const cur = full.querySelector(".mc-post");
       if (cur && p && cur.dataset.pid === p.id) {
         // 같은 글이면 그림·글 상자는 그대로 두고 버튼 줄·글자·아래 버튼·뜻 창만 바꿔요 (화면이 위로 튀지 않게)
@@ -3652,21 +3672,60 @@ function mountMochi(box){
           <button class="btn-sm" data-mc-go="1" ${idx >= posts.length - 1 ? "disabled" : ""}>◀ 이전 글</button>
           <button class="btn-primary grow" id="mc-read">${MC().read[p.id] ? "✓ 읽었어요 (다시 기록)" : "📖 다 읽었어요 · 공부 기록"}</button>
           <button class="btn-sm" data-mc-go="-1" ${idx <= 0 ? "disabled" : ""}>다음 글 ▶</button>`;
+  // 단어장: 저장한 날짜별 카드 → 누르면 그날 단어 전체 화면
+  const vocabDays = () => { const m = {}; for (const [w, v] of Object.entries(MC().vocab)) (m[v.added || todayStr()] ||= []).push(w); return Object.entries(m).sort((a, b) => b[0].localeCompare(a[0])); };
+  const dayLabel = d => `${fmtMD(d)}자 단어`;
   const vocabHTML = () => {
-    const list = Object.entries(MC().vocab).sort((a, b) => (b[1].added || "").localeCompare(a[1].added || ""));
-    if (!list.length) return `<div class="mc-empty"><p>⭐ 단어장이 비어 있어요</p><p class="muted">글을 읽다가 낱말을 누르고 <b>⭐ 단어장에 넣기</b>를 눌러보세요.</p></div>`;
-    return `<p class="muted" style="font-size:12.5px;margin:4px 0 8px">${list.length}개 · 오늘 복습할 낱말 ${vocabDue().length}개</p>
-      <div class="mc-vlist">${list.map(([w, v]) => `<div class="mc-vrow"><button class="mc-vw" data-pop="${esc(w)}"><b>${esc(w)}</b><span class="muted">${esc(v.r || "")}</span></button>
-        <span class="grow mc-vko">${esc(shortKo(v.ko))}</span>${lvBadge(v.lv)}<span class="muted mc-vdue">${v.due && v.due > todayStr() ? `${fmtMD(v.due)} 복습` : "오늘 복습"}</span><button class="btn-sm ws-del" data-unv="${esc(w)}" aria-label="빼기">✕</button></div>`).join("")}</div>`;
+    const days = vocabDays(), total = Object.keys(MC().vocab).length;
+    if (!total) return `<div class="mc-empty"><p>⭐ 단어장이 비어 있어요</p><p class="muted">글을 읽다가 낱말을 누르고 <b>⭐ 단어장에 넣기</b>를 눌러보세요.</p></div>`;
+    return `<div class="mc-upd"><div class="grow"><b>단어 ${total}개</b> <span class="muted">· ${days.length}일 동안 모았어요</span><div class="mc-upd-s">오늘 복습할 낱말 <b>${vocabDue().length}</b>개</div></div></div>
+      <div class="mc-grid">${days.map(([d, ws]) => { const dueN = ws.filter(w => (MC().vocab[w].due || d) <= todayStr()).length;
+        return `<button class="mc-card-p mc-vcard ${d === todayStr() ? "new" : ""}" data-vday="${d}">
+          <span class="mc-cardtop">${d === todayStr() ? `<span class="mc-new">오늘</span>` : ""}<span class="mc-ago">${ws.length}개</span></span>
+          <b class="mc-ct">${dayLabel(d)}</b>
+          <span class="mc-vprev">${ws.slice(0, 4).map(w => `<span>${esc(w)}</span>`).join("")}${ws.length > 4 ? `<span class="muted">…</span>` : ""}</span>
+          <span class="mc-cn">${dueN ? `🔁 오늘 복습할 낱말 ${dueN}개` : `✓ 다음 복습 ${fmtMD(ws.map(w => MC().vocab[w].due).filter(Boolean).sort()[0] || d)}`}</span></button>`; }).join("")}</div>`;
+  };
+  const vdayHTML = () => {
+    const ws = (vocabDays().find(([d]) => d === vday) || [, []])[1];
+    return `<div class="mc-rbar"><button class="btn-sm" id="mc-close">✕ 단어장으로</button><b class="grow mc-rtitle">⭐ ${dayLabel(vday)}</b><span class="muted" style="font-size:13px">${ws.length}개</span></div>
+      ${ws.length ? `<div class="mc-vbig">${ws.map(w => { const v = MC().vocab[w], ex = v.ex;
+        return `<div class="mc-vb"><div class="mc-vbh"><button class="mc-say in" data-sayw="${esc(w)}" aria-label="읽어주기">🔊</button><b class="mc-pw">${esc(w)}</b><span class="mc-pr">${esc(v.r || "")}</span>${lvBadge(v.lv)}
+            <span class="grow"></span><span class="muted mc-vdue">${v.due && v.due > todayStr() ? `${fmtMD(v.due)} 복습` : "오늘 복습"}</span><button class="btn-sm ws-del" data-unv="${esc(w)}" aria-label="빼기">✕</button></div>
+          <div class="mc-pk">${esc(shortKo(v.ko)) || `<span class="muted">뜻 준비 중</span>`}</div>
+          ${ex && ex.ja ? `<p class="mc-cex">${esc(ex.ja).split(esc(ex.s || w)).join(`<mark>${esc(ex.s || w)}</mark>`)}</p>${ex.ko ? `<p class="mc-cexk">${esc(ex.ko)}</p>` : ""}` : ""}</div>`; }).join("")}</div>
+        <div class="row mc-rnav" style="margin-top:10px"><button class="btn-primary grow" data-rv="date:${vday}">🔁 ${dayLabel(vday)} 복습하기</button></div>`
+      : `<div class="mc-empty"><p>이 날 단어가 없어요</p></div>`}`;
+  };
+  // 복습: 무엇을 복습할지 고르는 카드 → 누르면 전체 화면 카드 복습
+  const rvSets = () => {
+    const V = MC().vocab, all = Object.keys(V), t = todayStr(), days = vocabDays();
+    const next = Object.values(V).map(v => v.due).filter(x => x && x > t).sort()[0];
+    return [
+      { k: "due", ic: "⏰", t: "오늘 복습할 낱말", sub: "알맞은 날에 다시 물어봐요 (추천)", ws: vocabDue(), empty: next ? `다음 복습 ${fmtMD(next)}` : "복습할 낱말 없음", hot: true },
+      { k: "today", ic: "🌱", t: `${fmtMD(t)}자 단어`, sub: "오늘 저장한 낱말", ws: all.filter(w => V[w].added === t), empty: "오늘 저장한 낱말 없음" },
+      { k: "all", ic: "🔀", t: "모든 단어 섞어서", sub: `지금까지 모은 ${all.length}개`, ws: all, empty: "" },
+      { k: "weak", ic: "😵", t: "자주 틀린 낱말", sub: "몰랐어·헷갈려가 많았던 낱말", ws: all.filter(w => (V[w].miss || 0) > 0 || (V[w].n || 0) > (V[w].ok || 0)), empty: "틀린 낱말 없음" },
+      ...days.filter(([d]) => d !== t).map(([d, ws]) => ({ k: "date:" + d, ic: "📅", t: `${fmtMD(d)}자 단어`, sub: `그날 저장한 낱말`, ws, empty: "" })),
+    ];
   };
   const reviewHTML = () => {
-    if (!rv) {
-      const due = vocabDue(), total = Object.keys(MC().vocab).length;
-      const next = Object.values(MC().vocab).map(v => v.due).filter(x => x && x > todayStr()).sort()[0];
-      return `<div class="mc-empty">${!total ? `<p>🔁 복습할 낱말이 아직 없어요</p><p class="muted">단어장에 낱말을 넣으면 알맞은 날에 다시 물어봐요.</p>`
-        : due.length ? `<p class="hand" style="font-size:22px">오늘 복습할 낱말 <b>${due.length}</b>개</p><p class="muted">맞히면 점점 길게, 틀리면 금방 다시 나와요.</p><button class="btn-primary btn-block" id="rv-start" style="margin-top:10px">🔁 복습 시작</button>`
-        : `<p class="hand" style="font-size:22px">오늘 복습 끝! 🎉</p><p class="muted">다음 복습: ${next ? fmtMD(next) : "-"}</p><button class="btn-sm" id="rv-extra" style="margin-top:8px">그래도 더 연습하기</button>`}</div>`;
-    }
+    const total = Object.keys(MC().vocab).length;
+    if (!total) return `<div class="mc-empty"><p>🔁 복습할 낱말이 아직 없어요</p><p class="muted">단어장에 낱말을 넣으면 알맞은 날에 다시 물어봐요.</p></div>`;
+    const cnt = MC().rvCount || 20;
+    return `<div class="mc-upd"><div class="grow"><b>어떻게 복습할까요?</b><div class="muted" style="font-size:12px">카드를 누르면 전체 화면으로 복습해요 · 순서는 섞여서 나와요</div></div>
+        <span class="muted" style="font-size:12px">한 번에</span>${[[10, "10개"], [20, "20개"], [999, "전부"]].map(([n, l]) => `<span class="chip ${cnt === n ? "on" : ""}" data-rvcnt="${n}">${l}</span>`).join("")}</div>
+      <div class="mc-grid">${rvSets().map(o => `<button class="mc-card-p mc-rvopt ${o.hot && o.ws.length ? "new" : ""}" data-rv="${o.k}" ${o.ws.length ? "" : "disabled"}>
+          <span class="mc-rvic">${o.ic}</span><b class="mc-ct">${esc(o.t)}</b><span class="mc-cs">${esc(o.sub)}</span>
+          <span class="mc-cn">${o.ws.length ? `<b>${o.ws.length}</b>개${o.ws.length > cnt ? ` · ${cnt}개씩` : ""}` : esc(o.empty)}</span></button>`).join("")}</div>`;
+  };
+  const rvFullHTML = () => {
+    if (!rv) return "";
+    const bar = `<div class="mc-rbar"><button class="btn-sm" id="mc-close">✕ ${rv.i >= rv.q.length ? "닫기" : "그만하기"}</button><b class="grow mc-rtitle">🔁 ${esc(rv.label || "복습")}</b><span class="muted" style="font-size:13px">${Math.min(rv.i + 1, rv.q.length)} / ${rv.q.length}</span></div>
+      <div class="mc-rvbar"><i style="width:${Math.round(rv.i / rv.q.length * 100)}%"></i></div>`;
+    return `${bar}<div class="mc-rvstage">${rvCardHTML()}</div>`;
+  };
+  const rvCardHTML = () => {
     if (rv.i >= rv.q.length) {
       const ok = rv.res.filter(x => x === 2).length;
       return `<div class="mc-empty"><p class="hand" style="font-size:24px">복습 끝! ${ok} / ${rv.q.length}</p><p class="muted">${ok === rv.q.length ? "…다 맞혔네. 제법인데." : "틀린 건 금방 다시 나와요."}</p>
@@ -3675,7 +3734,7 @@ function mountMochi(box){
     const w = rv.q[rv.i], v = MC().vocab[w] || { ...(mcDict[w] || {}) }, ex = v.ex;
     const blank = ex && ex.ja ? esc(ex.ja).split(esc(ex.s || w)).join(`<mark>${rv.show ? esc(ex.s || w) : "＿＿"}</mark>`) : "";
     return `<div class="mc-card">
-      <div class="muted" style="font-size:12px">${rv.i + 1} / ${rv.q.length} ${lvBadge(v.lv)}</div>
+      <div class="muted" style="font-size:12px">${lvBadge(v.lv)} ${v.added ? `${fmtMD(v.added)}자 단어` : ""}</div>
       <div class="mc-cw">${esc(w)}${rv.show ? ` <button class="mc-say in" id="rv-say" aria-label="읽어주기">🔊</button>` : ""}</div>
       ${rv.show ? `<div class="mc-cr">${esc(v.r || "")}</div><div class="mc-ck">${esc(shortKo(v.ko))}</div>` : `<p class="muted">읽는 법과 뜻을 떠올려 보세요</p>`}
       ${blank ? `<p class="mc-cex">${blank}</p>${rv.show && ex.ko ? `<p class="mc-cexk">${esc(ex.ko)}</p>` : ""}` : ""}
@@ -3726,7 +3785,7 @@ function mountMochi(box){
     sayJa(p.lines[li].ja, { onend: () => { if (!sh) return; const gap = Math.min(9000, Math.max(1200, (Date.now() - t0) * 1.1)); mcStat("shadow"); sh.timer = setTimeout(() => playLine(li + 1), gap); },
       onerror: () => { if (sh) sh.timer = setTimeout(() => playLine(li + 1), 400); } });
   };
-  const startReview = list => { rv = { q: list.sort(() => Math.random() - .5).slice(0, 30), i: 0, show: false, res: [], t0: Date.now(), mins: 0 }; pop = null; draw(); };
+  const startReview = (list, label) => { const n = MC().rvCount || 20; rv = { q: [...list].sort(() => Math.random() - .5).slice(0, n), i: 0, show: false, res: [], t0: Date.now(), mins: 0, label }; openFull("review"); };
   const bind = () => {
     const g = k => g1(k);
     if (g("#mc-shadow")) g("#mc-shadow").onclick = () => {
@@ -3763,8 +3822,12 @@ function mountMochi(box){
     const mp = g(".mc-pop"); if (mp) mp.onclick = e => e.stopPropagation();
     qa(".mc-wrap").forEach(w => w.onclick = () => { if (pop) { pop = null; keepScroll(draw); } });
     qa("[data-unv]").forEach(b => b.onclick = e => { e.stopPropagation(); const w = b.dataset.unv; if (!confirm(`'${w}'을(를) 단어장에서 뺄까요?`)) return; delete MC().vocab[w]; Store.save(); pop = null; keepScroll(draw); });
-    if (g("#rv-start")) g("#rv-start").onclick = () => startReview(vocabDue());
-    if (g("#rv-extra")) g("#rv-extra").onclick = () => startReview(Object.keys(MC().vocab).slice(0, 15).map(w => w));
+    qa("[data-rv]").forEach(b => b.onclick = () => { const k = b.dataset.rv, d = k.startsWith("date:") && k.slice(5);
+      const o = rvSets().find(x => x.k === k) || (d && { t: `${fmtMD(d)}자 단어`, ws: Object.keys(MC().vocab).filter(w => MC().vocab[w].added === d) });
+      if (o && o.ws.length) startReview(o.ws, o.t); });
+    qa("[data-rvcnt]").forEach(b => b.onclick = () => { MC().rvCount = +b.dataset.rvcnt; Store.save(); draw(); });
+    qa("[data-vday]").forEach(b => b.onclick = () => { vday = b.dataset.vday; openFull("vday"); });
+    qa("[data-sayw]").forEach(b => b.onclick = e => { e.stopPropagation(); sayJa(b.dataset.sayw); });
     if (g("#rv-show")) g("#rv-show").onclick = () => { rv.show = true; draw(); };
     qa("[data-g]").forEach(b => b.onclick = () => {
       const gr = +b.dataset.g, w = rv.q[rv.i]; srsGrade(w, gr); rv.res.push(gr);
@@ -3773,9 +3836,9 @@ function mountMochi(box){
       if (rv.i >= rv.q.length) { mcAddSec((Date.now() - rv.t0) / 1000); rv.mins = mcPendingMin(); }
       draw();
     });
-    if (g("#rv-done")) g("#rv-done").onclick = () => { rv = null; draw(); };
+    if (g("#rv-done")) g("#rv-done").onclick = closeReader;
     const recPending = label => { const m = mcPendingMin(); if (m < 1) return; mcStat("recSec", m * 60); Store.save(); addRecord("jp", m, todayStr(), label, "auto"); };
-    if (g("#rv-rec")) g("#rv-rec").onclick = () => { rv = null; draw(); recPending("🐱 모찌 공부 (복습·쉐도잉)"); };
+    if (g("#rv-rec")) g("#rv-rec").onclick = () => { closeReader(); recPending("🐱 모찌 공부 (복습·쉐도잉)"); };
     if (g("#mc-rec")) g("#mc-rec").onclick = () => { recPending("🐱 모찌 공부 (복습·쉐도잉)"); keepScroll(draw); };
     if (g("#dl-say")) g("#dl-say").onclick = () => { const dl = mcDaily(); if (dl) sayJa(dl.l.ja); };
   };
