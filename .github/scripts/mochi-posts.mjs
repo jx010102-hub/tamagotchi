@@ -99,8 +99,11 @@ async function tokenize(ja){
 const known = new Map(old.posts.map(p => [p.id, p]));
 const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
 const posts = []; let fresh = 0;
+// 1개월 넘은 글(“1개월 전”, “2개월 전”, “1년 전”…)은 새로 가져오거나 번역하지 않아요. 이미 있는 글은 그대로 둬요.
+const isOld = ago => /(개월|년)\s*전/.test(ago || "");
 for (const p of found.slice(0, KEEP)) {
   const k = known.get(p.id);
+  if (isOld(p.ago)) { if (k) posts.push(k); else console.log("1개월 넘은 글이라 건너뜀:", p.ago, p.text.slice(0, 20).replace(/\n/g, " ")); continue; }
   // 이미 번역한 글: 다시 번역하지 않고 링크 부분만 잘라서 정리
   if (k && k.lines?.length && (k.text === p.text || cleanText(k.text) === p.text)) { posts.push({ ...k, text: p.text, lines: cutBody(k.lines, l => l.ko), ago: p.ago, image: p.image ?? k.image }); continue; }
   if (fresh >= NEW_PER_RUN) { if (k) posts.push(k); continue; }
