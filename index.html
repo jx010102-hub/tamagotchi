@@ -3486,7 +3486,7 @@ function mcLoad(force){
   if (mcLoading) return mcLoading;
   const get = f => fetch(f, { cache: "no-cache" }).then(r => r.ok ? r.json() : null).catch(() => null);
   mcLoading = Promise.all([get("mochi/posts.json"), get("mochi/dict.json"), get("mochi/kanji.json")]).then(([d, dict, kj]) => {
-    mcLoading = null; if (dict) mcDict = dict; if (kj) mcKanji = kj;
+    mcLoading = null; if (dict) mcDict = dict; if (kj) mcKanji = kj; if (dict && state.mochi) mcFillVocab();
     if (d && Array.isArray(d.posts)) mcData = d; return mcData; });
   return mcLoading;
 }
@@ -3519,7 +3519,9 @@ function jaLineHTML(l, withFuri){
   const V = MC().vocab;
   return l.t.map(([sf, rd, key]) => {
     const inner = withFuri && rd && needFuri(sf) ? rubyHTML(sf, rd) : esc(sf);
-    return key && mcDict[key] ? `<span class="mc-w ${V[key] ? "saved" : ""}" data-w="${esc(key)}" data-s="${esc(sf)}">${inner}</span>` : inner;
+    // 사전에 없는 낱말도 한자가 있으면 눌러서 읽기·사전 링크를 볼 수 있게
+    const k = key || (HAS_K.test(sf) ? sf : "");
+    return k ? `<span class="mc-w ${V[k] ? "saved" : ""}" data-w="${esc(k)}" data-s="${esc(sf)}" data-r="${esc(rd || "")}">${inner}</span>` : inner;
   }).join("");
 }
 
@@ -3551,7 +3553,7 @@ function srsGrade(w, g){
   Store.save();
 }
 function addVocab(w, ex){
-  const d = mcDict[w] || {}, V = MC().vocab;
+  const d = mcDict[w] || { r: (ex && ex.r) || "" }, V = MC().vocab;
   if (V[w]) return false;
   V[w] = { r: d.r || "", ko: shortKo(d.ko), lv: wordLv(w), ex: ex || null, added: todayStr(), due: todayStr(), step: 0 };
   mcStat("words"); Store.save(); return true;
@@ -3682,11 +3684,11 @@ function mountMochi(box){
     </div>`;
   };
   const popHTML = () => {
-    const w = pop.w, d = mcDict[w] || MC().vocab[w] || {}, saved = !!MC().vocab[w];
+    const w = pop.w, d = mcDict[w] || MC().vocab[w] || { r: pop.r || "" }, saved = !!MC().vocab[w];
     return `<div class="mc-pop" style="top:${pop.y}px;left:${pop.x}px">
       <div class="row" style="align-items:baseline;gap:8px"><button class="mc-say in" id="pop-say" aria-label="읽어주기">🔊</button><b class="mc-pw">${esc(w)}</b><span class="mc-pr">${esc(d.r || "")}</span>${lvBadge(wordLv(w))}</div>
       ${pop.s && pop.s !== w ? `<div class="muted" style="font-size:12px">문장 속: ${esc(pop.s)}</div>` : ""}
-      <div class="mc-pk">${esc(shortKo(d.ko) || "뜻을 아직 못 찾았어요")}</div>
+      <div class="mc-pk">${d.ko ? esc(shortKo(d.ko)) : `<span class="muted">뜻을 준비 중이에요 (1시간 안에 채워져요) · 사전 ↗에서 바로 볼 수 있어요</span>`}</div>
       <div class="row" style="gap:6px;margin-top:8px">
         <button class="btn-sm ${saved ? "" : "btn-primary"}" id="pop-save" ${saved ? "disabled" : ""}>${saved ? "✓ 단어장에 있어요" : "⭐ 단어장에 넣기"}</button>
         <a class="btn-sm" href="https://ja.dict.naver.com/#/search?query=${encodeURIComponent(w)}" target="_blank" rel="noopener" style="text-decoration:none;color:var(--ink)">사전 ↗</a>
@@ -3753,11 +3755,11 @@ function mountMochi(box){
     if (rd) rd.onclick = () => { const p = mcData.posts[idx]; if (!MC().read[p.id]) mcStat("lines", p.lines.filter(l => l.ko).length); MC().read[p.id] = todayStr(); Store.save(); openManualSheet("jp"); draw(); };
     qa(".mc-w").forEach(el => el.onclick = e => {
       e.stopPropagation(); const line = el.closest(".mc-line"), li = line ? +line.dataset.li : -1, p = mcData.posts[idx], l = p && p.lines[li];
-      openPop(el, el.dataset.w, el.dataset.s, l ? { ja: l.ja, ko: l.ko, s: el.dataset.s, post: p.id } : null);
+      openPop(el, el.dataset.w, el.dataset.s, l ? { ja: l.ja, ko: l.ko, s: el.dataset.s, post: p.id } : null); if (pop) { pop.r = el.dataset.r; keepScroll(draw); }
     });
     qa("[data-pop]").forEach(el => el.onclick = e => { e.stopPropagation(); const v = MC().vocab[el.dataset.pop]; openPop(el, el.dataset.pop, v && v.ex && v.ex.s, v && v.ex); });
     if (g("#pop-x")) g("#pop-x").onclick = () => { pop = null; keepScroll(draw); };
-    if (g("#pop-save")) g("#pop-save").onclick = () => { if (addVocab(pop.w, pop.ex)) toast(`⭐ ${esc(pop.w)} 단어장에 넣었어요`); keepScroll(draw); };
+    if (g("#pop-save")) g("#pop-save").onclick = () => { if (pop.ex) pop.ex.r = pop.r; if (addVocab(pop.w, pop.ex)) toast(`⭐ ${esc(pop.w)} 단어장에 넣었어요`); keepScroll(draw); };
     const mp = g(".mc-pop"); if (mp) mp.onclick = e => e.stopPropagation();
     qa(".mc-wrap").forEach(w => w.onclick = () => { if (pop) { pop = null; keepScroll(draw); } });
     qa("[data-unv]").forEach(b => b.onclick = e => { e.stopPropagation(); const w = b.dataset.unv; if (!confirm(`'${w}'을(를) 단어장에서 뺄까요?`)) return; delete MC().vocab[w]; Store.save(); pop = null; keepScroll(draw); });
@@ -3798,6 +3800,7 @@ function mcQuizWord(){
 function mcAddSec(sec){ if (sec > 0) { mcStat("sec", Math.round(sec)); Store.save(); } }
 function mcPendingMin(){ const st = MC().stats[todayStr()] || {}; return Math.floor(((st.sec || 0) - (st.recSec || 0)) / 60); }
 function mcWeekStats(days){ const o = { words: 0, rev: 0, ok: 0, lines: 0, shadow: 0, sec: 0 }; days.forEach(d => { const st = MC().stats[d] || {}; for (const k in o) o[k] += st[k] || 0; }); return o; }
+function mcFillVocab(){ let n = 0; for (const [w, v] of Object.entries(MC().vocab)) { const d = mcDict[w]; if (d && d.ko && !v.ko) { v.ko = shortKo(d.ko); v.r = v.r || d.r || ""; v.lv = v.lv ?? wordLv(w); n++; } } if (n) Store.save(); }
 function mochiHasNew(){ return mcData && mcData.posts[0] && mcData.posts[0].id !== MC().seen; }
 
 /* ============ 📌 개인 일정 (달력) ============

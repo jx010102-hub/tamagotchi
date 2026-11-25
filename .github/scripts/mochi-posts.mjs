@@ -90,7 +90,7 @@ async function tokenize(ja){
   const out = [];
   for (const t of await an.parse(ja)) {
     const sf = t.surface_form, base = t.basic_form && t.basic_form !== "*" ? t.basic_form : sf;
-    const content = ["名詞", "動詞", "形容詞", "副詞", "連体詞"].includes(t.pos) && !["非自立", "数", "接尾", "代名詞", "サ変接続"].includes(t.pos_detail_1)
+    const content = ["名詞", "動詞", "形容詞", "副詞", "連体詞"].includes(t.pos) && !["非自立", "数", "接尾", "代名詞"].includes(t.pos_detail_1)
       && /[\u3041-\u30ff\u4e00-\u9fff]/.test(base) && !(base.length === 1 && !HAS_KANJI.test(base));
     out.push([sf, HAS_KANJI.test(sf) ? k2h(t.reading || "") : "", content ? base : ""]);
   }
@@ -125,7 +125,8 @@ for (const p of found.slice(0, KEEP)) {
   console.log(`번역: ${p.text.slice(0, 30).replace(/\n/g, " ")}… (${lines.length}줄)`);
 }
 // 모든 글에 낱말 나누기 (예전 글 포함, 번역은 다시 안 함)
-for (const p of posts) for (const l of p.lines) if (l.ja && !l.t) l.t = await tokenize(l.ja);
+const TOK_V = 2;   // 낱말 나누기 규칙이 바뀌면 숫자를 올려서 예전 글도 다시 나눠요
+for (const p of posts) { const redo = p.tv !== TOK_V; for (const l of p.lines) if (l.ja && (!l.t || redo)) l.t = await tokenize(l.ja); p.tv = TOK_V; }
 
 // ---- 한자 JLPT 급수 (한 번만 받아 둠) ----
 const KJ = "mochi/kanji.json";
@@ -139,7 +140,7 @@ if (!kanji) {
 const levelOf = w => { const ks = [...w].filter(c => HAS_KANJI.test(c)); if (!ks.length) return null; return Math.min(...ks.map(c => kanji[c] || 0)); };  // 0 = 급수 밖(어려움)
 
 // ---- 낱말 사전: 뜻(한국어)·읽기·급수. 새 낱말만 번역 ----
-const DJ = "mochi/dict.json", MAX_NEW_WORDS = 250;
+const DJ = "mochi/dict.json", MAX_NEW_WORDS = 400;
 const dict = fs.existsSync(DJ) ? JSON.parse(fs.readFileSync(DJ, "utf8")) : {};
 const freq = new Map();
 for (const p of posts) for (const l of p.lines) for (const t of l.t || []) if (t[2]) freq.set(t[2], (freq.get(t[2]) || 0) + 1);
