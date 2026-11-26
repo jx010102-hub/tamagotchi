@@ -206,9 +206,9 @@
   .tt-page.s-spring { --l: 4.5%; --r: 4.5%; --t: 16%; --b: 9%; }
   .tt-page.s-summer { --l: 10%; --r: 7.5%; --t: 19%; --b: 13%; }
   .tt-page.s-winter { --l: 11.5%; --r: 11.5%; --t: 22%; --b: 15%; }
-  .tt-inner { position: absolute; left: var(--l); right: var(--r); top: max(var(--t), env(safe-area-inset-top)); bottom: max(var(--b), calc(max(14px, env(safe-area-inset-bottom)) + 84px)); display: flex; flex-direction: column; padding: 12px 18px 8px; min-width: 0; }
-  @media (max-aspect-ratio: 1/1) { .tt-page { background-size: cover; } .tt-inner { left: 14px; right: 14px; top: max(16px, env(safe-area-inset-top)); } }
-  .tt-top { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .tt-inner { position: absolute; left: 50%; transform: translateX(-50%); width: min(720px, calc(100% - var(--l) - var(--r))); top: max(var(--t), env(safe-area-inset-top)); bottom: max(var(--b), calc(max(14px, env(safe-area-inset-bottom)) + 84px)); display: flex; flex-direction: column; padding: 12px 18px 8px; min-width: 0; }
+  @media (max-aspect-ratio: 1/1) { .tt-page { background-size: cover; } .tt-inner { width: min(720px, calc(100% - 28px)); top: max(16px, env(safe-area-inset-top)); } }
+  .tt-top { display: flex; align-items: center; gap: 8px 12px; min-width: 0; flex-wrap: wrap; }
   .tt-top > .grow { min-width: 0; }
   .tt-h { margin: 0; font-family: var(--hand); font-size: clamp(26px, 3vw, 34px); letter-spacing: 1px; display: flex; align-items: center; gap: 4px; white-space: nowrap; }
   .tt-spark { width: 26px; height: 26px; object-fit: contain; transform: translateY(-8px) rotate(12deg); }
@@ -236,7 +236,7 @@
   .tt-page .tt-scroll + .row .cat { font-size: 11px; }
   .tt-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-top: 4px; margin: 0 -4px; }
   .tt-paper { position: relative; min-width: 660px; padding: 6px 6px 10px; }
-  .tt { position: relative; display: grid; grid-template-columns: 52px repeat(7, 1fr); background: #FFFDF8; border: 3px solid #2E2620; border-radius: 16px; box-shadow: 0 5px 0 rgba(94,69,53,.16); }
+  .tt { position: relative; display: grid; grid-template-columns: 42px repeat(7, 1fr); background: #FFFDF8; border: 3px solid #2E2620; border-radius: 16px; box-shadow: 0 5px 0 rgba(94,69,53,.16); }
   .tt-dh, .tt-corner { position: sticky; top: 0; z-index: 4; }
   .tt-corner { z-index: 5 !important; border-top-left-radius: 13px; }
   .tt > .tt-dh:nth-child(8) { border-top-right-radius: 13px; }
