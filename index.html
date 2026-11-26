@@ -5033,9 +5033,15 @@ Store.init();
 const BGM = { el: null, ctx: null, gain: null, armed: false, want: false };
 function bgmOn(){ return scenePref().bgm !== false; }
 function bgmVol(){ return scenePref().bgmVol || .5; }
+// 시작 화면 동안 노래 파일을 미리 받아 두기(누르면 기다림 없이 바로)
+function bgmPreload(){
+  if (BGM.pre || !bgmOn()) return BGM.pre;
+  BGM.pre = fetch("audio/bgm.mp3").then(r => r.ok ? r.blob() : null).then(b => { if (b) BGM.url = URL.createObjectURL(b); return BGM.url; }).catch(() => null);
+  return BGM.pre;
+}
 function bgmInit(){
   if (BGM.el) return BGM.el;
-  const a = new Audio("audio/bgm.mp3"); a.loop = true; a.preload = "auto"; a.setAttribute("playsinline", ""); BGM.el = a;
+  const a = new Audio(BGM.url || "audio/bgm.mp3"); a.loop = true; a.preload = "auto"; a.setAttribute("playsinline", ""); BGM.el = a;
   try { const AC = window.AudioContext || window.webkitAudioContext; BGM.ctx = new AC(); BGM.gain = BGM.ctx.createGain(); BGM.ctx.createMediaElementSource(a).connect(BGM.gain); BGM.gain.connect(BGM.ctx.destination); }
   catch(e) { BGM.ctx = null; BGM.gain = null; }
   bgmApplyVol(); return a;
@@ -5056,7 +5062,7 @@ const bgmPlaying = () => !!(BGM.el && !BGM.el.paused && (!BGM.ctx || BGM.ctx.sta
 function bgmStop(){ if (BGM.el) BGM.el.pause(); }
 function bgmArm(){
   if (BGM.armed) return; BGM.armed = true;
-  const evs = ["pointerdown", "touchend", "keydown"];
+  const evs = ["touchend", "click", "keydown"];
   const go = () => { BGM.armed = false; evs.forEach(ev => document.removeEventListener(ev, go, true)); bgmPlay(); };
   evs.forEach(ev => document.addEventListener(ev, go, true));
 }
@@ -5064,6 +5070,7 @@ document.addEventListener("visibilitychange", () => { if (document.hidden) bgmSt
 
 // 시작 화면: 모찌 채널 새 글을 확인하면서 로딩바가 차오르고, 끝나면 사라짐
 async function runSplash(){
+  bgmPreload();
   const sp = document.getElementById("splash"); if (!sp) { await mcLoad(); return; }
   const fill = document.getElementById("sp-fill"), msg = document.getElementById("sp-msg"), t0 = Date.now();
   const setP = p => fill.style.setProperty("--p", `${p}%`);
@@ -5083,9 +5090,11 @@ async function runSplash(){
   clearInterval(creep); setP(100);
   await wait(900);
   // 항상 "눌러서 시작" — 누르는 순간 음악을 틀어서 아이패드가 소리를 막지 않게
+  if (bgmOn() && BGM.pre) { await Promise.race([BGM.pre, wait(4000)]); }
   const tap = document.createElement("div"); tap.className = "sp-tap"; tap.innerHTML = "✨ 화면을 눌러 시작하기 ✨";
   sp.querySelector(".sp-box").appendChild(tap);
-  await new Promise(res => { const go = () => { sp.removeEventListener("pointerdown", go); sp.removeEventListener("touchend", go); if (bgmOn()) bgmPlay(); res(); }; sp.addEventListener("pointerdown", go); sp.addEventListener("touchend", go); });
+  // 아이패드는 손가락을 '뗄 때'(touchend·click)만 소리를 허락해요. 누르는 순간(pointerdown)은 안 됨
+  await new Promise(res => { let done = false; const go = () => { if (done) return; done = true; sp.removeEventListener("touchend", go); sp.removeEventListener("click", go); if (bgmOn()) bgmPlay(); res(); }; sp.addEventListener("touchend", go); sp.addEventListener("click", go); });
   sp.classList.add("out"); setTimeout(() => sp.remove(), 700);
   await wait(450);
 }
