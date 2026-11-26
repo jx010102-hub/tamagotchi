@@ -1398,7 +1398,7 @@ function render(){
   document.getElementById("nav-root").innerHTML = `<nav class="tabbar">
     ${[["home","icons/tab-home.webp","마을<span class=\"tb-sub\">(홈)</span>"],["tt","icons/tab-tt.webp","시간표"],["cal","icons/tab-cal.webp","달력"],["dream","eggs/egg-08.webp","꿈의 방"],["set","icons/tab-set.webp","설정"]].map(([k,i,l]) => `<button data-tab="${k}" class="${ui.tab===k?"on":""}"><img class="tb-i" src="${i}" alt="">${l}${k === "dream" && dreamEggs().length ? `<span class="tb-badge">${dreamEggs().length}</span>` : ""}</button>`).join("")}
   </nav><button class="fab" id="fab" aria-label="기록하기"><span class="fab-p">＋</span><span class="fab-l">기록하기</span></button>`;
-  document.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => { ui.lightEdit = false; document.body.classList.remove("light-editing"); ui.tab = b.dataset.tab; window.scrollTo(0,0); render(); });
+  document.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => { ui.lightEdit = false; document.body.classList.remove("light-editing"); const prevTab = ui.tab; ui.tab = b.dataset.tab; window.scrollTo(0,0); render(); if (ui.tab === "home" && prevTab !== "home" && !ui.talk) setTimeout(() => showTalk(), 700); });
   document.getElementById("fab").onclick = () => openManualSheet();
   document.querySelectorAll("#modal-root .modal[data-day-detail]").forEach(m => m._redraw && m._redraw());
   const rp = document.getElementById("reels-panel");
@@ -4504,10 +4504,40 @@ const TALK_CHATS = [
   [["toon", "나 어젯밤에 대작 구상했어."], ["drum", "또?!! 몇 화짜리?!!"], ["toon", "300화. 오늘은 1컷 그릴 거야."], ["jp", "계산해봤는데… 아니다. 말 안 할게."]],
   [["drum", "모찌!!! 일어나!!! 공연 시간이다!!!"], ["jp", "…시끄러. 5분만."], ["drum", "5분이면 8비트 300번 침!!!"], ["jp", "그러니까 시끄럽다고."]],
   [["reels", "콩아 네 만화에 나도 나와?"], ["toon", "응. 주인공 친구의 친구의 엑스트라."], ["reels", "…수정 요청할게."], ["toon", "천재 작가는 수정 안 받아."]],
+  [["drum", "쿵짝! 쿵짝! 이게 무슨 소리게?!"], ["jp", "소음."], ["drum", "리듬이거든?!!"], ["reels", "둘 다 맞는 말이야."]],
+  [["toon", "만약에… 우리가 전부 만화 속 캐릭터라면?"], ["reels", "그럼 내가 표지 모델이지."], ["drum", "난 액션 담당!!! 쾅!!!"], ["jp", "난 배경에서 자는 고양이 할게."]],
+  [["jp", "なまけもの。"], ["drum", "뭐야 그거?! 주문이야?!"], ["jp", "'게으름뱅이'. 너 말고 나."], ["toon", "자기소개를 일본어로 하네…"]],
+  [["reels", "오늘 내 귀 각도 어때?"], ["toon", "어제랑 똑같은데."], ["reels", "1도 달라. 예술가가 그것도 몰라?"], ["toon", "…원근법 공부 다시 할게."]],
+  [["drum", "나 스틱 하나 잃어버렸어!!!"], ["toon", "그럼 반만 치면 되잖아."], ["drum", "천재다!!! 한 손 드럼!!!"], ["jp", "그건 그냥 탬버린이야."]],
+  [["toon", "콩이 작가님, 사인 받으러 왔어요~ (혼잣말)"], ["reels", "…혼자 팬미팅 하는 거야?"], ["toon", "연습이야. 언젠가 올 날을 위해."], ["jp", "그날 깨워줘."]],
+  [["jp", "ねむい…"], ["reels", "또 졸려? 아직 낮이야."], ["jp", "낮이라서 졸린 거야."], ["drum", "그럼 밤엔?!"], ["jp", "밤이라서 졸려."]],
+  [["reels", "이번 릴스 썸네일 둘 중에 골라줘."], ["drum", "왼쪽!!! 아니 오른쪽!!! 아니 둘 다!!!"], ["toon", "세 번째 안을 그려줄게."], ["reels", "…그냥 내가 고를게."]],
+  [["drum", "나 오늘 박자 한 번도 안 틀렸다!!!"], ["jp", "아직 안 쳤잖아."], ["drum", "그러니까 완벽한 거지!!!"], ["toon", "논리가… 묘하게 맞네."]],
+  [["toon", "선 하나 긋는 데 10분 걸렸어."], ["reels", "그 선 어딨는데?"], ["toon", "지웠어. 마음에 안 들어서."], ["jp", "10분 순삭. 수고했어."]],
+  [["reels", "모찌야 일본어로 '예쁘다'가 뭐야?"], ["jp", "かわいい(카와이). 왜."], ["reels", "거울 볼 때 쓰려고."], ["jp", "…물어본 내가 잘못이지."]],
+  [["drum", "우리 밴드 하자!!! 이름은 '둥둥과 아이들'!!!"], ["reels", "내 이름이 빠졌잖아."], ["toon", "포스터는 내가 그릴게. 3년 걸려."], ["jp", "해체."]],
+  [["jp", "오늘 단어 하나 알려줄까."], ["drum", "오!!! 뭔데?!"], ["jp", "うるさい(우루사이). '시끄러'."], ["drum", "…왜 나 보면서 말해?!"]],
+  [["toon", "나 사실 새싹이 아니라 나무야. 아직 안 큰 것뿐."], ["reels", "그건 그냥 새싹이야."], ["toon", "꿈은 크게 가져야지."], ["drum", "멋있다!!! 나도 큰 햄스터 될래!!!"]],
+  [["reels", "언니가 요즘 좀 열심히 하는 것 같지 않아?"], ["jp", "…조금."], ["drum", "엄청!!! 완전!!! 최고!!!"], ["toon", "다음 화 주인공은 언니로 해야겠다."]],
+  [["drum", "간식 시간이다!!! 해바라기씨 나눠줄까?!"], ["reels", "난 다이어트 중."], ["jp", "난 생선만."], ["toon", "난 햇빛이면 돼."], ["drum", "…나 혼자 먹을게."]],
+  [["toon", "오늘 하늘색이 딱 내 팔레트 3번이야."], ["reels", "필터 안 써도 되겠다."], ["jp", "そら(소라). 하늘."], ["drum", "하늘 보면서 드럼 치고 싶다!!!"]],
+  [["jp", "…"], ["drum", "모찌 왜 말이 없어?!"], ["jp", "충전 중."], ["reels", "배터리 몇 퍼센트인데?"], ["jp", "3%."]],
+  [["reels", "다들 오늘 컨디션 몇 점이야?"], ["drum", "1000점!!!"], ["toon", "73.5점. 소수점이 중요해."], ["jp", "자고 일어나서 알려줄게."]],
+];
+const TALK_CHATS_MORNING = [
+  [["drum", "좋은 아침!!! 둥둥!!! 일어나!!!"], ["jp", "おはよう…(오하요·안녕). 근데 조용히."], ["reels", "아침 햇살 조명 최고다. 셀카 각."], ["toon", "난 아직 꿈속 원고 마무리 중…"]],
+  [["reels", "언니 일어났다! 오늘 뭐 입을지 같이 고르자."], ["toon", "오늘의 콘셉트는 '여유로운 천재'."], ["drum", "나는 '신나는 햄스터'!!!"], ["jp", "난 '이불'."]],
+  [["toon", "아침엔 영감이 잘 와."], ["drum", "진짜?! 뭐 왔어?!"], ["toon", "…배고프다는 영감."], ["jp", "그건 영감이 아니라 배꼽시계야."]],
+];
+const TALK_CHATS_NIGHT = [
+  [["jp", "벌써 밤이네. おやすみ(오야스미)."], ["drum", "벌써 자?! 마지막 한 곡만!!!"], ["reels", "밤엔 피부가 생명이야. 다들 자."], ["toon", "난 밤이 작업 골든타임인데…"]],
+  [["toon", "새벽 감성 장면 하나 떠올랐어."], ["reels", "내일 보면 이불킥 각이야."], ["drum", "드럼은 밤에 치면 혼나!!! 그래서 참는 중!!!"], ["jp", "참는 소리도 시끄러."]],
+  [["reels", "언니 오늘도 수고했어."], ["drum", "수고했다!!! 둥둥!!!"], ["toon", "오늘 에피소드는 여기까지."], ["jp", "…잘 자."]],
 ];
 const TALK_CHATS_DONE = [
   [["drum", "다 했다!!! 오늘 다 했다고!!!"], ["reels", "언니 오늘 좀 반짝이는데? 나만큼."], ["toon", "이건 시즌 피날레야. 감동 실화."], ["jp", "…수고했어. 오늘은 인정."]],
   [["toon", "우리 오늘 목표 다 했대."], ["drum", "축제다!!! 드럼롤!!! 두구두구!!!"], ["jp", "시끄러. …근데 잘했네."], ["reels", "기념 셀카 찍자. 내 쪽이 잘 나오게."]],
+  [["jp", "오늘 할 거 다 끝났네."], ["reels", "역시 우리 언니. 나 닮아서 그래."], ["drum", "앵콜!!! 앵콜!!!"], ["toon", "오늘 회차 제목은 '완벽한 하루'."]],
 ];
 const STAGE_KO = { idea: "아이디어", shoot: "촬영", edit: "편집" };
 const TALK_ACT = { quiz: "정답 보기", mochiRev: "🔁 복습하기", mochi: "📺 모찌 채널", worship: "🎵 콘티 열기", timer: "▶ 같이 하기", plan: "○ 완료 체크", tt: "🗓 일정 보기", post: "📊 성과 입력", postNew: "＋ 업로드 기록", fw: "📈 기록하기", board: "📋 보드 보기" };
@@ -4687,13 +4717,19 @@ function talkHTML(c){
     <div class="tk-row">${m.act ? `<button class="tk-act" data-talk-act="${c.id}">${m.act.l}</button>` : ""}<span class="tk-n">${more}</span></div>
   </div>`;
 }
+// 친구들끼리 대화 고르기: 시간대(아침·밤)·오늘 다 끝냄에 맞춰, 최근에 나온 대화는 피해서
+const CHAT_SEEN_KEY = "tg-chat-seen";
 function pickChat(){
-  const today = todayStr(), ann = annLoad(), ni = nowInfo();
-  if (allDone(today)) { if (!ann[`chatdone:${today}`]) { ann[`chatdone:${today}`] = 1; annSave(ann); return pick(TALK_CHATS_DONE); } return null; }
-  // 일반 티격태격은 하루 한 번까지, 가끔만, 지금·곧 일정이 있으면 하지 않음
-  const busy = ni.current.length || (ni.next && toMin(ni.next.p.start) - ni.m <= 60);
-  if (busy || ann[`chat:${today}`] || Math.random() > .18) return null;
-  ann[`chat:${today}`] = 1; annSave(ann); return pick(TALK_CHATS);
+  const today = todayStr(), ann = annLoad(), h = new Date().getHours();
+  let pool = TALK_CHATS;
+  if (allDone(today) && !ann[`chatdone:${today}`]) { ann[`chatdone:${today}`] = 1; annSave(ann); pool = TALK_CHATS_DONE; }
+  else if (h >= 5 && h < 11 && Math.random() < .5) pool = [...TALK_CHATS_MORNING, ...TALK_CHATS.slice(0, 6)];
+  else if ((h >= 22 || h < 5) && Math.random() < .5) pool = [...TALK_CHATS_NIGHT, ...TALK_CHATS.slice(0, 6)];
+  let seen = []; try { seen = JSON.parse(localStorage.getItem(CHAT_SEEN_KEY) || "[]"); } catch(e) {}
+  const key = c => hstr(c.map(x => x[1]).join("|")), fresh = pool.filter(c => !seen.includes(key(c)));
+  const chat = pick(fresh.length ? fresh : pool);
+  try { localStorage.setItem(CHAT_SEEN_KEY, JSON.stringify([key(chat), ...seen.filter(k => k !== key(chat))].slice(0, 20))); } catch(e) {}
+  return chat;
 }
 async function showTalk(force, single){
   if (talkBusy || ui.lightEdit || document.hidden) return false;
@@ -4703,12 +4739,8 @@ async function showTalk(force, single){
     const firstToday = talkDay !== todayStr();
     let msgs = {}, order = [], chat = null;
     if (single) { msgs[single.id] = [single.msg]; order = [single.id]; }
-    else {
-      const all = allChars().map(c => ({ id: c.id, m: talkMessages(c.id, { hello: firstToday }) })).filter(x => x.m.length);
-      const top = x => (x.m.find(m => m.ev !== "hello") || x.m[0]).pri;
-      all.sort((a, b) => top(a) - top(b)).forEach(x => { msgs[x.id] = x.m; order.push(x.id); });
-      if (!force) chat = pickChat();
-    }
+    else chat = pickChat();   // 일정 말풍선 없이 친구들끼리 대화만 (4초마다 저절로 다음 줄)
+    void firstToday;
     if (!order.length && !chat) return false;
     // AI 서버가 있으면 먼저 보이는 말들을 새 대사로 바꿔보기(최대 3.5초)
     await aiRewrite(order.flatMap(id => msgs[id].map(msg => ({ id, msg }))).slice(0, 12));
@@ -4721,8 +4753,15 @@ async function showTalk(force, single){
     return true;
   } finally { talkBusy = false; }
 }
-function armTalkHide(){ clearTimeout(talkTimer); talkTimer = setTimeout(hideTalk, ui.talk && ui.talk.chat ? 60000 : 25000); }
-function armChat(){ clearTimeout(chatTimer); chatTimer = setTimeout(() => talkNext(null), 4200); }
+function armTalkHide(){ clearTimeout(talkTimer); talkTimer = setTimeout(hideTalk, ui.talk && ui.talk.chat ? 60000 : 8000); }
+function armChat(){ clearTimeout(chatTimer); chatTimer = setTimeout(() => talkNext(null), 4000); }
+// 마을에 가만히 있으면 3분마다 새 대화
+let talkIdleAt = Date.now();
+setInterval(() => {
+  if (ui.talk || talkBusy) { talkIdleAt = Date.now(); return; }
+  if (ui.tab !== "home" || document.hidden || ui.lightEdit || document.querySelector("#modal-root .overlay")) { talkIdleAt = Date.now(); return; }
+  if (Date.now() - talkIdleAt >= 3 * 60000) { talkIdleAt = Date.now(); showTalk(); }
+}, 5000);
 function talkNext(id){
   const t = ui.talk; if (!t) return;
   t.first = false;
@@ -4814,8 +4853,7 @@ function checkBefore(){
   const id = planSpeaker(p), mb = musicBefore(id, p, toMin(p.start) - ni.m), msg = mb || say(id, planKey(id, p, "before"), { p: p.name, t: p.start, m: toMin(p.start) - ni.m });
   if (!msg) return false;
   if (!mb) msg.act = tAct("tt");
-  if (ui.tab === "home" && !ui.talk && !talkBusy) showTalk(true, { id, msg });
-  else toast(`<img src="${SP(id, "hi")}" alt="" style="width:26px;height:26px;vertical-align:middle;margin-right:4px">${msg.t}`);
+  toast(`<img src="${SP(id, "hi")}" alt="" style="width:26px;height:26px;vertical-align:middle;margin-right:4px">${msg.t}`);
   return true;
 }
 
@@ -4845,10 +4883,6 @@ function checkNow(opening){
   if (document.querySelector("#modal-root .overlay") || ui.lightEdit) return;   // 다른 창이 열려 있거나 조명 편집 중이면 다음에
   const { m, current, next, ended } = nowInfo(), today = todayStr(), ann = annLoad(), nowTs = Date.now();
   // 말풍선이 방금 지금 일정·끝난 일정을 말했으면 팝업은 겹치지 않게 넘어감
-  if (opening && ui.talk && ui.tab === "home") {
-    current.forEach(x => ann[`s:${today}:${x.p.id}`] = nowTs); ended.forEach(x => ann[`e:${today}:${x.p.id}`] = nowTs);
-    plansOn(today).forEach(p => { const d = p.start ? toMin(p.start) - m : -1; if (d > 0 && d <= 60) ann[`b:${today}:${p.id}`] = nowTs; }); annSave(ann); return;
-  }
   // 1) 지금 시작된(진행 중인) 일정: 처음 한 번 + 앱을 다시 열면 1시간마다
   const cur = current.find(x => { const k = `s:${today}:${x.p.id}`; return !ann[k] || (opening && nowTs - ann[k] > 60 * 60000); });
   if (cur) { ann[`s:${today}:${cur.p.id}`] = nowTs; annSave(ann); showNowPopup(cur, next); return; }
@@ -4894,7 +4928,7 @@ let hiddenAt = null;
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) { hiddenAt = Date.now(); return; }
   const away = hiddenAt ? Date.now() - hiddenAt : 0; hiddenAt = null;
-  setTimeout(async () => { if (away >= 60 * 60000 || todayStr() !== talkDay) await showTalk(); checkNow(true); }, 600);
+  setTimeout(async () => { if (away >= 10 * 60000 || todayStr() !== talkDay) await showTalk(); checkNow(true); }, 600);
 });
 
 document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });
