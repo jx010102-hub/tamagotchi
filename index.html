@@ -5082,19 +5082,14 @@ async function runSplash(){
   await wait(Math.max(0, DUR - (Date.now() - t0)));
   clearInterval(creep); setP(100);
   await wait(900);
-  // 배경음악: 바로 틀어보고, 아이패드가 막으면 "눌러서 시작"을 띄워 누르는 순간 음악과 함께 홈으로
-  if (bgmOn()) {
-    bgmPlay(); await wait(350);
-    if (!bgmPlaying()) {
-      const tap = document.createElement("div"); tap.className = "sp-tap"; tap.innerHTML = "✨ 화면을 눌러 시작하기 ✨";
-      sp.querySelector(".sp-box").appendChild(tap);
-      await new Promise(res => { const go = () => { sp.removeEventListener("pointerdown", go); sp.removeEventListener("touchend", go); bgmPlay(); res(); }; sp.addEventListener("pointerdown", go); sp.addEventListener("touchend", go); });
-    }
-  }
+  // 항상 "눌러서 시작" — 누르는 순간 음악을 틀어서 아이패드가 소리를 막지 않게
+  const tap = document.createElement("div"); tap.className = "sp-tap"; tap.innerHTML = "✨ 화면을 눌러 시작하기 ✨";
+  sp.querySelector(".sp-box").appendChild(tap);
+  await new Promise(res => { const go = () => { sp.removeEventListener("pointerdown", go); sp.removeEventListener("touchend", go); if (bgmOn()) bgmPlay(); res(); }; sp.addEventListener("pointerdown", go); sp.addEventListener("touchend", go); });
   sp.classList.add("out"); setTimeout(() => sp.remove(), 700);
   await wait(450);
 }
-runSplash().then(async () => { bgmPlay(); await showTalk(); checkNow(true); });
+runSplash().then(async () => { await showTalk(); checkNow(true); });
 if ("serviceWorker" in navigator && location.protocol === "https:") {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(e => console.warn("sw", e)));
 }
