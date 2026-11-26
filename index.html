@@ -976,6 +976,8 @@
   #splash .sp-msg.pop { animation: spPop .4s ease; }
   @keyframes spBob { 50% { transform: translateY(-3px); } }
   @keyframes spPop { 40% { transform: scale(1.08); } }
+  #splash .sp-tap { margin-top: 4px; padding: 8px 22px; border-radius: 999px; background: #FFF6FA; border: 2.5px solid #C2577E; box-shadow: 0 4px 0 rgba(194,87,126,.3); font-family: var(--hand); font-size: 22px; font-weight: 700; color: #C2577E; animation: spBlink 1.4s ease-in-out infinite; cursor: pointer; }
+  @keyframes spBlink { 50% { transform: scale(1.05); box-shadow: 0 4px 0 rgba(194,87,126,.3), 0 0 18px rgba(255,182,206,.9); } }
   @media (prefers-reduced-motion: reduce) { #splash .sp-bg, #splash .sp-fx i, #splash .sp-fx b, #splash .sp-fill { animation: none; } }
 </style>
 </head>
@@ -5044,11 +5046,13 @@ async function bgmPlay(){
   if (!bgmOn() || document.hidden) return;
   const a = bgmInit();
   try {
-    if (BGM.ctx && BGM.ctx.state !== "running") await BGM.ctx.resume();
-    await a.play();
+    // 터치 순간 안에서 바로 불러야 아이패드가 허락해줘서, 기다리지 않고 둘 다 한꺼번에 부름
+    const jobs = [a.play()]; if (BGM.ctx && BGM.ctx.state !== "running") jobs.push(BGM.ctx.resume());
+    await Promise.all(jobs);
     if (BGM.ctx && BGM.ctx.state !== "running") throw new Error("locked");
   } catch(e) { bgmArm(); }
 }
+const bgmPlaying = () => !!(BGM.el && !BGM.el.paused && (!BGM.ctx || BGM.ctx.state === "running"));
 function bgmStop(){ if (BGM.el) BGM.el.pause(); }
 function bgmArm(){
   if (BGM.armed) return; BGM.armed = true;
@@ -5078,6 +5082,15 @@ async function runSplash(){
   await wait(Math.max(0, DUR - (Date.now() - t0)));
   clearInterval(creep); setP(100);
   await wait(900);
+  // 배경음악: 바로 틀어보고, 아이패드가 막으면 "눌러서 시작"을 띄워 누르는 순간 음악과 함께 홈으로
+  if (bgmOn()) {
+    bgmPlay(); await wait(350);
+    if (!bgmPlaying()) {
+      const tap = document.createElement("div"); tap.className = "sp-tap"; tap.innerHTML = "✨ 화면을 눌러 시작하기 ✨";
+      sp.querySelector(".sp-box").appendChild(tap);
+      await new Promise(res => { const go = () => { sp.removeEventListener("pointerdown", go); sp.removeEventListener("touchend", go); bgmPlay(); res(); }; sp.addEventListener("pointerdown", go); sp.addEventListener("touchend", go); });
+    }
+  }
   sp.classList.add("out"); setTimeout(() => sp.remove(), 700);
   await wait(450);
 }
