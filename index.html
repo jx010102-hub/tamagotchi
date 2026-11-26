@@ -953,9 +953,46 @@
   .mc-rnav button { min-height: 48px; }
   body.mc-full-on { overflow: hidden; }
   body.mc-full-on #toast { z-index: 300; }
+  /* 시작 화면(로딩) */
+  #splash { position: fixed; inset: 0; z-index: 9999; overflow: hidden; background: #FCEFF3; transition: opacity .55s ease, visibility .55s; }
+  #splash.out { opacity: 0; visibility: hidden; pointer-events: none; }
+  #splash .sp-bg { position: absolute; inset: -3%; background: url(bg/splash.webp) center / cover no-repeat; animation: spZoom 9s ease-in-out infinite alternate; }
+  @keyframes spZoom { from { transform: scale(1) translate(0, 0); } to { transform: scale(1.06) translate(-1%, -1%); } }
+  #splash .sp-fx { position: absolute; inset: 0; pointer-events: none; }
+  #splash .sp-fx i { position: absolute; top: -6%; width: 14px; height: 11px; border-radius: 70% 0 70% 0; background: #F9C3D3; opacity: .85; animation: spFall linear infinite; }
+  #splash .sp-fx b { position: absolute; color: #FFE38A; font-size: 18px; text-shadow: 0 0 6px #fff; animation: spTwinkle 2.4s ease-in-out infinite; }
+  @keyframes spFall { to { transform: translate(-60px, 112vh) rotate(540deg); } }
+  @keyframes spTwinkle { 0%, 100% { opacity: .15; transform: scale(.7); } 50% { opacity: 1; transform: scale(1.15); } }
+  #splash .sp-box { position: absolute; left: 50%; bottom: max(9%, calc(env(safe-area-inset-bottom) + 40px)); transform: translateX(-50%); width: min(620px, 78vw); display: flex; flex-direction: column; align-items: center; gap: 8px; animation: spUp .6s ease both .15s; }
+  @keyframes spUp { from { opacity: 0; transform: translate(-50%, 16px); } }
+  #splash .sp-bar { position: relative; width: 100%; aspect-ratio: 1412 / 150; filter: drop-shadow(0 4px 10px rgba(255,255,255,.7)); }
+  #splash .sp-bar img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #splash .sp-track { filter: grayscale(.85) brightness(1.18); }
+  #splash .sp-fill { position: absolute; inset: 0; clip-path: inset(0 calc(100% - var(--p, 8%)) 0 0 round 0); transition: clip-path .7s cubic-bezier(.3,.8,.3,1); overflow: hidden; }
+  #splash .sp-fill::after { content: ""; position: absolute; top: 18%; bottom: 18%; width: 18%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.75), transparent); animation: spShine 1.3s ease-in-out infinite; }
+  @keyframes spShine { from { left: -20%; } to { left: 105%; } }
+  #splash .sp-msg { display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px 5px 6px; border-radius: 999px; background: rgba(255,251,242,.92); border: 2px solid #7A4E44; color: #5E4535; font-size: 14px; font-weight: 600; box-shadow: 0 3px 0 rgba(122,78,68,.2); max-width: 100%; }
+  #splash .sp-msg img { width: 26px; height: 26px; object-fit: contain; animation: spBob 1s ease-in-out infinite; }
+  #splash .sp-msg span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #splash .sp-msg.pop { animation: spPop .4s ease; }
+  @keyframes spBob { 50% { transform: translateY(-3px); } }
+  @keyframes spPop { 40% { transform: scale(1.08); } }
+  @media (prefers-reduced-motion: reduce) { #splash .sp-bg, #splash .sp-fx i, #splash .sp-fx b, #splash .sp-fill::after { animation: none; } }
 </style>
 </head>
 <body>
+<div id="splash" aria-label="불러오는 중">
+  <div class="sp-bg"></div>
+  <div class="sp-fx" aria-hidden="true">
+    <i style="left:8%;animation-duration:7s;animation-delay:-1s"></i><i style="left:22%;animation-duration:9s;animation-delay:-4s"></i><i style="left:37%;animation-duration:8s;animation-delay:-2s;transform:scale(.8)"></i>
+    <i style="left:55%;animation-duration:10s;animation-delay:-6s"></i><i style="left:68%;animation-duration:7.5s;animation-delay:-3s"></i><i style="left:84%;animation-duration:9.5s;animation-delay:-5s"></i><i style="left:95%;animation-duration:8.5s;animation-delay:-1.5s"></i>
+    <b style="left:14%;top:30%">✦</b><b style="left:47%;top:18%;animation-delay:.8s">✦</b><b style="left:80%;top:40%;animation-delay:1.5s">✦</b><b style="left:30%;top:62%;animation-delay:.4s">✦</b><b style="left:90%;top:14%;animation-delay:1.1s">✦</b>
+  </div>
+  <div class="sp-box">
+    <div class="sp-bar"><img class="sp-track" src="bg/loadbar.webp" alt=""><div class="sp-fill" id="sp-fill"><img src="bg/loadbar.webp" alt=""></div></div>
+    <div class="sp-msg" id="sp-msg"><img src="sprites/cat/hi.webp" alt=""><span>모찌 채널 새 글 확인 중…</span></div>
+  </div>
+</div>
 <div class="wrap" id="app"><p class="muted">불러오는 중…</p></div>
 <div id="nav-root"></div>
 <div id="modal-root"></div>
@@ -4981,7 +5018,29 @@ document.addEventListener("visibilitychange", () => {
 document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });
 
 Store.init();
-setTimeout(async () => { await mcLoad(); await showTalk(); checkNow(true); }, 900);
+// 시작 화면: 모찌 채널 새 글을 확인하면서 로딩바가 차오르고, 끝나면 사라짐
+async function runSplash(){
+  const sp = document.getElementById("splash"); if (!sp) { await mcLoad(); return; }
+  const fill = document.getElementById("sp-fill"), msg = document.getElementById("sp-msg"), t0 = Date.now();
+  const setP = p => fill.style.setProperty("--p", `${p}%`);
+  const setMsg = h => { msg.querySelector("span").innerHTML = h; msg.classList.remove("pop"); void msg.offsetWidth; msg.classList.add("pop"); };
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  requestAnimationFrame(() => setP(22));
+  let p = 22; const creep = setInterval(() => { p = Math.min(78, p + 7); setP(p); }, 380);
+  const d = await Promise.race([mcLoad(true), wait(6000).then(() => null)]);
+  clearInterval(creep);
+  if (d && d.posts && d.posts.length) {
+    const seen = MC().seen, i = d.posts.findIndex(x => x.id === seen), n = i < 0 ? (seen ? d.posts.length : 0) : i;
+    const p0 = d.posts[0], l = (p0.lines || []).find(x => x.ko), t = (l ? l.ko : p0.text || "").replace(/^["“'‘「]+|["”'’」]+$/g, "").trim();
+    const short = t.length > 16 ? t.slice(0, 16) + "…" : t;
+    setMsg(n > 0 ? `모찌 채널에 <b>‘${esc(short)}’</b>${n > 1 ? ` 외 ${n - 1}개` : ""}가 업데이트 되었습니다` : "모찌 채널은 최신 상태예요 ✓");
+  } else setMsg("모찌 채널은 다음에 확인할게요");
+  setP(100);
+  await wait(Math.max(1100, 2000 - (Date.now() - t0)));
+  sp.classList.add("out"); setTimeout(() => sp.remove(), 700);
+  await wait(450);
+}
+runSplash().then(async () => { await showTalk(); checkNow(true); });
 if ("serviceWorker" in navigator && location.protocol === "https:") {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(e => console.warn("sw", e)));
 }
