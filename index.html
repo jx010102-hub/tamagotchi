@@ -976,8 +976,10 @@
   #splash .sp-msg.pop { animation: spPop .4s ease; }
   @keyframes spBob { 50% { transform: translateY(-3px); } }
   @keyframes spPop { 40% { transform: scale(1.08); } }
-  #splash .sp-tap { margin-top: 4px; padding: 8px 22px; border-radius: 999px; background: #FFF6FA; border: 2.5px solid #C2577E; box-shadow: 0 4px 0 rgba(194,87,126,.3); font-family: var(--hand); font-size: 22px; font-weight: 700; color: #C2577E; animation: spBlink 1.4s ease-in-out infinite; cursor: pointer; }
-  @keyframes spBlink { 50% { transform: scale(1.05); box-shadow: 0 4px 0 rgba(194,87,126,.3), 0 0 18px rgba(255,182,206,.9); } }
+  #splash .sp-tap { display: block; width: min(400px, 62vw); height: auto; margin-top: 2px; cursor: pointer; filter: drop-shadow(0 6px 10px rgba(194,87,126,.25)); animation: spTapIn .45s cubic-bezier(.3,1.5,.5,1) both, spBlink 1.6s ease-in-out .45s infinite; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  #splash .sp-tap:active { transform: scale(.96); }
+  @keyframes spTapIn { from { opacity: 0; transform: scale(.7); } }
+  @keyframes spBlink { 50% { transform: scale(1.04); filter: drop-shadow(0 6px 16px rgba(255,170,200,.75)); } }
   @media (prefers-reduced-motion: reduce) { #splash .sp-bg, #splash .sp-fx i, #splash .sp-fx b, #splash .sp-fill { animation: none; } }
 </style>
 </head>
@@ -5091,7 +5093,7 @@ async function runSplash(){
   await wait(900);
   // 항상 "눌러서 시작" — 누르는 순간 음악을 틀어서 아이패드가 소리를 막지 않게
   if (bgmOn() && BGM.pre) { await Promise.race([BGM.pre, wait(4000)]); }
-  const tap = document.createElement("div"); tap.className = "sp-tap"; tap.innerHTML = "✨ 화면을 눌러 시작하기 ✨";
+  const tap = document.createElement("img"); tap.className = "sp-tap"; tap.src = "bg/start-btn.webp"; tap.alt = "화면을 눌러 시작하기"; tap.draggable = false;
   sp.querySelector(".sp-box").appendChild(tap);
   // 아이패드는 손가락을 '뗄 때'(touchend·click)만 소리를 허락해요. 누르는 순간(pointerdown)은 안 됨
   await new Promise(res => { let done = false; const go = () => { if (done) return; done = true; sp.removeEventListener("touchend", go); sp.removeEventListener("click", go); if (bgmOn()) bgmPlay(); res(); }; sp.addEventListener("touchend", go); sp.addEventListener("click", go); });
