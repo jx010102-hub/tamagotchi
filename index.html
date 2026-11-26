@@ -965,19 +965,23 @@
   @keyframes spTwinkle { 0%, 100% { opacity: .15; transform: scale(.7); } 50% { opacity: 1; transform: scale(1.15); } }
   #splash .sp-box { position: absolute; left: 50%; bottom: max(9%, calc(env(safe-area-inset-bottom) + 40px)); transform: translateX(-50%); width: min(620px, 78vw); display: flex; flex-direction: column; align-items: center; gap: 8px; animation: spUp .6s ease both .15s; }
   @keyframes spUp { from { opacity: 0; transform: translate(-50%, 16px); } }
-  #splash .sp-bar { position: relative; width: 100%; aspect-ratio: 1412 / 150; filter: drop-shadow(0 4px 10px rgba(255,255,255,.7)); }
-  #splash .sp-bar img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-  #splash .sp-track { filter: grayscale(.85) brightness(1.18); }
-  #splash .sp-fill { position: absolute; inset: 0; clip-path: inset(0 calc(100% - var(--p, 8%)) 0 0 round 0); transition: clip-path .7s cubic-bezier(.3,.8,.3,1); overflow: hidden; }
-  #splash .sp-fill::after { content: ""; position: absolute; top: 18%; bottom: 18%; width: 18%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.75), transparent); animation: spShine 1.3s ease-in-out infinite; }
-  @keyframes spShine { from { left: -20%; } to { left: 105%; } }
+  /* 빈 바(그림) 위 안쪽 칸에 분홍 줄무늬가 왼쪽부터 차오르고, 별은 맨 위 */
+  #splash .sp-bar { position: relative; width: 100%; aspect-ratio: 2030 / 370; filter: drop-shadow(0 4px 10px rgba(255,255,255,.7)); }
+  #splash .sp-track { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #splash .sp-in { position: absolute; left: 8.97%; top: 33.8%; height: 39.5%; width: 79.7%; border-radius: 999px; overflow: hidden; }
+  #splash .sp-fill { position: absolute; left: 0; top: 0; bottom: 0; width: var(--p, 0%); min-width: 0; border-radius: 999px; background: repeating-linear-gradient(-55deg, #FCD9E6 0 12px, #F7B3CB 12px 21px); box-shadow: inset 0 0 0 2px rgba(229,139,176,.55), inset 0 -4px 0 rgba(229,139,176,.25); background-size: 200% 100%; animation: spStripe 1s linear infinite; transition: width .45s ease-out; overflow: hidden; }
+  #splash .sp-fill::after { content: ""; position: absolute; top: 12%; height: 30%; left: 6px; right: 6px; border-radius: 999px; background: rgba(255,255,255,.55); }
+  @keyframes spStripe { to { background-position: -33px 0; } }
+  #splash .sp-star { position: absolute; left: 74.38%; top: 9.46%; width: 15.27%; height: 78.38%; transform-origin: 50% 50%; }
+  #splash .sp-star.done { animation: spStar .6s ease; }
+  @keyframes spStar { 40% { transform: scale(1.25) rotate(12deg); } 100% { transform: scale(1); } }
   #splash .sp-msg { display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px 5px 6px; border-radius: 999px; background: rgba(255,251,242,.92); border: 2px solid #7A4E44; color: #5E4535; font-size: 14px; font-weight: 600; box-shadow: 0 3px 0 rgba(122,78,68,.2); max-width: 100%; }
   #splash .sp-msg img { width: 26px; height: 26px; object-fit: contain; animation: spBob 1s ease-in-out infinite; }
   #splash .sp-msg span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #splash .sp-msg.pop { animation: spPop .4s ease; }
   @keyframes spBob { 50% { transform: translateY(-3px); } }
   @keyframes spPop { 40% { transform: scale(1.08); } }
-  @media (prefers-reduced-motion: reduce) { #splash .sp-bg, #splash .sp-fx i, #splash .sp-fx b, #splash .sp-fill::after { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { #splash .sp-bg, #splash .sp-fx i, #splash .sp-fx b, #splash .sp-fill { animation: none; } }
 </style>
 </head>
 <body>
@@ -989,7 +993,7 @@
     <b style="left:14%;top:30%">✦</b><b style="left:47%;top:18%;animation-delay:.8s">✦</b><b style="left:80%;top:40%;animation-delay:1.5s">✦</b><b style="left:30%;top:62%;animation-delay:.4s">✦</b><b style="left:90%;top:14%;animation-delay:1.1s">✦</b>
   </div>
   <div class="sp-box">
-    <div class="sp-bar"><img class="sp-track" src="bg/loadbar.webp" alt=""><div class="sp-fill" id="sp-fill"><img src="bg/loadbar.webp" alt=""></div></div>
+    <div class="sp-bar"><img class="sp-track" src="bg/loadbar.webp" alt=""><div class="sp-in"><div class="sp-fill" id="sp-fill"></div></div><img class="sp-star" id="sp-star" src="bg/loadstar.webp" alt=""></div>
     <div class="sp-msg" id="sp-msg"><img src="sprites/cat/hi.webp" alt=""><span>모찌 채널 새 글 확인 중…</span></div>
   </div>
 </div>
@@ -5025,18 +5029,20 @@ async function runSplash(){
   const setP = p => fill.style.setProperty("--p", `${p}%`);
   const setMsg = h => { msg.querySelector("span").innerHTML = h; msg.classList.remove("pop"); void msg.offsetWidth; msg.classList.add("pop"); };
   const wait = ms => new Promise(r => setTimeout(r, ms));
-  requestAnimationFrame(() => setP(22));
-  let p = 22; const creep = setInterval(() => { p = Math.min(78, p + 7); setP(p); }, 380);
+  // 시간에 맞춰 0% → 88%까지 천천히 차오르고, 확인이 끝나면 100%
+  const DUR = 2000; let p = 0;
+  const creep = setInterval(() => { p = Math.min(88, (Date.now() - t0) / DUR * 88); setP(p); }, 120);
   const d = await Promise.race([mcLoad(true), wait(6000).then(() => null)]);
-  clearInterval(creep);
   if (d && d.posts && d.posts.length) {
     const seen = MC().seen, i = d.posts.findIndex(x => x.id === seen), n = i < 0 ? (seen ? d.posts.length : 0) : i;
     const p0 = d.posts[0], l = (p0.lines || []).find(x => x.ko), t = (l ? l.ko : p0.text || "").replace(/^["“'‘「]+|["”'’」]+$/g, "").trim();
     const short = t.length > 16 ? t.slice(0, 16) + "…" : t;
     setMsg(n > 0 ? `모찌 채널에 <b>‘${esc(short)}’</b>${n > 1 ? ` 외 ${n - 1}개` : ""}가 업데이트 되었습니다` : "모찌 채널은 최신 상태예요 ✓");
   } else setMsg("모찌 채널은 다음에 확인할게요");
-  setP(100);
-  await wait(Math.max(1100, 2000 - (Date.now() - t0)));
+  await wait(Math.max(0, DUR - (Date.now() - t0)));
+  clearInterval(creep); setP(100);
+  await wait(500); document.getElementById("sp-star").classList.add("done");
+  await wait(700);
   sp.classList.add("out"); setTimeout(() => sp.remove(), 700);
   await wait(450);
 }
