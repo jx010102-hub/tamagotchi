@@ -1475,6 +1475,7 @@ function viewHome(){
       <div class="hc-date">${fmtMD(today)} (${DOW[(new Date().getDay()+6)%7]})${total ? ` · 총 <b>${fmtDur(total)}</b>` : ""}</div>
     </div>
     <div class="hud-right">
+      <button class="hud-btn hud-round" id="btn-bgm" aria-label="배경음악 켜기·끄기">${bgmOn() ? "🎵" : "🔇"}</button>
       <button class="hud-btn hud-round" id="btn-talk" aria-label="친구들 이야기 다시 듣기"><img src="icons/ui-chat.webp" alt=""></button>
       <button class="hud-btn" id="btn-summary"><img src="icons/ui-sum.webp" alt=""> 결산</button>
     </div>
@@ -1543,6 +1544,7 @@ function bindHome(){
   document.querySelectorAll("[data-char]").forEach(el => el.onclick = () => openCharPopup(el.dataset.char));
   const s = document.getElementById("stop-main"); if (s) s.onclick = stopTimer;
   document.getElementById("btn-summary").onclick = showSummary;
+  document.getElementById("btn-bgm").onclick = () => { scenePref().bgm = !bgmOn(); Store.save(); bgmOn() ? bgmPlay() : bgmStop(); render(); };
   document.getElementById("btn-talk").onclick = () => ui.talk ? hideTalk() : showTalk(true);
   bindTalk();
   bindPlacing();
@@ -2420,7 +2422,10 @@ function viewSettings(){
     <div class="row">${[["auto", `🗓 자동 (지금 ${SEASONS[getSeason()].slice(3)})`], ...Object.entries(SEASONS)].map(([k, l]) => { const on = (SEASONS[scenePref().season] ? scenePref().season : "auto") === k; return `<span class="chip ${on ? "on" : ""}" data-scene-season="${k}" style="${on ? "background:var(--butter-pale)" : ""}">${l}</span>`; }).join("")}</div>
     <label>움직임 효과 <span class="muted">(꽃잎·반짝임·낙엽·눈송이, 창문 불빛·별 반짝임)</span></label>
     <div class="row">${[[true, "켜기"], [false, "끄기"]].map(([v, l]) => { const on = (scenePref().anim !== false) === v; return `<span class="chip ${on ? "on" : ""}" data-scene-anim="${v}" style="${on ? "background:var(--butter-pale)" : ""}">${l}</span>`; }).join("")}</div>
-    <label>친구들 말풍선 <span class="muted">(앱을 열면 오늘 할 일을 말해줘요)</span></label>
+    <label>배경음악 <span class="muted">(시작 화면이 끝나면 흘러나와요)</span></label>
+    <div class="row">${[[true, "🎵 켜기"], [false, "끄기"]].map(([v, l]) => { const on = bgmOn() === v; return `<span class="chip ${on ? "on" : ""}" data-scene-bgm="${v}" style="${on ? "background:var(--butter-pale)" : ""}">${l}</span>`; }).join("")}
+      <span class="muted" style="margin-left:6px">크기</span>${[[.25, "작게"], [.5, "보통"], [.8, "크게"]].map(([v, l]) => { const on = bgmVol() === v; return `<span class="chip ${on ? "on" : ""}" data-scene-bgmvol="${v}" style="${on ? "background:var(--butter-pale)" : ""}">${l}</span>`; }).join("")}</div>
+    <label>친구들 말풍선 <span class="muted">(앱을 열면 친구들끼리 수다를 떨어요)</span></label>
     <div class="row">${[[true, "켜기"], [false, "끄기"]].map(([v, l]) => { const on = (scenePref().talk !== false) === v; return `<span class="chip ${on ? "on" : ""}" data-scene-talk="${v}" style="${on ? "background:var(--butter-pale)" : ""}">${l}</span>`; }).join("")}</div>
     <label for="talk-api">AI 대사 서버 <span class="muted">(선택 · 비워두면 준비된 대사로 말해요)</span></label>
     <div class="row"><input type="url" id="talk-api" class="grow" placeholder="https://내-서버.workers.dev" value="${esc(scenePref().talkApi || "")}" style="min-width:0"><button class="btn-sm" id="talk-api-save">저장</button></div>
@@ -2453,6 +2458,8 @@ function bindSettings(){
     const n = await aiRewrite([{ id: "jp", msg: probe }]);
     msg.textContent = n ? `연결됐어요 ✓ 모찌: "${plainText(probe.t)}"` : "저장했어요. 다만 지금은 서버 응답이 없어서 준비된 대사를 써요.";
   };
+  document.querySelectorAll("[data-scene-bgm]").forEach(x => x.onclick = () => { scenePref().bgm = x.dataset.sceneBgm === "true"; Store.save(); bgmOn() ? bgmPlay() : bgmStop(); render(); });
+  document.querySelectorAll("[data-scene-bgmvol]").forEach(x => x.onclick = () => { scenePref().bgmVol = +x.dataset.sceneBgmvol; Store.save(); bgmApplyVol(); render(); });
   document.querySelectorAll("[data-scene-talk]").forEach(x => x.onclick = () => { scenePref().talk = x.dataset.sceneTalk === "true"; Store.save(); render(); });
   document.querySelectorAll("[data-scene-anim]").forEach(x => x.onclick = () => { scenePref().anim = x.dataset.sceneAnim === "true"; Store.save(); render(); });
   document.getElementById("light-edit").onclick = () => { ui.lightEdit = true; ui.lightEditMode = "w"; ui.tab = "home"; window.scrollTo(0, 0); render(); };
@@ -5017,6 +5024,40 @@ document.addEventListener("visibilitychange", () => {
 document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });
 
 Store.init();
+/* ============ 🎵 배경음악 ============
+   아이패드(사파리)는 손가락으로 한 번 누르기 전에는 소리를 못 내요.
+   그래서 시작 화면이 끝나면 바로 틀어보고, 막히면 화면을 처음 누르는 순간 시작해요.
+   아이패드는 audio.volume이 안 먹어서 Web Audio 볼륨(gain)으로 크기를 조절해요. */
+const BGM = { el: null, ctx: null, gain: null, armed: false, want: false };
+function bgmOn(){ return scenePref().bgm !== false; }
+function bgmVol(){ return scenePref().bgmVol || .5; }
+function bgmInit(){
+  if (BGM.el) return BGM.el;
+  const a = new Audio("audio/bgm.mp3"); a.loop = true; a.preload = "auto"; a.setAttribute("playsinline", ""); BGM.el = a;
+  try { const AC = window.AudioContext || window.webkitAudioContext; BGM.ctx = new AC(); BGM.gain = BGM.ctx.createGain(); BGM.ctx.createMediaElementSource(a).connect(BGM.gain); BGM.gain.connect(BGM.ctx.destination); }
+  catch(e) { BGM.ctx = null; BGM.gain = null; }
+  bgmApplyVol(); return a;
+}
+function bgmApplyVol(){ if (!BGM.el) return; if (BGM.gain) BGM.gain.gain.value = bgmVol(); else BGM.el.volume = bgmVol(); }
+async function bgmPlay(){
+  BGM.want = true;
+  if (!bgmOn() || document.hidden) return;
+  const a = bgmInit();
+  try {
+    if (BGM.ctx && BGM.ctx.state !== "running") await BGM.ctx.resume();
+    await a.play();
+    if (BGM.ctx && BGM.ctx.state !== "running") throw new Error("locked");
+  } catch(e) { bgmArm(); }
+}
+function bgmStop(){ if (BGM.el) BGM.el.pause(); }
+function bgmArm(){
+  if (BGM.armed) return; BGM.armed = true;
+  const evs = ["pointerdown", "touchend", "keydown"];
+  const go = () => { BGM.armed = false; evs.forEach(ev => document.removeEventListener(ev, go, true)); bgmPlay(); };
+  evs.forEach(ev => document.addEventListener(ev, go, true));
+}
+document.addEventListener("visibilitychange", () => { if (document.hidden) bgmStop(); else if (BGM.want) bgmPlay(); });
+
 // 시작 화면: 모찌 채널 새 글을 확인하면서 로딩바가 차오르고, 끝나면 사라짐
 async function runSplash(){
   const sp = document.getElementById("splash"); if (!sp) { await mcLoad(); return; }
@@ -5040,7 +5081,7 @@ async function runSplash(){
   sp.classList.add("out"); setTimeout(() => sp.remove(), 700);
   await wait(450);
 }
-runSplash().then(async () => { await showTalk(); checkNow(true); });
+runSplash().then(async () => { bgmPlay(); await showTalk(); checkNow(true); });
 if ("serviceWorker" in navigator && location.protocol === "https:") {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(e => console.warn("sw", e)));
 }
